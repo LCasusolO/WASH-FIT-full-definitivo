@@ -48,3 +48,31 @@ Exportar descarga el JSON, prepara el HTML fuera de pantalla, solicita y descarg
 Dependencias directas fijadas: Vue 3.5.43, Lucide 1.55.0, Leaflet 1.9.4, Playwright Core 1.64.1 y Chromium 153.0.0. Desarrollo: Tailwind/CLI 4.3.0 y fake-indexeddb 6.2.4. El requisito de Node se deriva del `engines` de Chromium instalado (`^22.17.0 || >=24.0.0`).
 
 No se necesita un CDN para ejecutar Vue, iconos o estilos. El mapa solicita mosaicos de OpenStreetMap. `dist/` es un resultado regenerable, no la fuente que debe mantenerse. Para un build limpio, use un checkout nuevo o elimine únicamente el `dist` de su proyecto antes de compilar: el script original no limpia salidas antiguas.
+
+
+## Extensión colaborativa: países, equipos y paso 5
+
+La arquitectura local descrita arriba sigue disponible cuando `WASH_MULTIUSER`
+no es `true`. La activación del espacio de trabajo requiere las migraciones de
+`supabase/migrations/` y la [guía de implementación](IMPLEMENTACION-MULTIUSUARIO.md).
+
+- `platform-portal.js` gestiona países, establecimientos, equipos, participantes,
+  acciones, monitoreos y versiones validadas.
+- `platform-client.js` utiliza el SDK oficial de Supabase y añade sesiones a las
+  API de reportes. La clave publishable es pública; no se usa service_role.
+- `platform-editor.js` integra el editor actual con guardado por indicador y por
+  bloques generales, borradores aislados por cuenta, reintentos y conflictos.
+- `platform-model.js` separa medición, plan y monitoreo, y realiza la combinación
+  de versiones sin sobrescribir cambios concurrentes.
+- `wash_command` controla escrituras transaccionales, permisos actuales, versiones
+  e idempotencia. Las tablas no aceptan escrituras directas del navegador.
+- Los snapshots conservan mediciones y planes a una fecha de corte. Las acciones
+  y monitoreos del establecimiento continúan después de validar una medición.
+- `platform-report.js` prepara reportes desde snapshots autorizados. Las API de
+  Chrome y Drive verifican sesión y exportación en modo colaborativo.
+- Los recibos de Drive quedan vinculados al usuario y exportación. Cada versión
+  exportada usa UUID propio, evitando colisiones por nombre de establecimiento.
+
+Las evidencias del bucket privado se conservan sin sobrescritura ni borrado desde
+el navegador, para mantener los documentos históricos. El administrador debe
+establecer la política de retención y el mantenimiento de respaldos.

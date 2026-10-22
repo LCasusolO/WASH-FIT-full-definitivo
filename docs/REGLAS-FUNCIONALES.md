@@ -43,3 +43,19 @@ Una revisión agrega una instantánea al historial y no modifica el plan ni revi
 ## Archivos
 
 JSON y PDF usan nombre base país-establecimiento normalizado, sin tildes y con guiones bajos; un país desconocido usa `SIN`. En Drive se busca por carpeta, nombre y MIME: se actualiza el ID existente más antiguo o se crea si no existe. No se borran duplicados anteriores. Dos establecimientos con el mismo nombre normalizado y país comparten destino; esta clave no es un identificador único de evaluación.
+
+
+## Reglas del espacio de trabajo colaborativo
+
+1. El propietario tiene alcance global; el administrador nacional, su país.
+2. El coordinador es responsable del equipo evaluador, no un rol adicional del establecimiento.
+3. Cada evaluación integral corresponde a un establecimiento y equipo asignado.
+4. El paso 5 agrega monitoreos fechados; no modifica las puntuaciones iniciales.
+5. Validar una medición conserva su versión y el plan de ese momento, sin cerrar
+   el proceso continuo de mejora del establecimiento.
+6. La reevaluación integral es otra medición relacionada y comienza sin respuestas copiadas.
+7. Los cambios de participantes no reescriben las versiones validadas.
+8. Un conflicto exige decisión explícita; refrescar la página no lo resuelve automáticamente.
+9. Retirar un usuario revoca acceso; el historial mantiene su autoría.
+10. Países, establecimientos y equipos tienen identificadores estables; los
+    archivos de Drive se vinculan a exportaciones, no solo a nombres.

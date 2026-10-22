@@ -198,6 +198,19 @@
 
       <!-- MAIN CONTENT SUITE -->
       <main class="flex-1 flex flex-col min-h-screen bg-white print-page overflow-auto lg:border-l lg:border-paho-grid">
+      <section v-if="cloudMode" class="cloud-banner no-print" aria-label="Evaluación compartida"><a href="plataforma.html">Espacio de trabajo y acceso</a>
+        <button @click="openWorkspace()">Establecimiento y evaluaciones</button>
+        <button @click="openWorkspace('plan')">Plan de mejora vigente</button>
+        <button @click="openWorkspace('monitoring')">Monitoreo · paso 5</button>
+        <p role="status">{{ cloudStatus }} <strong v-if="cloudReadonly">Solo lectura.</strong></p>
+        <nav v-if="cloudReadonly" aria-label="Consultar dominios"><button v-for="mod in modulesList" @click="consultModule(mod.id)">{{ mod.name }}</button></nav>
+        <article v-for="conflict in cloudConflicts" :key="conflict.key" class="cloud-conflict">
+          <h2>Conflicto: {{ conflict.key }}</h2>
+          <div class="cloud-versions"><label>Su versión<textarea readonly :value="JSON.stringify(conflict.local.data,null,2)"></textarea></label><label>Versión de la nube<textarea readonly :value="JSON.stringify(conflict.remote.data,null,2)"></textarea></label></div>
+          <button @click="resolveCloudConflict(conflict.key,'remote')">Usar versión de la nube</button>
+          <button :disabled="cloudReadonly" @click="resolveCloudConflict(conflict.key,'local')">Guardar mi versión después de revisar</button>
+        </article>
+      </section>
 
       <!-- TOP NAVIGATION BAR -->
       <header class="evaluation-header flex items-center justify-between gap-4 px-4 lg:px-10 py-3 border-b border-paho-grid bg-white z-20 no-print flex-shrink-0" v-if="activeView !== 'instructions'">
@@ -218,6 +231,7 @@
         </div>
       </header>
 
+        <fieldset class="evaluation-fields" :disabled="cloudReadonly">
         <!-- PANELS FRAME -->
         <div class="flex-1 p-6 lg:p-10 space-y-8">
 
@@ -350,13 +364,13 @@
                     <div class="min-h-[32px] flex items-center justify-center">
                       <label for="facility-name" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Nombre del Establecimiento</label>
                     </div>
-                    <input id="facility-name" aria-label="Nombre del establecimiento" type="text" v-model="generalInfo.facilityName" placeholder="Ej: Hospital de Especialidades Médicas" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark">
+                    <input id="facility-name" :readonly="cloudMode" aria-label="Nombre del establecimiento" type="text" v-model="generalInfo.facilityName" placeholder="Ej: Hospital de Especialidades Médicas" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark">
                   </div>
 
                   <div class="location-fields grid grid-cols-2 gap-4 md:col-span-2 lg:col-span-2">
                     <div class="space-y-2 min-w-0">
                       <div class="min-h-[32px] flex items-center justify-center"><label for="facility-country" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">País</label></div>
-                      <select id="facility-country" v-model="generalInfo.countryCode" class="w-full px-3 py-3 border border-paho-grid text-sm bg-white"><option value="">Seleccionar país</option><option v-for="country in countries" :value="country[0]" :key="country[0]">{{ country[1] }} ({{ country[0] }})</option></select>
+                      <select id="facility-country" :disabled="cloudMode" v-model="generalInfo.countryCode" class="w-full px-3 py-3 border border-paho-grid text-sm bg-white"><option value="">Seleccionar país</option><option v-for="country in countries" :value="country[0]" :key="country[0]">{{ country[1] }} ({{ country[0] }})</option></select>
                     </div>
                     <div class="space-y-2 min-w-0">
                       <div class="min-h-[32px] flex items-center justify-center"><label for="facility-location" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Ciudad</label></div>
@@ -1833,6 +1847,7 @@
 
         </div>
 
+        </fieldset>
       </main>
 
     </div>
@@ -2022,6 +2037,10 @@
   <script src="js/report-radar.js"></script>
   <script src="js/chrome-report.js"></script>
   <script src="js/drive-archive.js"></script>
+  <script src="js/platform-model.js"></script>
+  <script src="vendor/supabase.js"></script>
+  <script src="js/platform-client.js"></script>
+  <script src="js/platform-editor.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

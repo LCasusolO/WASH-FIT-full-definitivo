@@ -9,11 +9,11 @@ self.addEventListener('fetch', event => {
   const scope = new URL(self.registration.scope);
   // Al abrir la web se usa el HTML actual; sin conexión se recupera la copia instalada.
   // No se recarga ninguna evaluación que el usuario ya tenga abierta.
-  if (event.request.mode === 'navigate' && url.origin === scope.origin && [scope.pathname, scope.pathname + 'index.html'].includes(url.pathname)) {
+  if (event.request.mode === 'navigate' && url.origin === scope.origin && [scope.pathname, scope.pathname + 'index.html', scope.pathname + 'plataforma.html', scope.pathname + 'privacidad.html'].includes(url.pathname)) {
     event.respondWith(fetch(event.request).then(response => {
       if (!response.ok) throw new Error('Navigation unavailable');
       return response;
-    }).catch(() => caches.open(CACHE).then(cache => cache.match('./'))));
+    }).catch(() => caches.open(CACHE).then(cache => cache.match(url.pathname.endsWith('/plataforma.html') ? './plataforma.html' : url.pathname.endsWith('/privacidad.html') ? './privacidad.html' : './'))));
     return;
   }
   // Solo recursos estáticos de esta aplicación; los datos permanecen en IndexedDB.

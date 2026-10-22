@@ -4,6 +4,7 @@ const MAX_HTML = 40 * 1024 * 1024;
 const {mkdtemp, rm} = require('node:fs/promises');
 const {tmpdir} = require('node:os');
 const {join} = require('node:path');
+const {authorize, exportAccess} = require('../server/platform.cjs');
 let renderQueue = Promise.resolve();
 // Vercel puede atender varias solicitudes en la misma instancia y disco temporal.
 function render(html, env = process.env) {
@@ -46,7 +47,7 @@ async function renderOne(html, env) {
     finally { await rm(scratch, {recursive: true, force: true, maxRetries: 3}); }
   }
 }
-function createHandler({env = process.env, renderPdf = html => render(html, env)} = {}) {
+function createHandler({env = process.env, renderPdf = html => render(html, env), request = fetch} = {}) {
   return async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') return res.status(405).json({error: 'Método no permitido.'});
@@ -54,10 +55,12 @@ function createHandler({env = process.env, renderPdf = html => render(html, env)
     let html;
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const access = await authorize(req, env, request);
+      if (access) await exportAccess(access, body?.exportId);
       if (!body || typeof body.htmlGzip !== 'string' || JSON.stringify(body).length > MAX_BODY) throw Error();
       html = gunzipSync(Buffer.from(body.htmlGzip, 'base64'), {maxOutputLength: MAX_HTML}).toString('utf8');
       if (!html.startsWith('<!doctype html>') || !html.includes('report-content')) throw Error();
-    } catch (_) { return res.status(400).json({error: 'El reporte enviado no es válido o supera el tamaño permitido.'}); }
+    } catch (error) { return res.status(error.status || 400).json({error: error.status ? error.message : 'El reporte enviado no es válido o supera el tamaño permitido.'}); }
     try {
       const pdf = await renderPdf(html);
       if (pdf.length > 4 * 1024 * 1024) return res.status(413).json({error: 'El PDF supera el tamaño permitido. Reduzca el tamaño de las fotografías y reintente.'});

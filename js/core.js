@@ -90,6 +90,37 @@
   function bulletHasContent(value) { return String(value || '').split('\n').some(line => line.replace(/^[ \t]*•[ \t]*/, '').trim()); }
   function reviewBullets(value) { return bulletEdit(value).value.split('\n').filter(bulletHasContent).join('\n'); }
   function changeLabel(value) { return {mejorado: 'Ha mejorado', empeorado: 'Ha empeorado', sin_cambios: 'No ha cambiado'}[value] || 'Sin registrar'; }
+  function visibleIndicator(ind, info, indicators) {
+      const currentLevel = (info.level || '').toLocaleLowerCase('es');
+      const isHospital = /segundo|tercer|secundari|terciari/.test(currentLevel);
+
+      // 1. Filtrado de agua según nivel primario vs hospitalario (A_1a / A_1b)
+      if ((ind.code === 'A_1a') && isHospital) return false;
+      if ((ind.code === 'A_1b') && !isHospital) return false;
+
+      // 2. Indicadores exclusivos para hospitales / pac. hospitalizados
+      if (['A_16', 'RES_16', 'RES_17', 'L_13', 'L_15', 'L_16', 'M_11'].includes(ind.code)) {
+        if (!isHospital) return false;
+      }
+
+      // 3. Filtrado por Sistema de Saneamiento (Alcantarillado vs In Situ)
+      // S_8 es una instrucción del Excel, sin criterios de puntuación.
+      if (ind.code === 'S_8') return false;
+      if (['S_9a', 'S_10a'].includes(ind.code)) {
+        return info.sanitationSystem === 'alcantarillado';
+      }
+      if (['S_8b', 'S_9b', 'S_10b'].includes(ind.code)) {
+        return info.sanitationSystem === 'insitu';
+      }
+
+      // 4. Filtrado condicional de aguas grises (S_13 depende de S_11)
+      if (ind.code === 'S_13') {
+        const s11 = indicators.find(i => i.code === 'S_11');
+        return s11 && (s11.score === 1 || s11.score === 2);
+      }
+
+      return true;
+      }
   function defaults() {
     return {
       facilityName: '', district: '', countryCode: '', latitude: null, longitude: null,
@@ -316,5 +347,5 @@
     const added = field === 'correctiveMeasures' ? changes.newCorrectiveMeasures : changes.newMonitoringComments;
     return (added ? 'Nuevo en esta revisión:\n' + reviewBullets(added) : 'Sin información nueva en esta revisión.') + '\n\nAcumulado:\n' + full;
   }
-  return { hasAssessmentScore, hasAssessmentExplanation, isNotApplicable, assessmentComplete, bulletBackspace, reviewHistoryText, createReviewDraft, saveReviewDraft, reviewBullets, changeLabel, bulletEdit, bulletHasContent, countries, countryCode, fileBaseName, filterRisks, SCHEMA_VERSION, MAX_PHOTOS, MAX_PHOTO_BYTES, MAX_IMPORT_BYTES, clone, newId, localDate, validDate, defaults, normalizeDataset, calculateJmp, valuation, assessmentResult, populationWarning, parseNonNegative, responsibleName, trackingStatus, recordReview };
+  return { visibleIndicator, hasAssessmentScore, hasAssessmentExplanation, isNotApplicable, assessmentComplete, bulletBackspace, reviewHistoryText, createReviewDraft, saveReviewDraft, reviewBullets, changeLabel, bulletEdit, bulletHasContent, countries, countryCode, fileBaseName, filterRisks, SCHEMA_VERSION, MAX_PHOTOS, MAX_PHOTO_BYTES, MAX_IMPORT_BYTES, clone, newId, localDate, validDate, defaults, normalizeDataset, calculateJmp, valuation, assessmentResult, populationWarning, parseNonNegative, responsibleName, trackingStatus, recordReview };
 });

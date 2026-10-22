@@ -1,5 +1,5 @@
-const CACHE = 'wash-fit-024123ca60e0';
-const ASSETS = ["./","./index.html","./privacidad.html","./css/privacy.css","./css/styles.css?v=024123ca60e0","./js/core.js?v=024123ca60e0","./js/storage.js?v=024123ca60e0","./js/chrome-report.js?v=024123ca60e0","./js/report-radar.js?v=024123ca60e0","./js/drive-archive.js?v=024123ca60e0","./js/app.js?v=024123ca60e0","./js/config/tailwind-config.js","./js/data/indicators.js?v=024123ca60e0","./img/barra.png","./img/paho-logo-blanco.png?v=024123ca60e0","./vendor/leaflet-LICENSE","./vendor/leaflet.css?v=024123ca60e0","./vendor/leaflet.js?v=024123ca60e0","./vendor/lucide-LICENSE","./vendor/lucide.js?v=024123ca60e0","./vendor/tailwind.css?v=024123ca60e0","./vendor/vue-LICENSE","./vendor/vue.global.js?v=024123ca60e0","./vendor/images/layers-2x.png","./vendor/images/layers.png","./vendor/images/marker-icon-2x.png","./vendor/images/marker-icon.png","./vendor/images/marker-shadow.png"];
+const CACHE = 'wash-fit-7f356af49573';
+const ASSETS = ["./","./index.html","./plataforma.html","./privacidad.html","./css/platform.css?v=7f356af49573","./css/privacy.css","./css/styles.css?v=7f356af49573","./js/platform-model.js?v=7f356af49573","./js/platform-client.js?v=7f356af49573","./js/platform-editor.js?v=7f356af49573","./js/platform-portal.js?v=7f356af49573","./js/core.js?v=7f356af49573","./js/storage.js?v=7f356af49573","./js/chrome-report.js?v=7f356af49573","./js/report-radar.js?v=7f356af49573","./js/drive-archive.js?v=7f356af49573","./js/app.js?v=7f356af49573","./js/config/tailwind-config.js","./js/data/indicators.js?v=7f356af49573","./img/barra.png","./img/paho-logo-blanco.png?v=7f356af49573","./vendor/leaflet-LICENSE","./vendor/leaflet.css?v=7f356af49573","./vendor/leaflet.js?v=7f356af49573","./vendor/lucide-LICENSE","./vendor/lucide.js?v=7f356af49573","./vendor/supabase-LICENSE","./vendor/supabase.js?v=7f356af49573","./vendor/tailwind.css?v=7f356af49573","./vendor/vue-LICENSE","./vendor/vue.global.js?v=7f356af49573","./vendor/images/layers-2x.png","./vendor/images/layers.png","./vendor/images/marker-icon-2x.png","./vendor/images/marker-icon.png","./vendor/images/marker-shadow.png"];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
@@ -11,11 +11,11 @@ self.addEventListener('fetch', event => {
   const scope = new URL(self.registration.scope);
   // Al abrir la web se usa el HTML actual; sin conexión se recupera la copia instalada.
   // No se recarga ninguna evaluación que el usuario ya tenga abierta.
-  if (event.request.mode === 'navigate' && url.origin === scope.origin && [scope.pathname, scope.pathname + 'index.html'].includes(url.pathname)) {
+  if (event.request.mode === 'navigate' && url.origin === scope.origin && [scope.pathname, scope.pathname + 'index.html', scope.pathname + 'plataforma.html', scope.pathname + 'privacidad.html'].includes(url.pathname)) {
     event.respondWith(fetch(event.request).then(response => {
       if (!response.ok) throw new Error('Navigation unavailable');
       return response;
-    }).catch(() => caches.open(CACHE).then(cache => cache.match('./'))));
+    }).catch(() => caches.open(CACHE).then(cache => cache.match(url.pathname.endsWith('/plataforma.html') ? './plataforma.html' : url.pathname.endsWith('/privacidad.html') ? './privacidad.html' : './'))));
     return;
   }
   // Solo recursos estáticos de esta aplicación; los datos permanecen en IndexedDB.

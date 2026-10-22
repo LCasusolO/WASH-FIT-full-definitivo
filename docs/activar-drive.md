@@ -18,7 +18,7 @@ No publique secretos en GitHub ni en HTML/JavaScript. No use prefijos públicos.
 
 ## Operación vigente
 
-Exportar descarga el JSON localmente y genera un PDF con Chrome desde el reporte HTML. Imprimir abre la impresión local y archiva el mismo reporte en segundo plano. Si no hay conexión o la API falla, el archivado requiere reintento.
+Exportar descarga el JSON localmente y genera un PDF con Chrome desde el reporte HTML. También descarga ese PDF antes de enviarlo a Drive. Imprimir abre la impresión local y archiva el mismo reporte en segundo plano. Si no hay conexión o la API falla, el archivado requiere reintento. Un fallo de la subida a Drive no cancela las descargas locales; generar el PDF sí requiere que el servidor esté disponible.
 
 Cada par usa el nombre normalizado país-establecimiento. Si ya existe un archivo con ese nombre y tipo en la carpeta, se actualiza el ID más antiguo; si no, se crea. Los duplicados previos no se eliminan. No se crea una copia histórica por cada pulsación. Establecimientos homónimos dentro del mismo país pueden coincidir en el nombre final.
 

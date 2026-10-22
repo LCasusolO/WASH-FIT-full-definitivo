@@ -744,15 +744,15 @@ createApp({
       triggerToast('Evidencia fotográfica removida.', 'error');
     };
 
-    const downloadDataset = dataset => {
-      const blob = new Blob([JSON.stringify(dataset, null, 2)], { type: 'application/json' });
+    const downloadFile = (blob, filename) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = WashCore.fileBaseName(dataset.generalInfo) + '.json';
+      link.download = filename;
       document.body.appendChild(link); link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
+    const downloadDataset = dataset => downloadFile(new Blob([JSON.stringify(dataset, null, 2)], { type: 'application/json' }), WashCore.fileBaseName(dataset.generalInfo) + '.json');
     const archiveBusy = ref(false);
     const printBusy = ref(false);
     const archiveFailed = ref(false);
@@ -777,7 +777,7 @@ createApp({
       const pdf = await WashChrome.generate(html);
       return {dataset, json: new Blob([JSON.stringify(dataset, null, 2)], {type: 'application/json'}), pdf};
     };
-    const runArchive = async (dataset, html) => {
+    const runArchive = async (dataset, html, downloadPdf = false) => {
       if (archiveBusy.value) return false;
       archiveBusy.value = true;
       archiveFailed.value = false;
@@ -785,6 +785,7 @@ createApp({
       try {
         if (dataset) { archiveJob = null; archiveJob = await createArchiveJob(dataset, html); }
         if (!archiveJob) throw new Error('No hay una evaluación pendiente. Vuelva a Exportar.');
+        if (downloadPdf) downloadFile(archiveJob.pdf, WashCore.fileBaseName(archiveJob.dataset.generalInfo) + '.pdf');
         const result = await WashArchive.save(archiveJob, text => { archiveStatus.value = text; });
         lastArchive.value = {savedAt: result.savedAt, files: result.files, fingerprint: archiveFingerprint(archiveJob.dataset)};
         try { await store.write('lastArchive', lastArchive.value); } catch (_) { triggerToast('Archivos confirmados en el repositorio; no se pudo conservar el estado en este navegador.', 'error'); }
@@ -804,7 +805,7 @@ createApp({
       if (archiveBusy.value) return;
       const dataset = snapshot();
       downloadDataset(dataset);
-      await runArchive(dataset);
+      await runArchive(dataset, undefined, true);
     };
     const importData = event => {
       const file = event.target.files?.[0];

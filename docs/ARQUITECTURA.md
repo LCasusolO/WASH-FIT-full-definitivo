@@ -37,7 +37,7 @@ Límites: importación 40 MB, 20 fotos JPG/PNG/WebP de hasta 5 MB cada una, redu
 
 ## Flujo de reporte
 
-Exportar descarga el JSON, prepara el HTML fuera de pantalla, solicita el PDF y archiva ambos. Imprimir abre el diálogo local y ejecuta el archivado en segundo plano. El HTML incorpora estilos e imágenes; los mosaicos disponibles del mapa pueden incorporarse y los que no cargan se omiten. El radar se conserva en SVG.
+Exportar descarga el JSON, prepara el HTML fuera de pantalla, solicita y descarga el PDF y archiva ambos. La descarga PDF usa el mismo Blob enviado a Drive y se inicia antes de subirlo. Reintentar el archivado reutiliza ese PDF sin descargarlo otra vez. Imprimir abre el diálogo local y ejecuta el archivado en segundo plano. El HTML incorpora estilos e imágenes; los mosaicos disponibles del mapa pueden incorporarse y los que no cargan se omiten. El radar se conserva en SVG.
 
 `POST /api/chrome-report` acepta `htmlGzip`, valida el origen, limita la solicitud a 4 MiB y el HTML descomprimido a 40 MiB; devuelve PDF de hasta 4 MiB. Las solicitudes se serializan por instancia y cada perfil temporal se elimina al terminar, incluso ante errores.
 

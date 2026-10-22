@@ -28,14 +28,14 @@
     const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>' + escape(title) + '</title><style>' + css.replace(/<\/style/gi, '<\\/style') + '</style></head><body class="font-sans antialiased"><section class="print-report report-open">' + copy.outerHTML + '</section></body></html>';
   }
-  async function generate(element, title) {
+  async function generate(element, title, exportId) {
     const html = typeof element === 'string' ? element : await serialize(element, title);
     const compressed = new Uint8Array(await new Response(new Blob([html]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
     let binary = '';
     for (let offset = 0; offset < compressed.length; offset += 32768) binary += String.fromCharCode(...compressed.subarray(offset, offset + 32768));
-    const body = JSON.stringify({htmlGzip: btoa(binary)});
+    const body = JSON.stringify({htmlGzip: btoa(binary), ...(exportId ? {exportId} : {})});
     if (new Blob([body]).size > 4 * 1024 * 1024) throw new Error('El reporte supera el tamaño permitido. Reduzca el tamaño de las fotografías y reintente.');
-    const response = await fetch('/api/chrome-report', {method: 'POST', headers: {'Content-Type': 'application/json'}, body, signal: AbortSignal.timeout(90000)});
+    const response = await (root.WashPlatform?.enabled ? root.WashPlatform.request : fetch)('/api/chrome-report', {method: 'POST', headers: {'Content-Type': 'application/json'}, body, signal: AbortSignal.timeout(90000)});
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
       throw new Error(result.error || 'No se pudo generar el PDF con Chrome. Reintente el guardado.');

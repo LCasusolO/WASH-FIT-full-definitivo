@@ -1,5 +1,6 @@
 const Core = require('../js/core.js');
 const crypto = require('node:crypto');
+const {authorize, exportAccess} = require('../server/platform.cjs');
 const FOLDER = '1SjIXFiCnnQwTZTTvCqLY6xJYb9sGxb6z';
 const MAX_BYTES = 40 * 1024 * 1024;
 function createHandler({env = process.env, request = fetch, now = Date.now} = {}) {
@@ -26,6 +27,7 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (!body || JSON.stringify(body).length > 2 * 1024 * 1024) return res.status(400).json({error: 'Solicitud inválida.'});
+      const access = await authorize(req, env, request);
       const folder = env.GOOGLE_DRIVE_FOLDER_ID || FOLDER;
       if (body.action === 'health') {
         const response = await call(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folder)}?supportsAllDrives=true&fields=id,mimeType,trashed,capabilities(canAddChildren)`, {headers: {Authorization: 'Bearer ' + await token()}});
@@ -34,10 +36,11 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
         return res.status(200).json({ready: true});
       }
       if (body.action === 'start') {
+        const exportJob = access ? await exportAccess(access, body.exportId) : null;
         if (![body.jsonBytes, body.pdfBytes].every(x => Number.isSafeInteger(x) && x > 0 && x <= MAX_BYTES) || typeof body.facility !== 'string' || body.facility.length > 500) return res.status(400).json({error: 'Nombre o tamaño de archivos inválido (máximo 40 MB por archivo).'});
         const authorization = 'Bearer ' + await token();
         const batch = crypto.randomUUID();
-        const name = Core.fileBaseName({facilityName: body.facility, countryCode: body.countryCode, district: body.location});
+        const name = Core.fileBaseName({facilityName: body.facility, countryCode: body.countryCode, district: body.location}) + (exportJob ? '-' + exportJob.id : '');
         const files = [{kind: 'json', name: name + '.json', mime: 'application/json', bytes: body.jsonBytes}, {kind: 'pdf', name: name + '.pdf', mime: 'application/pdf', bytes: body.pdfBytes}];
         for (const file of files) {
           // Reuse an existing file ID for the same country/facility name.
@@ -47,7 +50,7 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
           const matches = await listed.json();
           if (!listed.ok || !Array.isArray(matches.files) || matches.incompleteSearch) throw new Error('No se pudo comprobar la copia anterior.');
           file.targetId = matches.files[0]?.id;
-          const metadata = {name: file.name, mimeType: file.mime, appProperties: {washFitBatch: batch}};
+          const metadata = {name: file.name, mimeType: file.mime, appProperties: {washFitBatch: batch, ...(exportJob ? {washFitExport: exportJob.id, washFitFacility: exportJob.facility_id} : {})}};
           if (!file.targetId) metadata.parents = [folder];
           const endpoint = 'https://www.googleapis.com/upload/drive/v3/files' + (file.targetId ? '/' + encodeURIComponent(file.targetId) : '') + '?uploadType=resumable&supportsAllDrives=true&fields=id';
           const response = await call(endpoint, {method: file.targetId ? 'PATCH' : 'POST', headers: {Authorization: authorization, 'Content-Type': 'application/json', 'X-Upload-Content-Type': file.mime, 'X-Upload-Content-Length': String(file.bytes)}, body: JSON.stringify(metadata)});
@@ -55,7 +58,7 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
           if (!response.ok || !session || new URL(session).origin !== 'https://www.googleapis.com') throw new Error('No se pudo iniciar la subida. Revise el acceso del propietario a la carpeta.');
           file.session = session;
         }
-        const receiptBody = Buffer.from(JSON.stringify({batch, expires: now() + 3600000, files})).toString('base64url');
+        const receiptBody = Buffer.from(JSON.stringify({batch, expires: now() + 3600000, files, ...(access ? {userId: access.user.id, exportId: exportJob.id} : {})})).toString('base64url');
         return res.status(200).json({receipt: receiptBody + '.' + sign(receiptBody)});
       }
       if (['verify', 'status', 'upload'].includes(body.action)) {
@@ -64,6 +67,10 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
         const received = Buffer.from(signature || '');
         if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) return res.status(400).json({error: 'Comprobante inválido.'});
         const receipt = JSON.parse(Buffer.from(payload, 'base64url').toString());
+        if (access) {
+          if (receipt.userId !== access.user.id) return res.status(403).json({error: 'El comprobante pertenece a otra cuenta.'});
+          await exportAccess(access, receipt.exportId);
+        }
         if (receipt.expires < now()) return res.status(400).json({error: 'Comprobante vencido. Vuelva a Exportar.'});
         const authorization = 'Bearer ' + await token();
         if (body.action !== 'verify') {
@@ -99,6 +106,7 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
       }
       return res.status(400).json({error: 'Acción no válida.'});
     } catch (error) {
+      if (error.status) return res.status(error.status).json({error: error.message});
       if (['GOOGLE_AUTH_REQUIRED', 'GOOGLE_AUTH_CONFIGURATION', 'GOOGLE_FOLDER_ACCESS'].includes(error.code)) return res.status(502).json({error: error.message, code: error.code});
       return res.status(502).json({error: 'No se pudo completar el guardado en el repositorio. Revise la conexión y la configuración del repositorio.'});
     }

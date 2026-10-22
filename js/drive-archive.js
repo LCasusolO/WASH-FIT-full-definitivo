@@ -27,7 +27,7 @@
     return result.id;
   }
   async function save(job, progress, request = fetch) {
-    if (!job.session) job.session = await api({action: 'start', facility: job.dataset.generalInfo.facilityName, countryCode: job.dataset.generalInfo.countryCode, location: job.dataset.generalInfo.district, jsonBytes: job.json.size, pdfBytes: job.pdf.size}, request);
+    if (!job.session) job.session = await api({action: 'start', ...(job.exportId ? {exportId:job.exportId} : {}), facility: job.dataset.generalInfo.facilityName, countryCode: job.dataset.generalInfo.countryCode, location: job.dataset.generalInfo.district, jsonBytes: job.json.size, pdfBytes: job.pdf.size}, request);
     job.ids ||= [null, null];
     for (let i = 0; i < 2; i++) {
       if (job.ids[i]) continue;

@@ -27,3 +27,51 @@ Los logs se capturaron en PowerShell y se normalizaron a UTF-8. Las fechas/horas
 Pendiente: Drive con autorización real, nuevo despliegue Vercel y Chromium empaquetado en Linux, Safari/iPhone, reportes de tamaño máximo con muchas fotos e historiales, todas las combinaciones visuales y una validación sanitaria independiente del catálogo. Tampoco se garantiza la identidad exacta JSON/HTML si el usuario edita durante las esperas de preparación del reporte.
 
 Para repetir la comprobación del navegador se requiere servir el resultado `dist` y sus API con el origen local permitido, usar Chrome y una sesión nueva; los pasos revisados aparecen en `evidencia/navegador.json`. El script temporal de automatización no forma parte del producto.
+
+
+## Validación de la extensión colaborativa — 22 de octubre de 2026
+
+- Suite completa: **104 pruebas aprobadas**, sin fallos ni omisiones, con Chrome
+  local configurado para las pruebas reales de PDF.
+- Build de producción completado y plantillas Vue compiladas.
+- Migraciones ejecutadas en PostgreSQL embebido, con roles y RLS reales.
+- Aislamiento por país y evaluación; lectores sin escritura; acceso revocado
+  también bloqueado en historial, snapshots y reintentos de operaciones.
+- Versiones obligatorias, conflictos concurrentes y reintentos idempotentes.
+- Respuesta perdida después del commit: el reintento no duplica la operación.
+- El conflicto persiste tras refrescar y requiere resolución explícita.
+- Cambios sin conexión conservados y sincronizados al recuperar el servidor.
+- Validación y corrección conservan versiones anteriores exportables.
+- Monitoreo del paso 5 y plan vigente independientes de la puntuación inicial.
+- API de PDF y Drive rechazan sesiones o exportaciones no autorizadas.
+- QA manual de interfaz con dos cuentas ficticias: recuperación de la misma
+  evaluación, acción de mejora y monitoreo guardado/revisado/validado.
+- JSON y PDF de expediente descargados desde la interfaz: un monitoreo validado
+  y una acción. El fallo simulado de Drive no impidió las descargas y habilitó
+  el reintento. Sin datos ni credenciales reales.
+
+Pendiente de activación externa: comprobar con el proyecto Supabase real los
+correos, Storage, transporte Realtime y archivado autenticado en el Drive real.
+El servidor de QA no sustituye esta verificación de servicios de producción.
+
+
+## Instalación en Supabase alojado — 22 de octubre de 2026
+
+Proyecto `wkchpmqeeyoqupuilrqh` activo en `us-east-1`. Tres migraciones
+aplicadas correctamente; 16 tablas públicas de aplicación con RLS activado,
+bucket de evidencias privado y cinco tablas inscritas en Realtime.
+
+El RPC público usa los privilegios del llamante y delega en una función privada
+que valida permisos. Los usuarios anónimos no pueden ejecutar el RPC. Se
+comprobó mediante HTTP real que consultar países y tratar de crear uno sin
+sesión devuelve 401/42501. No se insertaron datos de prueba en el proyecto.
+
+Los asesores de seguridad y rendimiento no muestran advertencias ni errores.
+Queda un aviso informativo de RLS sin políticas en `wash_private.catalog_keys`: es
+un catálogo privado sin acceso directo para clientes. Los avisos informativos
+de índices sin uso corresponden a la base nueva, aún sin actividad.
+
+No hay cuentas Auth registradas ni propietario asignado. Quedan pendientes
+SMTP, URLs de Auth, conexión y despliegue en Vercel, y la prueba completa con
+cuentas verificadas, evidencias, Realtime y Drive. Estas comprobaciones de
+infraestructura no acreditan todavía el flujo multiusuario en producción.

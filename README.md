@@ -4,6 +4,19 @@ Aplicación en español para registrar establecimientos, evaluar condiciones WAS
 
 Esta entrega consolida `main` de [LCasusolO/WASH-FIT-full](https://github.com/LCasusolO/WASH-FIT-full/tree/a58247f7e585444f8dfa2169edef971f15a6cbf9), commit `a58247f7e585444f8dfa2169edef971f15a6cbf9`, revisado el 22 de octubre de 2026. No es una release oficial del repositorio de origen.
 
+## Espacio de trabajo colaborativo
+
+La entrega agrega países, establecimientos, equipos con coordinador responsable,
+cuentas, permisos, edición compartida, plan vigente, monitoreo del paso 5 y
+reevaluaciones integrales independientes. Validar una medición no bloquea el
+monitoreo posterior. Las versiones validadas se conservan.
+
+La activación requiere Supabase y las variables de Vercel; el modo local permanece
+mientras `WASH_MULTIUSER` no sea `true`. Sigue la
+[guía completa de implementación](docs/IMPLEMENTACION-MULTIUSUARIO.md).
+Las migraciones están en `supabase/migrations/` y el alta inicial del propietario
+en `supabase/crear-propietario.sql`. No subir credenciales al repositorio.
+
 ## Ejecutar
 
 Requiere Node.js 22.17 o posterior de la rama 22, o Node.js 24 o superior, y npm. Node 20 no cumple el requisito de Chromium 153. Las dependencias están fijadas en `package-lock.json`.
@@ -15,7 +28,7 @@ npm run build
 npm run serve
 ```
 
-Abrir `http://127.0.0.1:8765`. El servidor local sirve las fuentes y las dos API. El build genera `dist/`, recursos locales versionados y `sw.js`. No abra `index.html` con doble clic.
+Abrir `http://127.0.0.1:8765`. El servidor local sirve las fuentes y las API de reportes y plataforma. El build genera `dist/`, recursos locales versionados y `sw.js`. No abra `index.html` con doble clic.
 
 En Windows/macOS, para generar PDF desde la API local, defina `WASH_CHROME_EXECUTABLE` con la ruta de Chrome y `WASH_APP_ORIGIN=http://127.0.0.1:8765` antes de iniciar el servidor. `scripts/serve.cjs` no carga `.env` automáticamente. Google Drive necesita credenciales adicionales. La impresión del navegador puede usarse por separado.
 

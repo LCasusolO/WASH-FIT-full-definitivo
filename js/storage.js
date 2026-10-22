@@ -4,7 +4,8 @@
   else root.WashStorage = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  function createStore(indexedDB) {
+  function createStore(indexedDB, scope = '') {
+    const scoped = key => scope ? scope + ':' + key : key;
     let opening;
     function open() {
       if (!indexedDB) return Promise.reject(new Error('El navegador no permite guardar el borrador. Exporte un respaldo JSON.'));
@@ -25,7 +26,7 @@
       const db = await open();
       return new Promise((resolve, reject) => {
         const tx = db.transaction('drafts', 'readonly');
-        const request = tx.objectStore('drafts').get(key);
+        const request = tx.objectStore('drafts').get(scoped(key));
         let result;
         request.onsuccess = () => { result = request.result ?? null; };
         tx.oncomplete = () => resolve(result);
@@ -37,15 +38,15 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction('drafts', 'readwrite');
         const store = tx.objectStore('drafts');
-        if (backup) store.put(dataset, 'backup');
-        store.put(dataset, 'current');
+        if (backup) store.put(dataset, scoped('backup'));
+        store.put(dataset, scoped('current'));
         tx.oncomplete = () => resolve(dataset.savedAt);
         tx.onerror = tx.onabort = () => reject(tx.error || new Error('No se pudo guardar el borrador.'));
       });
     }
     async function write(key, value) {
       const db = await open();
-      return new Promise((resolve,reject) => {const tx=db.transaction('drafts','readwrite');tx.objectStore('drafts').put(value,key);tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error);});
+      return new Promise((resolve,reject) => {const tx=db.transaction('drafts','readwrite');tx.objectStore('drafts').put(value,scoped(key));tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error);});
     }
     return { read, save, write };
   }

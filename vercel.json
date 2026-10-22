@@ -4,6 +4,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
+    "api/platform-report.js": {
+      "maxDuration": 60,
+      "includeFiles": "js/data/indicators.js"
+    },
     "api/drive-archive.js": {
       "maxDuration": 60
     },

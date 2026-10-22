@@ -143,6 +143,16 @@ createApp({
     const generalInfo = ref(WashCore.defaults());
     const indicators = ref(WashCore.clone(INDICATORS_DATA).map(ind => ({...ind, assessmentStatus: ''})));
     const loadingDraft = ref(true);
+    const cloudMode = ref(false);
+    const cloudReadonly = ref(false);
+    const cloudStatus = ref('');
+    const cloudConflicts = ref([]);
+    const resolveCloudConflict = (key, choice) => window.WashCloud.resolve(key, choice);
+    const consultModule = module => { activeView.value = 'assessment'; activeModuleTab.value = module; };
+    const openWorkspace = async (view = 'evaluations') => {
+      if (await window.WashCloud.save()) window.WashCloud.workspace(view);
+      else triggerToast('Conserve o sincronice los cambios pendientes antes de cambiar de pantalla.', 'error');
+    };
     const saveState = ref('loading');
     const savedAt = ref('');
     const hasBackup = ref(false);
@@ -162,6 +172,10 @@ createApp({
     const snapshot = () => ({ schemaVersion: WashCore.SCHEMA_VERSION, savedAt: new Date().toISOString(), generalInfo: WashCore.clone(generalInfo.value), indicators: WashCore.clone(indicators.value) });
     const saveDraft = (backup = false) => {
       clearTimeout(saveTimer);
+      if (cloudMode.value) {
+        const savingRevision = revision;
+        return window.WashCloud.save().then(saved => { if (saved) persistedRevision = savingRevision; return saved; });
+      }
       const dataset = snapshot();
       const savingRevision = revision;
       saveState.value = 'saving';
@@ -193,12 +207,14 @@ createApp({
       nextTick(() => { onCoordinatesInput(); if (window.lucide) window.lucide.createIcons(); });
     };
     const newEvaluation = async () => {
+      if (cloudMode.value) return openWorkspace();
       if (!window.confirm('Se guardará el borrador actual como respaldo y se abrirá una evaluación nueva. ¿Continuar?')) return;
       if (!await saveDraft(true)) { triggerToast('No se pudo guardar el respaldo. Exporte el JSON antes de comenzar otra evaluación.', 'error'); return; }
       applyDataset({ generalInfo: WashCore.defaults(), indicators: WashCore.clone(INDICATORS_DATA).map(ind => ({...ind, assessmentStatus: ''})) });
       await saveDraft();
     };
     const restoreBackup = async () => {
+      if (cloudMode.value) return openWorkspace();
       try {
         const backup = await store.read('backup');
         if (!backup) throw new Error('No hay un respaldo previo.');
@@ -211,6 +227,7 @@ createApp({
       } catch (error) { triggerToast(error.message, 'error'); }
     };
     const saveLabel = computed(() => {
+      if (cloudMode.value) return cloudStatus.value || 'Conectando con la nube…';
       if (saveState.value === 'loading') return 'Recuperando…';
       if (saveState.value === 'error') return 'Error al guardar.';
       if (saveState.value !== 'saved') return 'Guardando…';
@@ -506,6 +523,7 @@ createApp({
         .every(WashCore.assessmentComplete);
       if (!destinationComplete && !validateAssessmentDomain()) return;
       activeModuleTab.value = moduleId;
+      if (cloudMode.value) void window.WashCloud.position(activeView.value, moduleId);
       assessmentAttempted.value = false;
       window.scrollTo({top: 0, behavior: 'smooth'});
       nextTick(() => window.lucide?.createIcons());
@@ -612,37 +630,7 @@ createApp({
     };
 
     // Lógica avanzada de visibilidad condicional según nivel y tipo de infraestructura
-    const shouldShowIndicator = (ind) => {
-      const currentLevel = (generalInfo.value.level || '').toLocaleLowerCase('es');
-      const isHospital = /segundo|tercer|secundari|terciari/.test(currentLevel);
-
-      // 1. Filtrado de agua según nivel primario vs hospitalario (A_1a / A_1b)
-      if ((ind.code === 'A_1a') && isHospital) return false;
-      if ((ind.code === 'A_1b') && !isHospital) return false;
-
-      // 2. Indicadores exclusivos para hospitales / pac. hospitalizados
-      if (['A_16', 'RES_16', 'RES_17', 'L_13', 'L_15', 'L_16', 'M_11'].includes(ind.code)) {
-        if (!isHospital) return false;
-      }
-
-      // 3. Filtrado por Sistema de Saneamiento (Alcantarillado vs In Situ)
-      // S_8 es una instrucción del Excel, sin criterios de puntuación.
-      if (ind.code === 'S_8') return false;
-      if (['S_9a', 'S_10a'].includes(ind.code)) {
-        return generalInfo.value.sanitationSystem === 'alcantarillado';
-      }
-      if (['S_8b', 'S_9b', 'S_10b'].includes(ind.code)) {
-        return generalInfo.value.sanitationSystem === 'insitu';
-      }
-
-      // 4. Filtrado condicional de aguas grises (S_13 depende de S_11)
-      if (ind.code === 'S_13') {
-        const s11 = indicators.value.find(i => i.code === 'S_11');
-        return s11 && (s11.score === 1 || s11.score === 2);
-      }
-
-      return true;
-    };
+    const shouldShowIndicator = (ind) => WashCore.visibleIndicator(ind, generalInfo.value, indicators.value);
 
     const setIndicatorScore = (ind, score) => {
       if (ind.score === score) {
@@ -762,7 +750,7 @@ createApp({
     const driveCurrent = computed(() => lastArchive.value?.fingerprint === archiveFingerprint(snapshot()));
     const driveLabel = computed(() => archiveBusy.value || archiveFailed.value ? archiveStatus.value : !lastArchive.value ? 'sin copia confirmada en este navegador.' : driveCurrent.value ? 'JSON y PDF confirmados.' : 'hay cambios sin archivar.');
     const archiveTime = computed(() => lastArchive.value ? new Date(lastArchive.value.savedAt).toLocaleString('es') : '');
-    onMounted(async () => {try { lastArchive.value = await store.read('lastArchive'); } catch (_) {} });
+    onMounted(async () => {try { if (window.WashCloud && (await window.WashCloud.ready).enabled) return; lastArchive.value = await store.read('lastArchive'); } catch (_) {} });
     let archiveJob = null;
     const createArchiveJob = async (dataset, html) => {
       if (!html) {
@@ -800,14 +788,33 @@ createApp({
         return false;
       } finally { archiveBusy.value = false; nextTick(() => window.lucide?.createIcons()); }
     };
-    const retryArchive = () => runArchive(archiveJob ? null : snapshot());
+    const retryArchive = async () => {
+      if (cloudMode.value) {
+        if (archiveBusy.value) return;
+        archiveBusy.value = true;
+        try { await window.WashPlatform.retryExport(text => { archiveStatus.value = text; }); archiveFailed.value = false; triggerToast('Archivado confirmado en Drive.'); }
+        catch (error) { triggerToast(error.message, 'error'); }
+        finally { archiveBusy.value = false; }
+        return;
+      }
+      return runArchive(archiveJob ? null : snapshot());
+    };
     const exportData = async () => {
+      if (cloudMode.value) {
+        if (archiveBusy.value) return;
+        archiveBusy.value = true;
+        try { await window.WashCloud.exportFiles(); triggerToast('JSON y PDF descargados y confirmados en Drive.'); }
+        catch (error) { archiveFailed.value = Boolean(await window.WashPlatform.pendingExport()); archiveStatus.value = error.message; triggerToast(error.message, 'error'); }
+        finally { archiveBusy.value = false; }
+        return;
+      }
       if (archiveBusy.value) return;
       const dataset = snapshot();
       downloadDataset(dataset);
       await runArchive(dataset, undefined, true);
     };
     const importData = event => {
+      if (cloudMode.value) { event.target.value = ''; void openWorkspace(); return; }
       const file = event.target.files?.[0];
       if (!file) return;
       if (file.size > WashCore.MAX_IMPORT_BYTES) { triggerToast('El JSON supera el límite de 40 MB.', 'error'); event.target.value = ''; return; }
@@ -828,8 +835,10 @@ createApp({
     };
 
     const switchView = (viewName) => {
+      if (cloudMode.value && ['step4', 'step5'].includes(viewName)) { void openWorkspace(viewName === 'step4' ? 'plan' : 'monitoring'); return; }
       if (activeView.value === 'assessment' && ['step3', 'step4', 'step5', 'dashboard'].includes(viewName) && !validateAssessmentDomain()) return;
       activeView.value = viewName;
+      if (cloudMode.value) void window.WashCloud.position(viewName, activeModuleTab.value);
       mobileMenuOpen.value = false;
 
       if (viewName === 'general') {
@@ -851,6 +860,14 @@ createApp({
     };
 
     const printReport = async () => {
+      if (cloudMode.value) {
+        if (printBusy.value) return;
+        printBusy.value = true;
+        try { await window.WashCloud.exportFiles(true); }
+        catch (error) { triggerToast(error.message, 'error'); }
+        finally { printBusy.value = false; }
+        return;
+      }
       if (archiveBusy.value || printBusy.value) return;
       printBusy.value = true;
       // La ventana se reserva durante el clic para que el navegador no bloquee la impresión.
@@ -1079,11 +1096,25 @@ createApp({
       window.addEventListener('beforeunload', event => { if (!loadingDraft.value && revision !== persistedRevision) { event.preventDefault(); event.returnValue = ''; } });
       window.addEventListener('afterprint', () => { reportPreview.value = false; });
       try {
+        if (window.WashCloud && (await window.WashCloud.ready).enabled) {
+          cloudMode.value = true;
+          await window.WashCloud.connect({
+            get: snapshot,
+            apply: async dataset => { loadingDraft.value = true; try { applyDataset(dataset); await nextTick(); } finally { loadingDraft.value = false; } },
+            readonly: value => { cloudReadonly.value = value; },
+            status: (state, text) => { saveState.value = state; cloudStatus.value = text; },
+            conflicts: value => { cloudConflicts.value = value; },
+            position: value => { if (['instructions','general','assessment','step3','dashboard'].includes(value.view)) activeView.value = value.view; if (modulesList.some(m => m.id === value.module)) activeModuleTab.value = value.module; },
+            clear: () => { generalInfo.value = WashCore.defaults(); indicators.value = []; }
+          });
+          if (window.WashCloud.active) { await window.WashCloud.save(); if (cloudReadonly.value) cloudStatus.value = 'Solo lectura: medición validada, en revisión o sin permiso de edición.'; if (activeView.value === 'general') initMap(); }
+          return;
+        }
         const draft = await store.read();
         if (draft) { applyDataset(WashCore.normalizeDataset(draft, INDICATORS_DATA)); savedAt.value = draft.savedAt || ''; }
         hasBackup.value = Boolean(await store.read('backup'));
         saveState.value = 'saved';
-      } catch (error) { saveState.value = 'error'; triggerToast('No se pudo recuperar el borrador. ' + error.message, 'error'); }
+      } catch (error) { saveState.value = 'error'; if (window.WashCloud) { cloudMode.value = true; cloudReadonly.value = true; cloudStatus.value = 'No se pudo verificar el acceso. ' + error.message; } triggerToast('No se pudo recuperar la evaluación. ' + error.message, 'error'); }
       finally { loadingDraft.value = false; }
       if (activeView.value === 'general') initMap();
       if ('serviceWorker' in navigator) {
@@ -1105,6 +1136,7 @@ createApp({
     const facilityValuation = computed(() => answeredCount.value ? WashCore.valuation(answeredCount.value, totalVisibleIndicators.value, overallCompliance.value) : {label: 'Sin indicadores evaluados', colorClass: 'text-paho-gray-dark'});
 
     return {
+      cloudMode, cloudReadonly, cloudStatus, cloudConflicts, resolveCloudConflict, openWorkspace, consultModule,
       loadingDraft, saveState, savedAt, saveLabel, hasBackup, isOnline, offlineReady, photoBusy, isMobile,
       newEvaluation, restoreBackup, saveDraft, handlePhotoDrop, handlePhotoKeys,
       populationWarning, reportPreview, reportRendering, reportRadarSvg, reportIndicators, reportRisks, reportPlans,

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Cómo WASH FIT Definitivo utiliza y conserva los datos de las evaluaciones, los reportes y la autorización de Google Drive.">
+  <title>Política de privacidad | WASH FIT Definitivo</title>
+  <link rel="stylesheet" href="css/privacy.css">
+</head>
+<body>
+  <header class="privacy-header"><a href="./">WASH FIT Definitivo · Volver a la aplicación</a></header>
+  <main>
+    <h1>Política de privacidad</h1>
+    <p class="updated">WASH FIT Definitivo · Última actualización: 22 de octubre de 2026.</p>
+    <p>Esta política explica el tratamiento de la información en WASH FIT Definitivo, una aplicación para evaluar agua, saneamiento, higiene y otras condiciones de los establecimientos de salud, elaborar planes de mejora y registrar su seguimiento.</p>
+    <p class="notice"><strong>Al exportar o imprimir un reporte, la aplicación intenta enviar la evaluación en JSON y PDF al repositorio de Google Drive configurado por el administrador.</strong> Esa operación requiere que el servicio esté habilitado y confirme el guardado. El borrador guardado en el navegador y la copia del repositorio son independientes.</p>
+
+    <h2>1. Administración y contacto</h2>
+    <p>El proyecto WASH FIT Definitivo es administrado por el titular de la cuenta <a href="https://github.com/LCasusolO">LCasusolO</a>. Para consultas sobre privacidad, acceso, corrección o eliminación de información, puedes contactar al administrador mediante el <a href="https://github.com/LCasusolO/WASH-FIT-full-definitivo/issues">canal de consultas del proyecto</a>. Los mensajes de ese canal son públicos: describe tu solicitud sin adjuntar evaluaciones, datos personales, fotografías ni credenciales; solicita un medio privado si necesitas compartir detalles.</p>
+
+    <h2>2. Información que puedes registrar</h2>
+    <ul>
+      <li>Datos del establecimiento: nombre, país, ciudad, nivel, tipo, población atendida, fecha de evaluación y coordenadas.</li>
+      <li>Datos del equipo que decidas incluir: nombres, cargos, institución, responsabilidades y correos electrónicos.</li>
+      <li>Respuestas, hallazgos, riesgos, acciones, responsables, recursos, costos, plazos, comentarios, revisiones y fotografías aportadas como evidencia.</li>
+    </ul>
+    <p>La aplicación no requiere una cuenta personal para llenar la evaluación. La ubicación del dispositivo solo se solicita al pulsar el control de ubicación y está sujeta al permiso del navegador; también puedes escribir las coordenadas manualmente. Evita introducir datos clínicos identificables de pacientes o fotografías de personas sin la autorización correspondiente.</p>
+
+    <h2>3. Para qué se utiliza la información</h2>
+    <p>La información se utiliza para mostrar y conservar la evaluación, calcular resultados, preparar planes y revisiones, generar reportes y facilitar su respaldo. El código de la aplicación no incorpora publicidad, herramientas de seguimiento publicitario ni funciones de venta de datos. Los datos de Google Drive se utilizan para el archivo y la confirmación de los reportes, no para publicidad ni para entrenar modelos de inteligencia artificial.</p>
+
+    <h2>4. Guardado en el navegador y archivos descargados</h2>
+    <p>El borrador, el respaldo anterior y el registro de la última copia confirmada se conservan en el almacenamiento local del navegador, mediante IndexedDB. Los recursos de la interfaz se almacenan en caché para permitir su uso sin conexión. El código no instala cookies publicitarias.</p>
+    <p>Ese almacenamiento depende del navegador, del dispositivo y de la dirección de la aplicación. No se sincroniza automáticamente entre dispositivos y puede perderse al limpiar los datos del sitio. Los JSON que descargues y los PDF que guardes quedan bajo tu control en el dispositivo o destino que elijas.</p>
+
+    <h2>5. Generación de PDF y repositorio de Google Drive</h2>
+    <p>Al exportar o imprimir, el reporte se envía al servidor de la aplicación para generar el PDF. Cuando el archivo central está configurado, el servidor transmite la evaluación completa en JSON y PDF a la carpeta de Google Drive seleccionada por el administrador. Esto puede incluir los datos del equipo, hallazgos, coordenadas, fotos e historial que hayas registrado. La impresión local y la descarga JSON pueden funcionar aunque falle el archivado.</p>
+    <p>La autorización OAuth corresponde a la cuenta de Google conectada por el administrador; los visitantes no necesitan autorizar sus propias cuentas. Las credenciales de esa conexión se configuran en el servidor y no se incluyen en el código entregado al navegador.</p>
+    <p>La configuración OAuth puede conceder a la aplicación un alcance de Drive más amplio que una sola carpeta. La implementación utiliza la carpeta configurada para comprobar permisos, buscar los reportes por nombre y tipo, crearlos o actualizar su contenido y verificar sus metadatos. No incorpora una función para explorar o descargar el contenido de otros documentos de la cuenta.</p>
+    <p>Los archivos con el mismo país y nombre de establecimiento normalizado pueden reemplazar una copia anterior. El acceso posterior a los reportes depende de los permisos de la carpeta y los archivos en Google Drive, que administra su propietario. La aplicación no convierte por sí sola esos reportes en archivos públicos ni comprueba que los permisos existentes de la carpeta sean privados.</p>
+
+    <h2>6. Proveedores y conexiones externas</h2>
+    <ul>
+      <li><strong>Alojamiento de la aplicación:</strong> el servidor recibe las solicitudes necesarias para servir la web, generar PDF y archivar reportes. En el despliegue previsto en Vercel, ese proveedor puede procesar datos técnicos, como dirección IP, navegador y registros de solicitudes, según su <a href="https://vercel.com/legal/privacy-policy">política de privacidad</a> y la configuración del proyecto.</li>
+      <li><strong>Google:</strong> procesa la autorización y conserva los reportes archivados en Drive según los permisos de la cuenta y su <a href="https://policies.google.com/privacy">política de privacidad</a>.</li>
+      <li><strong>OpenStreetMap:</strong> al visualizar un mapa, el navegador solicita mosaicos que pueden revelar al proveedor la dirección IP y el área geográfica consultada. Consulta su <a href="https://osmfoundation.org/wiki/Privacy_Policy">política de privacidad</a>.</li>
+    </ul>
+    <p>Estos servicios pueden procesar información en países distintos del tuyo. La aplicación no incorpora otros destinatarios para fines publicitarios.</p>
+
+    <h2>7. Conservación, eliminación y revocación</h2>
+    <p>Los borradores y respaldos locales permanecen hasta que se sustituyan o elimines los datos del sitio desde tu navegador. Iniciar una evaluación nueva conserva la anterior como respaldo; no equivale a eliminar todas las copias. Las descargas deben eliminarse desde el dispositivo donde las guardaste.</p>
+    <p>Los reportes de Drive no tienen un plazo automático de eliminación implementado. Se conservan hasta que el propietario los actualice o elimine conforme a la gestión de su repositorio. Para consultar, corregir o pedir la eliminación de una copia, contacta al administrador e identifica el establecimiento y la evaluación por un medio privado. Borrar el navegador no borra Drive y eliminar un reporte de Drive no borra las descargas ni copias locales.</p>
+    <p>El administrador puede retirar la autorización desde las <a href="https://myaccount.google.com/connections">conexiones de su cuenta de Google</a>. La revocación impide nuevos accesos autorizados, pero no elimina los reportes ya archivados.</p>
+
+    <h2>8. Seguridad y cambios de esta política</h2>
+    <p>El despliegue debe utilizar HTTPS y mantener las credenciales únicamente en el servidor. El navegador puede ser usado por otras personas con acceso a tu dispositivo; protege el equipo y los archivos que exportes. La aplicación no proporciona cuentas individuales ni autenticación de visitantes para distinguir quién envía cada reporte al repositorio central.</p>
+    <p>Las modificaciones de esta política se publicarán en esta página con una fecha actualizada. Los cambios que impliquen nuevos usos o permisos de datos de Google deberán informarse antes de aplicarse y requerirán la autorización que corresponda.</p>
+  </main>
+  <footer><a href="./">Volver a WASH FIT Definitivo</a></footer>
+</body>
+</html>

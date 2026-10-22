@@ -1836,6 +1836,10 @@
 
     </div>
 
+    <footer v-show="!reportPreview" class="privacy-footer no-print">
+      <a href="privacidad.html" target="_blank" rel="noopener" aria-label="Política de privacidad (se abre en otra pestaña)">Política de privacidad</a>
+    </footer>
+
     <dialog id="review-editor" class="review-editor no-print" aria-labelledby="review-editor-title" @cancel.prevent="closeReviewEditor" @close="reviewIndicator && closeReviewEditor()">
       <form v-if="reviewDraft && reviewIndicator" @submit.prevent="saveNewReview" class="review-form">
         <header class="review-editor-header">

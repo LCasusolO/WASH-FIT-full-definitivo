@@ -1,5 +1,9 @@
 /* Archivo: css/styles.css */
 
+.privacy-footer { padding: 16px 24px; border-top: 1px solid #D5E1ED; background: #F7F9FB; text-align: center; font-size: 13px; }
+.privacy-footer a { display: inline-flex; align-items: center; min-height: 44px; color: #004C97; text-decoration: underline; text-underline-offset: 3px; }
+.privacy-footer a:focus-visible { outline: 2px solid #004C97; outline-offset: 4px; }
+
 /* Texto continuo para la lectura de campo y el reporte. */
 #app :is(p, h1, h2, h3, h4, h5, td) { text-align: justify; }
 .indicator-tag { display: inline; margin-right: .65em; }

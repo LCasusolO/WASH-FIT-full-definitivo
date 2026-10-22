@@ -43,6 +43,8 @@ El catálogo canónico es `js/data/indicators.js`: 100 filas, 99 evaluables y un
 
 ## Datos y uso sin conexión
 
+La [política de privacidad](privacidad.html) está disponible sin iniciar sesión y enlazada al pie de la aplicación. Tras desplegar, use la URL pública terminada en `/privacidad.html` en Google Auth Platform. La página y su hoja de estilos se incluyen en el build y la caché offline.
+
 Los cambios se guardan en IndexedDB tras aproximadamente 800 ms. Existe un borrador y un respaldo por navegador/origen. «Nueva evaluación» y la importación conservan el estado anterior; recuperar respaldo intercambia ambos. El JSON exportado usa `schemaVersion: 2`; la importación valida el archivo completo contra el catálogo canónico.
 
 Al cambiar de dominio o navegador, exporte primero un JSON e impórtelo en la nueva dirección. El almacenamiento local no se traslada con Git. Las copias pendientes de Drive viven en memoria y se pierden al cerrar la página; los archivos ya confirmados permanecen en Drive.

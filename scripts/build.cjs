@@ -20,7 +20,7 @@ for (const [from, to] of [
 fs.cpSync('node_modules/leaflet/dist/images', 'vendor/images', { recursive: true });
 const result = spawnSync(process.execPath, ['node_modules/@tailwindcss/cli/dist/index.mjs', '-i', 'css/tailwind-input.css', '-o', 'vendor/tailwind.css', '--minify'], { stdio: 'inherit' });
 if (result.status !== 0) process.exit(result.status || 1);
-const files = ['index.html', 'css/styles.css', 'js/core.js', 'js/storage.js', 'js/chrome-report.js', 'js/report-radar.js', 'js/drive-archive.js', 'js/app.js', 'js/config/tailwind-config.js', 'js/data/indicators.js', 'img/barra.png', 'img/paho-logo-blanco.png', ...fs.readdirSync('vendor', { recursive: true }).filter(file => !/^(pdfmake|vfs_fonts)/.test(file) && fs.statSync(path.join('vendor', file)).isFile()).map(file => 'vendor/' + file.replace(/\\/g, '/'))];
+const files = ['index.html', 'privacidad.html', 'css/privacy.css', 'css/styles.css', 'js/core.js', 'js/storage.js', 'js/chrome-report.js', 'js/report-radar.js', 'js/drive-archive.js', 'js/app.js', 'js/config/tailwind-config.js', 'js/data/indicators.js', 'img/barra.png', 'img/paho-logo-blanco.png', ...fs.readdirSync('vendor', { recursive: true }).filter(file => !/^(pdfmake|vfs_fonts)/.test(file) && fs.statSync(path.join('vendor', file)).isFile()).map(file => 'vendor/' + file.replace(/\\/g, '/'))];
 const hash = require('node:crypto').createHash('sha256');
 for (const file of files) hash.update(fs.readFileSync(file));
 const revision = hash.digest('hex').slice(0,12);

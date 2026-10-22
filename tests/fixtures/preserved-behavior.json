@@ -1,0 +1,22 @@
+{
+  "origin": "LCasusolO/WASH-FIT-full",
+  "commit": "84a71ba93dd7dd0137263851d1dd505ede05e8bd",
+  "path": "js/app.js",
+  "fragments": [
+    {
+      "start": "    const setIndicatorScore =",
+      "end": "    const setSanitationSystem =",
+      "source": "    const setIndicatorScore = (ind, score) => {\n      if (ind.score === score) {\n        ind.score = null;\n        ind.problemDesc = '';\n        ind.associatedRisks = '';\n        ind.severity = null;\n        ind.likelihood = null;\n        ind.action = '';\n        ind.targetDate = '';\n        ind.resources = '';\n        ind.responsible = '';\n        ind.cost = null;\n        ind.trackingStatus = 'No Iniciado';\n        \n        triggerToast(`Se desmarcó el indicador.`, 'info');\n        \n        nextTick(() => {\n          if (window.lucide) window.lucide.createIcons();\n        });\n        return;\n      }\n\n      ind.score = score;\n\n      if (ind.code === 'S_11' && score !== 1 && score !== 2) {\n        const s13 = indicators.value.find(i => i.code === 'S_13');\n        if (s13) {\n          s13.score = null;\n          s13.notes = '';\n        }\n      }\n\n      if (score === 0 || score === 1) {\n        if (ind.severity === undefined) ind.severity = null;\n        if (ind.likelihood === undefined) ind.likelihood = null;\n      }\n      \n      triggerToast(`Indicador marcado con éxito.`, 'success');\n      \n      nextTick(() => {\n        if (window.lucide) window.lucide.createIcons();\n      });\n    };\n\n    const setSanitationSystem ="
+    },
+    {
+      "start": "    const setSanitationSystem =",
+      "end": "    const getModuleTotalCount =",
+      "source": "    const setSanitationSystem = (type) => {\n      generalInfo.value.sanitationSystem = type;\n      if (type === 'alcantarillado') {\n        generalInfo.value.selectedS9Option = null;\n        const s8 = indicators.value.find(i => i.code === 'S_8');\n        const s9b = indicators.value.find(i => i.code === 'S_9b');\n        const s10b = indicators.value.find(i => i.code === 'S_10b');\n        if (s8) s8.score = null;\n        if (s9b) s9b.score = null;\n        if (s10b) s10b.score = null;\n      } else if (type === 'insitu') {\n        const s9a = indicators.value.find(i => i.code === 'S_9a');\n        const s10a = indicators.value.find(i => i.code === 'S_10a');\n        if (s9a) s9a.score = null;\n        if (s10a) s10a.score = null;\n      }\n    };\n\n    const getModuleTotalCount ="
+    },
+    {
+      "start": "    const levelOptions =",
+      "end": "    // Toast Notifications",
+      "source": "    const levelOptions = [\n      'Primer Nivel (Atención Primaria / Puesto de Salud)',\n      'Segundo Nivel (Atención Especializada / Hospital)',\n      'Tercer Nivel (Alta Especialización / Hospital Especializado)'\n    ];\n\n    // Toast Notifications"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+
+> wash-fit-full@2.0.0 build
+> node scripts/build.cjs
+
+≈ tailwindcss v4.3.0
+
+Done in 89ms
+Recursos locales y caché offline generados.

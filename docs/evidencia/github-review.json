@@ -1,0 +1,554 @@
+{
+  "repository": "LCasusolO/WASH-FIT-full",
+  "reviewDate": "2026-10-22",
+  "commit": "a58247f7e585444f8dfa2169edef971f15a6cbf9",
+  "branches": [
+    {
+      "name": "feat/bullet-fields-full-sidebar",
+      "sha": "ac5161aeba386c8ec3b20d0714af3e4bc06142a8"
+    },
+    {
+      "name": "feat/central-drive-archive",
+      "sha": "c55c72ad2f1bd083d0ddd51b399728fc1e8bd96d"
+    },
+    {
+      "name": "feat/current-location",
+      "sha": "af7f0f0cc65bc5fe4858aec2670f4cea703ad052"
+    },
+    {
+      "name": "feat/flexible-assessment-status",
+      "sha": "c45939ba702d2514921368538cb9b9e6fdb55f4e"
+    },
+    {
+      "name": "feat/monitoring-review-cards",
+      "sha": "d9ac22c6b6794b07245133611e19945d5bac3571"
+    },
+    {
+      "name": "feat/report-modules-radar",
+      "sha": "6a1e5ee9afb437a3ce837edcde045fd6c2f071e4"
+    },
+    {
+      "name": "feat/review-append-notes",
+      "sha": "e862c572a2c04bd852ff72ac28d81a2e1c92ae92"
+    },
+    {
+      "name": "feat/risk-save-status-names",
+      "sha": "862cf3cf58f4d8fc97c9dc0939271ab33b9e001d"
+    },
+    {
+      "name": "fix/archive-print-reliability",
+      "sha": "c3f3db44036069f460d62a735d6b92fbef902a95"
+    },
+    {
+      "name": "fix/archive-replace-v20",
+      "sha": "097d23942578e47163ca91de985ae7b7b2a2a3a8"
+    },
+    {
+      "name": "fix/assessment-domain-validation",
+      "sha": "de43eeaa055191cdf30a5b171b8b75c11be5072b"
+    },
+    {
+      "name": "fix/assessment-help-return",
+      "sha": "b10c05abecd16c7eb3b81491558c164b9f54e336"
+    },
+    {
+      "name": "fix/chrome-report-archive",
+      "sha": "8ae4c3d50840ce6f2ba6d791259289ac5c83d9c1"
+    },
+    {
+      "name": "fix/chrome-temporary-storage",
+      "sha": "8dd24c772753af29997d51a4f192fdb4afb5863b"
+    },
+    {
+      "name": "fix/desktop-section-title-cards",
+      "sha": "3b7b7ffb668853fc8beff5ff1b7951401af82fd8"
+    },
+    {
+      "name": "fix/drive-authorization-errors",
+      "sha": "b697f9ae4ee5847abc96b2780d854051a58c6c67"
+    },
+    {
+      "name": "fix/drive-upload-proxy",
+      "sha": "e404bda9c36ea107ea2bfedf0667269f30226e46"
+    },
+    {
+      "name": "fix/export-without-print-window",
+      "sha": "e17aaed84361ebdb19fe739c73f8c7183f2ad302"
+    },
+    {
+      "name": "fix/fast-print-background-archive",
+      "sha": "5f70b1811840c98946837a42f0a505b5f118026b"
+    },
+    {
+      "name": "fix/general-data-rows",
+      "sha": "76085d8ad72d502873739227f16af8c62364f875"
+    },
+    {
+      "name": "fix/global-compliance-actions",
+      "sha": "cffddaad18adce9bcf2bf25360d919f3e420ca48"
+    },
+    {
+      "name": "fix/guidance-mobile-wrap",
+      "sha": "bc9e10d16695fa1b8e653316f2e3abb194942987"
+    },
+    {
+      "name": "fix/header-actions-domain-banner",
+      "sha": "57cd21dbfbbb71376dcbe8fb5d2183ffa6f8a91c"
+    },
+    {
+      "name": "fix/header-country-layout",
+      "sha": "f6e2476bd1ef48de1f0cfa9b616d5d01d39a8a24"
+    },
+    {
+      "name": "fix/header-print-filename",
+      "sha": "863ab0a0011051d7b5e4e800c21649b2d4bfd702"
+    },
+    {
+      "name": "fix/indicator-layout-levels",
+      "sha": "d54d69969598a6a96bd635e466080b57a7e6d048"
+    },
+    {
+      "name": "fix/jmp-results-empty-guidance",
+      "sha": "5574e19c510bd21b2eeef6a7b25c42574a935c34"
+    },
+    {
+      "name": "fix/location-button-order",
+      "sha": "0442f41a205d529f30b2b73cfe3e89946a6147a7"
+    },
+    {
+      "name": "fix/location-controls-by-map",
+      "sha": "ed904703b19d1ae39328677b31fad82eb84a7f18"
+    },
+    {
+      "name": "fix/mobile-close-menu-title-box",
+      "sha": "a283f4554a5691de6e06e3580824075161030382"
+    },
+    {
+      "name": "fix/mobile-domain-summary-table",
+      "sha": "d49f2adda4f519b0f35ffc1f150ca78f89f651ae"
+    },
+    {
+      "name": "fix/mobile-navigation-plan-results",
+      "sha": "9b97f2b561ed5ff33a4692dfe51333f2585181f9"
+    },
+    {
+      "name": "fix/monitoring-remove-state",
+      "sha": "ce45c49ffeaa7186c19e14b60744acb031e7a2df"
+    },
+    {
+      "name": "fix/monitoring-table-dialogs",
+      "sha": "087df6d005a663d84d11906bdcca938e8c3c03ac"
+    },
+    {
+      "name": "fix/next-domain-required-explanation",
+      "sha": "7be8e1b8b21c9638d7e12e38f3cd453442bf6cf8"
+    },
+    {
+      "name": "fix/remove-assessment-selector",
+      "sha": "014002f434c40e1e11af07076cf21e517df6db2e"
+    },
+    {
+      "name": "fix/report-tables-no-codes",
+      "sha": "c83824286f25778618f01a6740d3f6d86b20dd39"
+    },
+    {
+      "name": "fix/review-change-bullets",
+      "sha": "7fa7f63c555ea2ff4351d788a360d010f028df20"
+    },
+    {
+      "name": "fix/review-history-only-bullet-delete",
+      "sha": "b112866f6b79d68ca57ed64b3576e86f910f653e"
+    },
+    {
+      "name": "fix/review-labels-and-step-report",
+      "sha": "6556cc4efe31f10f7ef083f01a76d33a06fdee9d"
+    },
+    {
+      "name": "fix/review-plan-owner-change-labels",
+      "sha": "51742667599e2b28e9a9181536bd9762c4adb418"
+    },
+    {
+      "name": "fix/sidebar-spacing-responsible",
+      "sha": "50ac8dc14311ea97a85486150f8ce4dcaee9733a"
+    },
+    {
+      "name": "fix/sidebar-visible-actions",
+      "sha": "db8587374b8180a80b1a68077f4b746941cacf60"
+    },
+    {
+      "name": "fix/silent-app-updates",
+      "sha": "f0c927699a1d19f30a23ea866a97c74016a13166"
+    },
+    {
+      "name": "fix/stable-module-identifiers",
+      "sha": "1ef1db9f9206f3e7f559a3fdd57a5317f970e767"
+    },
+    {
+      "name": "fix/versioned-deployment-assets",
+      "sha": "f0100568dc9984b19f6193e94230af8f8a92f753"
+    },
+    {
+      "name": "improve/evaluation-reliability",
+      "sha": "63a847c3d93a7cc3561585007df3a6807eab5cd3"
+    },
+    {
+      "name": "main",
+      "sha": "a58247f7e585444f8dfa2169edef971f15a6cbf9"
+    },
+    {
+      "name": "update/indicators-final-excel",
+      "sha": "e51da5f6f8f140e6606be516cc5bf6a71a0f5eca"
+    },
+    {
+      "name": "update/jmp-matrix-rules",
+      "sha": "a78d3f247475cf286fb013bc44929230d0329078"
+    }
+  ],
+  "releases": [],
+  "pullRequests": [
+    {
+      "number": 49,
+      "title": "Validar el dominio actual siempre al pulsar Siguiente",
+      "state": "closed",
+      "merged_at": "2026-10-22T12:42:34Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/49"
+    },
+    {
+      "number": 48,
+      "title": "Quitar el selector adicional y usar solo respuesta o explicación",
+      "state": "closed",
+      "merged_at": "2026-10-22T12:25:18Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/48"
+    },
+    {
+      "number": 47,
+      "title": "Flexibilizar justificaciones y distinguir indicadores no aplicables",
+      "state": "closed",
+      "merged_at": "2026-10-22T04:54:47Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/47"
+    },
+    {
+      "number": 46,
+      "title": "Liberar el espacio temporal de Chrome y estabilizar el guardado de reportes",
+      "state": "closed",
+      "merged_at": "2026-10-21T16:36:51Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/46"
+    },
+    {
+      "number": 45,
+      "title": "Identificar la autorización vencida y los permisos del repositorio",
+      "state": "closed",
+      "merged_at": "2026-10-21T15:34:40Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/45"
+    },
+    {
+      "number": 44,
+      "title": "Corregir Chrome del servidor y reservar la impresión desde el clic",
+      "state": "closed",
+      "merged_at": "2026-10-21T15:29:21Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/44"
+    },
+    {
+      "number": 43,
+      "title": "Exportar sin abrir la vista de impresión ni cambiar de pantalla",
+      "state": "closed",
+      "merged_at": "2026-10-19T17:59:54Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/43"
+    },
+    {
+      "number": 42,
+      "title": "Abrir la impresión sin esperar el guardado del repositorio",
+      "state": "closed",
+      "merged_at": "2026-10-19T17:47:04Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/42"
+    },
+    {
+      "number": 41,
+      "title": "Centrar WASH FIT e igualar el nombre del reporte al de exportación",
+      "state": "closed",
+      "merged_at": "2026-10-19T17:30:28Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/41"
+    },
+    {
+      "number": 40,
+      "title": "Actualizar la web sin avisos ni intervención del usuario",
+      "state": "closed",
+      "merged_at": "2026-10-19T17:25:29Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/40"
+    },
+    {
+      "number": 39,
+      "title": "Ocultar notas vacías y mostrar resultados JMP sin evaluación incompleta",
+      "state": "closed",
+      "merged_at": "2026-10-19T05:00:08Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/39"
+    },
+    {
+      "number": 38,
+      "title": "Aplicar las reglas numéricas aprobadas para los cinco dominios JMP",
+      "state": "closed",
+      "merged_at": "2026-10-19T04:50:26Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/38"
+    },
+    {
+      "number": 37,
+      "title": "Evitar recortes de notas en móvil y compactar aclaraciones",
+      "state": "closed",
+      "merged_at": "2026-10-19T04:42:08Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/37"
+    },
+    {
+      "number": 36,
+      "title": "Corregir formato de indicadores y filtros por nivel de atención",
+      "state": "closed",
+      "merged_at": "2026-10-19T04:25:42Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/36"
+    },
+    {
+      "number": 35,
+      "title": "Actualizar el catálogo con el Excel final de indicadores",
+      "state": "closed",
+      "merged_at": "2026-10-19T04:13:20Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/35"
+    },
+    {
+      "number": 34,
+      "title": "Ajustar la ayuda del paso 2 y permitir regresar a dominios completos",
+      "state": "closed",
+      "merged_at": "2026-10-14T21:06:19Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/34"
+    },
+    {
+      "number": 33,
+      "title": "Validar respuestas o motivos de no aplicación antes de cambiar de dominio",
+      "state": "closed",
+      "merged_at": "2026-10-14T20:41:01Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/33"
+    },
+    {
+      "number": 32,
+      "title": "Usar el diseño de Chrome para imprimir y archivar los reportes",
+      "state": "closed",
+      "merged_at": "2026-10-14T20:08:55Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/32"
+    },
+    {
+      "number": 31,
+      "title": "Agrupa acciones de reporte y añade módulo y radar al reporte",
+      "state": "closed",
+      "merged_at": "2026-10-14T14:40:14Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/31"
+    },
+    {
+      "number": 30,
+      "title": "Guarda revisiones solo en historial y permite borrar viñetas",
+      "state": "closed",
+      "merged_at": "2026-10-14T14:21:15Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/30"
+    },
+    {
+      "number": 29,
+      "title": "Carga el responsable del Plan y destaca novedades de cada revisión",
+      "state": "closed",
+      "merged_at": "2026-10-14T13:54:19Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/29"
+    },
+    {
+      "number": 28,
+      "title": "Conserva notas anteriores y agrega información nueva en las revisiones",
+      "state": "closed",
+      "merged_at": "2026-10-14T13:08:03Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/28"
+    },
+    {
+      "number": 27,
+      "title": "Reorganiza cumplimiento y acciones y reduce el bloque de dominio",
+      "state": "closed",
+      "merged_at": "2026-10-14T12:37:16Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/27"
+    },
+    {
+      "number": 26,
+      "title": "Agrega recuadros de encabezado a Paso 1, Paso 2 y Resumen en PC",
+      "state": "closed",
+      "merged_at": "2026-10-14T02:24:18Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/26"
+    },
+    {
+      "number": 25,
+      "title": "Reemplaza los archivos existentes al guardar y muestra WASH FIT v2.0",
+      "state": "closed",
+      "merged_at": "2026-10-14T02:18:57Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/25"
+    },
+    {
+      "number": 24,
+      "title": "Cierra el menú móvil desde la flecha y enmarca el encabezado del paso",
+      "state": "closed",
+      "merged_at": "2026-10-14T02:10:09Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/24"
+    },
+    {
+      "number": 23,
+      "title": "Corrige menú y encabezados móviles y muestra resultado en Plan de mejora",
+      "state": "closed",
+      "merged_at": "2026-10-14T02:02:11Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/23"
+    },
+    {
+      "number": 22,
+      "title": "Conserva tablas con scroll horizontal en Resumen y reporte móvil",
+      "state": "closed",
+      "merged_at": "2026-10-14T01:51:20Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/22"
+    },
+    {
+      "number": 21,
+      "title": "Amplía el indicador y presenta los pasos 4 y 5 del reporte en tablas",
+      "state": "closed",
+      "merged_at": "2026-10-14T01:21:52Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/21"
+    },
+    {
+      "number": 20,
+      "title": "Retira el estado de Monitoreo y destaca el indicador en sus ventanas",
+      "state": "closed",
+      "merged_at": "2026-10-14T00:38:49Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/20"
+    },
+    {
+      "number": 19,
+      "title": "Restaura la tabla de Monitoreo con revisión e historial emergentes",
+      "state": "closed",
+      "merged_at": "2026-10-13T23:55:14Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/19"
+    },
+    {
+      "number": 18,
+      "title": "Presenta Monitoreo con tarjetas y un formulario de nueva revisión",
+      "state": "closed",
+      "merged_at": "2026-10-13T23:16:23Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/18"
+    },
+    {
+      "number": 17,
+      "title": "Muestra el cambio histórico y viñetas en las revisiones",
+      "state": "closed",
+      "merged_at": "2026-10-13T23:06:27Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/17"
+    },
+    {
+      "number": 16,
+      "title": "Extiende el menú y agrega viñetas automáticas a los campos",
+      "state": "closed",
+      "merged_at": "2026-10-13T22:56:48Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/16"
+    },
+    {
+      "number": 15,
+      "title": "Restaura el espaciado lateral y simplifica responsables del plan",
+      "state": "closed",
+      "merged_at": "2026-10-13T22:44:35Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/15"
+    },
+    {
+      "number": 14,
+      "title": "Mantiene visibles las acciones del menú lateral",
+      "state": "closed",
+      "merged_at": "2026-10-13T22:31:15Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/14"
+    },
+    {
+      "number": 13,
+      "title": "Ordena el botón de ubicación y las coordenadas",
+      "state": "closed",
+      "merged_at": "2026-10-13T22:25:10Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/13"
+    },
+    {
+      "number": 12,
+      "title": "Reordena datos generales y simplifica la barra lateral",
+      "state": "closed",
+      "merged_at": "2026-10-13T22:19:47Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/12"
+    },
+    {
+      "number": 11,
+      "title": "Coloca las coordenadas y ubicación actual junto al mapa",
+      "state": "closed",
+      "merged_at": "2026-10-13T22:06:47Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/11"
+    },
+    {
+      "number": 10,
+      "title": "Permite registrar la ubicación actual y sus coordenadas",
+      "state": "closed",
+      "merged_at": "2026-10-13T22:01:03Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/10"
+    },
+    {
+      "number": 9,
+      "title": "Alinea encabezado y separa País y Ciudad",
+      "state": "closed",
+      "merged_at": "2026-10-13T21:56:03Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/9"
+    },
+    {
+      "number": 8,
+      "title": "Mejora filtros de riesgo, estado de guardado y nombres de archivos",
+      "state": "closed",
+      "merged_at": "2026-10-13T21:37:03Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/8"
+    },
+    {
+      "number": 7,
+      "title": "Confirma las subidas a Drive mediante fragmentos enviados por el servidor",
+      "state": "closed",
+      "merged_at": "2026-10-13T15:59:22Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/7"
+    },
+    {
+      "number": 6,
+      "title": "Prepara el archivo automático de JSON y PDF en el repositorio central de Drive",
+      "state": "closed",
+      "merged_at": "2026-10-13T15:53:16Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/6"
+    },
+    {
+      "number": 5,
+      "title": "Evita mezclar HTML nuevo con recursos antiguos de la caché",
+      "state": "closed",
+      "merged_at": "2026-10-13T02:53:00Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/5"
+    },
+    {
+      "number": 4,
+      "title": "Muestra Cumplimiento Global con guardado y acciones mediante iconos",
+      "state": "closed",
+      "merged_at": "2026-10-13T02:50:11Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/4"
+    },
+    {
+      "number": 3,
+      "title": "Corrige las etiquetas, simplifica la interfaz y separa el reporte por pasos",
+      "state": "closed",
+      "merged_at": "2026-10-13T00:52:15Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/3"
+    },
+    {
+      "number": 2,
+      "title": "Mejora cálculos JMP, borradores, importación y reportes WASH FIT",
+      "state": "closed",
+      "merged_at": "2026-10-13T00:28:03Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/2"
+    },
+    {
+      "number": 1,
+      "title": "Corrige el dominio de residuos usando identificadores estables",
+      "state": "closed",
+      "merged_at": "2026-10-12T20:04:59Z",
+      "url": "https://github.com/LCasusolO/WASH-FIT-full/pull/1"
+    }
+  ],
+  "openIssues": []
+}

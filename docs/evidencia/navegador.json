@@ -1,0 +1,15 @@
+{
+  "origin": "http://127.0.0.1:8766",
+  "served": "dist",
+  "checks": [
+    "Carga del build sin errores y persistencia real en IndexedDB tras editar y recargar",
+    "Siguiente Dominio rechaza dominio pendiente y marca el hallazgo requerido",
+    "Importacion por archivo JSON en navegador y guardado local",
+    "Vista previa con seis secciones y PDF real desde el HTML de la aplicacion a traves de la API local",
+    "Drive sin credenciales devuelve 503 sin anunciar activacion",
+    "Reporte visible en viewport movil 393 x 852; captura para inspeccion",
+    "Recarga offline del build con recursos versionados y recuperacion del borrador"
+  ],
+  "errors": [],
+  "result": "PASS"
+}

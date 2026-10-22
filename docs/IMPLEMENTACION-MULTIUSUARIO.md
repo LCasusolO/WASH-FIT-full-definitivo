@@ -6,8 +6,10 @@ El código incorpora el espacio de trabajo `plataforma.html`, cuentas Supabase,
 permisos por país/equipo/evaluación, edición por registro, conflictos explícitos,
 plan vigente, monitoreo del paso 5, versiones validadas y reportes autenticados.
 
-La activación requiere un proyecto Supabase real y configuración en Vercel.
-Escribir el código no crea esos servicios ni sus cuentas. La variable
+El proyecto Supabase **WASH FIT Definitivo** ya fue creado e instalado el
+22 de octubre de 2026: `wkchpmqeeyoqupuilrqh`, región `us-east-1`, organización
+LCasusolO. Panel: https://supabase.com/dashboard/project/wkchpmqeeyoqupuilrqh.
+La activación aún requiere configurar Auth, correo y Vercel. La variable
 `WASH_MULTIUSER` mantiene el modo actual mientras no se complete la instalación.
 
 Las pruebas de base de datos utilizan PostgreSQL embebido (PGlite) con usuarios
@@ -26,7 +28,11 @@ proyecto real. No conectar el servidor de QA a producción.
 El primer inicio de sesión no asigna automáticamente un borrador a un país o
 persona. La importación requiere seleccionar su establecimiento y equipo.
 
-## 2. Crear Supabase
+## 2. Proyecto Supabase
+
+Para esta instalación ya existe el proyecto indicado arriba. No crear otro.
+Su URL es `https://wkchpmqeeyoqupuilrqh.supabase.co`. Las instrucciones de
+creación siguientes se conservan para una instalación nueva.
 
 En https://supabase.com/dashboard crea un proyecto para WASH FIT. Elige región,
 responsable de la organización y plan según las necesidades de operación.
@@ -44,14 +50,25 @@ y las políticas de PostgreSQL, no con privilegios administrativos globales.
 
 ## 3. Instalar la base de datos y el depósito privado
 
-En SQL Editor, ejecutar estos archivos completos, en este orden, una sola vez:
+En el proyecto indicado ya están aplicadas las tres migraciones. **No volver
+a ejecutarlas allí.** Para una base nueva, ejecutar los archivos completos,
+en este orden, una sola vez:
 
 1. `supabase/migrations/202610220001_platform.sql`.
 2. `supabase/migrations/202610220002_evidence.sql`.
+3. `supabase/migrations/20261022222234_wash_fit_security_and_indexes.sql`.
 
 El primero crea tablas `wash_*`, políticas RLS, funciones transaccionales y la
 publicación de cambios en las tablas necesarias. El segundo crea el bucket
-privado `wash-evidence`, con imágenes JPEG/PNG/WebP de hasta 5 MB.
+privado `wash-evidence`, con imágenes JPEG/PNG/WebP de hasta 5 MB. El tercero
+mueve la implementación privilegiada de escritura al esquema privado y añade
+índices y ajustes de políticas. El RPC público conserva el mismo contrato.
+
+Las versiones del historial remoto son `20261022222114`, `20261022222115`
+y `20261022222322`; Supabase asignó esos identificadores al aplicar las
+migraciones mediante el conector. No se ha enlazado el CLI ni reconciliado su
+historial con los nombres locales. No ejecutar `db push` sin revisar esa
+correspondencia.
 
 Las migraciones son de instalación inicial, no scripts para ejecutar repetidas
 veces sobre una base ya instalada. Si una transacción falla, revisar el error

@@ -53,3 +53,25 @@ Para repetir la comprobación del navegador se requiere servir el resultado `dis
 Pendiente de activación externa: comprobar con el proyecto Supabase real los
 correos, Storage, transporte Realtime y archivado autenticado en el Drive real.
 El servidor de QA no sustituye esta verificación de servicios de producción.
+
+
+## Instalación en Supabase alojado — 22 de octubre de 2026
+
+Proyecto `wkchpmqeeyoqupuilrqh` activo en `us-east-1`. Tres migraciones
+aplicadas correctamente; 16 tablas públicas de aplicación con RLS activado,
+bucket de evidencias privado y cinco tablas inscritas en Realtime.
+
+El RPC público usa los privilegios del llamante y delega en una función privada
+que valida permisos. Los usuarios anónimos no pueden ejecutar el RPC. Se
+comprobó mediante HTTP real que consultar países y tratar de crear uno sin
+sesión devuelve 401/42501. No se insertaron datos de prueba en el proyecto.
+
+Los asesores de seguridad y rendimiento no muestran advertencias ni errores.
+Queda un aviso informativo de RLS sin políticas en `wash_private.catalog_keys`: es
+un catálogo privado sin acceso directo para clientes. Los avisos informativos
+de índices sin uso corresponden a la base nueva, aún sin actividad.
+
+No hay cuentas Auth registradas ni propietario asignado. Quedan pendientes
+SMTP, URLs de Auth, conexión y despliegue en Vercel, y la prueba completa con
+cuentas verificadas, evidencias, Realtime y Drive. Estas comprobaciones de
+infraestructura no acreditan todavía el flujo multiusuario en producción.

@@ -26,21 +26,29 @@ const files = ['index.html', 'plataforma.html', 'privacidad.html', 'css/platform
 const hash = require('node:crypto').createHash('sha256');
 for (const file of files) hash.update(fs.readFileSync(file));
 const revision = hash.digest('hex').slice(0,12);
+const {assetFilename}=require('./version-assets.cjs');
 const linkedFiles = new Set();
 const versionHtml = page => fs.readFileSync(page, 'utf8').replace(/(src|href)="((?:css|js|vendor|img)\/[^"?]+)"/g, (match, attribute, file) => {
   if (!files.includes(file)) throw new Error('Recurso no incluido en el despliegue: ' + file);
   linkedFiles.add(file);
-  return `${attribute}="${file}?v=${revision}"`;
+  return `${attribute}="${assetFilename(file,revision)}"`;
 });
 const deployedHtml = versionHtml('index.html');
 const platformHtml = versionHtml('plataforma.html');
 // Cada HTML solicita su propia versión; un worker anterior no puede mezclar JS/CSS.
-const assets = ['./', ...files.map(file => './' + file + (linkedFiles.has(file) ? '?v=' + revision : ''))];
+const assets = ['./', ...files.map(file => './' + (linkedFiles.has(file) ? assetFilename(file,revision) : file))];
 fs.writeFileSync('sw.js', `const CACHE = 'wash-fit-${revision}';\nconst ASSETS = ${JSON.stringify(assets)};\n` + fs.readFileSync('scripts/sw-template.js', 'utf8'));
 for (const file of [...files, 'sw.js']) {
   const destination = path.join('dist', file);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(file, destination);
+}
+// Conservar las rutas originales mantiene compatibles las pestañas anteriores.
+// Las páginas nuevas solicitan exclusivamente sus archivos físicos versionados.
+for(const file of linkedFiles){
+  const destination=path.join('dist',assetFilename(file,revision));
+  fs.mkdirSync(path.dirname(destination),{recursive:true});
+  fs.copyFileSync(file,destination);
 }
 fs.writeFileSync('dist/index.html', deployedHtml);
 fs.writeFileSync('dist/plataforma.html', platformHtml);

@@ -75,3 +75,25 @@ No hay cuentas Auth registradas ni propietario asignado. Quedan pendientes
 SMTP, URLs de Auth, conexión y despliegue en Vercel, y la prueba completa con
 cuentas verificadas, evidencias, Realtime y Drive. Estas comprobaciones de
 infraestructura no acreditan todavía el flujo multiusuario en producción.
+
+
+## Verificación del despliegue del PR #2
+
+El commit de producción `bbfd008` quedó Ready en Vercel. La descarga HTTP directa
+entrega el HTML y JavaScript nuevos. Sin embargo, en la sesión del navegador de
+revisión la misma URL de JavaScript con `?v=0fdde56cec3c` todavía mostró el código
+anterior. Se reprodujo rol vacío y ausencia de confirmación al pulsar Actualizar,
+con aviso Vue de propiedad `accountRole` no definida. El HTML nuevo sí estaba
+presente. No se determinó cuál de las capas de caché originó esa discrepancia.
+
+La corrección del build incorpora la revisión en el nombre físico de cada recurso
+enlazado, por ejemplo `platform-portal.REVISION.js`, y en su manifiesto offline.
+Conserva las rutas originales para pestañas anteriores. No borra IndexedDB,
+sesiones ni evaluaciones.
+
+110 pruebas aprobadas y build correcto; las 29 referencias versionadas de ambos
+HTML y todos los recursos del manifiesto offline existen. En el navegador contra
+QA aislado se comprobaron el rol visible y la confirmación de Actualizar con los
+archivos físicos versionados, sin errores ni advertencias de consola. La
+verificación del nuevo esquema en producción requiere integrar y desplegar esta
+corrección adicional.

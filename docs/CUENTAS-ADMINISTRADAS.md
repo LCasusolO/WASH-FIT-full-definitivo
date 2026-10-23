@@ -191,3 +191,12 @@ Puede cerrar la aplicación y volver a abrirla sin internet. La plataforma muest
 Cuando vuelve internet, se renueva la sesión si corresponde, se vuelven a comprobar los permisos y se combinan automáticamente los cambios por campo. Campos distintos conservan ambas ediciones, y en el mismo campo prevalece el último guardado aceptado por el servidor. Si ya no hay permiso para editar, el borrador se conserva aparte y no se publica. Cerrar sesión impide volver a abrir el directorio offline de esa cuenta hasta ingresar otra vez con conexión.
 
 Las evaluaciones que nunca se abrieron en ese dispositivo requieren conexión para prepararse. Borrar los datos del navegador o usar otro navegador no traslada el borrador local.
+
+
+## Indicador de conexión y última sincronización
+
+La plataforma y la evaluación muestran una franja persistente, adaptada a escritorio y móvil, con **Sin conexión**, **Sincronizando**, **Cambios pendientes**, **Sincronizado** o **Sin sincronizar** si hubo un error. Los estados incluyen texto además de color. La fecha y hora de **Última sincronización** se conserva en el dispositivo y se recupera al reabrir sin internet. Si aún no existe una sincronización confirmada, muestra **Aún no realizada**.
+
+En la evaluación, la hora avanza al completar la lectura y combinación con el servidor sin cambios pendientes, o al confirmar todos los guardados pendientes. Guardar únicamente en el dispositivo, un envío cuya respuesta no llegó o una consulta fallida no adelantan esa hora. Un guardado sin cambios tampoco simula un contacto nuevo con el servidor. En la plataforma, corresponde a la última actualización completa de sus datos; la tabla offline muestra por separado la última sincronización de cada evaluación.
+
+La franja no se imprime en los informes PDF y no sustituye la indicación **Solo lectura** ni el cumplimiento global.

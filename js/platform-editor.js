@@ -2,6 +2,9 @@
   'use strict';
   const P=root.WashPlatform,M=root.WashPlatformModel;
   let evaluation,facility,store,hooks,base=[],rows=[],conflicts=[],inFlight=false,pending=null,lastView='',channel,timer,active=false;
+  let lastSyncedAt='',syncState='connecting';
+  const sync=state=>{syncState=state;hooks?.sync?.({state,lastSyncedAt});};
+  function synced(){lastSyncedAt=new Date().toISOString();sync('synced');}
   let userId='',lastPosition=null,lastLocal='',persistQueue=Promise.resolve(),needsRefresh=false;
   let currentOperation=null,pendingLocal=null,readOnly=true,planReadOnly=true,editingTeam='';
   const context=()=>({teamId:editingTeam,includeEmpty:true});
@@ -29,6 +32,7 @@
   }
 
   const recordKey=r=>r.kind+':'+r.record_key;
+  const localIdentity=data=>M.stable({generalInfo:data.generalInfo,indicators:data.indicators});
   const canWrite=r=>['general','indicator'].includes(r.kind)?!readOnly:!planReadOnly;
   const emptyAction=r=>r?.kind==='action'&&M.planFields.every(k=>k==='cost'?r.data[k]==null||r.data[k]==='':k==='trackingStatus'?!r.data[k]||r.data[k]==='No Iniciado':!String(r.data[k]||'').trim());
   const obsoleteKeys=(previous,local)=>new Set(previous.filter(c=>{const current=local.find(r=>recordKey(r)===c.key);return emptyAction(c.local)&&(!c.base||emptyAction(c.base))&&(!current||emptyAction(current));}).map(c=>c.key));
@@ -49,13 +53,13 @@
   }
   async function persist(){
     if(!store)return;
-    const state=M.clone({base,rows,local:hooks.get(),conflicts,pending,pendingLocal,currentOperation,editingTeam,readOnly,planReadOnly,evaluation,facility,lastPosition});
+    const state=M.clone({base,rows,local:hooks.get(),conflicts,pending,pendingLocal,currentOperation,editingTeam,readOnly,planReadOnly,evaluation,facility,lastPosition,lastSyncedAt});
     persistQueue=persistQueue.catch(()=>{}).then(async()=>{
-      await store.write('sync',state);lastLocal=M.stable(state.local);
-      if(P.rememberOfflineEvaluation)await P.rememberOfflineEvaluation(userId,{id:state.evaluation.id,name:state.evaluation.name,facilityName:state.local.generalInfo.facilityName||state.facility?.name||'Establecimiento',savedAt:new Date().toISOString()});
+      await store.write('sync',state);lastLocal=localIdentity(state.local);
+      if(P.rememberOfflineEvaluation)await P.rememberOfflineEvaluation(userId,{id:state.evaluation.id,name:state.evaluation.name,facilityName:state.local.generalInfo.facilityName||state.facility?.name||'Establecimiento',lastSyncedAt:state.lastSyncedAt,savedAt:new Date().toISOString()});
     });return persistQueue;
   }
-  async function persistLocal(){if(!active)return false;await persist();if(!navigator.onLine)hooks.status('pending','Guardado en este dispositivo; pendiente de sincronizar.');return true;}
+  async function persistLocal(){if(!active)return false;await persist();if(!navigator.onLine){sync('offline');hooks.status('pending','Guardado en este dispositivo; pendiente de sincronizar.');}else if(M.changed(base,logical(hooks.get())).length)sync('pending');return true;}
   async function sendPending(){
     if(!pending)return;
     if(!pending.field_changes){const before=base.find(r=>recordKey(r)===recordKey(pending));pending={...pending,field_changes:M.fieldChanges(before?.data||{},pending.data)};await persist();}
@@ -77,8 +81,8 @@
       rows=remote.rows;base=remote.logical;
       hooks.conflicts(conflicts);await apply(merged);await persist();
       needsRefresh=false;
-      if(!conflicts.length&&M.changed(base,logical(hooks.get())).length)hooks.status('pending','Cambios locales pendientes de sincronizar.');else hooks.status('saved','Guardado en la nube.');return true;
-    }catch(e){if(e.message==='ACCESS_REVOKED')location.replace('/plataforma.html');else hooks.status('pending','No se pudo actualizar. Se conserva el trabajo local.');needsRefresh=true;return false;}
+      if(!conflicts.length&&M.changed(base,logical(hooks.get())).length){sync('pending');hooks.status('pending','Cambios locales pendientes de sincronizar.');}else{synced();hooks.status('saved','Guardado en la nube.');}await persist();return true;
+    }catch(e){if(e.message==='ACCESS_REVOKED')location.replace('/plataforma.html');else hooks.status('pending','No se pudo actualizar. Se conserva el trabajo local.');needsRefresh=true;sync(navigator.onLine?'error':'offline');return false;}
     finally{inFlight=false;}
   }
   async function synchronize(){if(await refresh()&&!conflicts.length&&M.changed(base,logical(hooks.get())).length)await save();}
@@ -87,7 +91,7 @@
     if(!evaluationId){location.replace('/plataforma.html');return true;}
     const session=await P.session();if(!session){location.replace('/plataforma.html');return true;}
     userId=session.user.id;hooks=callbacks;store=WashStorage.createStore(indexedDB,'user:'+session.user.id+':evaluation:'+evaluationId);
-    const cached=await store.read('sync');lastPosition=cached?.lastPosition||null;
+    const cached=await store.read('sync');lastPosition=cached?.lastPosition||null;lastSyncedAt=cached?.lastSyncedAt||'';sync(navigator.onLine?'connecting':'offline');
     try{
       if(navigator.onLine===false)throw Error('OFFLINE');
       let remote=await readRemote();rows=remote.rows;
@@ -114,10 +118,11 @@
     channel=P.client.channel('wash-evaluation-'+evaluationId).on('postgres_changes',{event:'*',schema:'public',table:'wash_records',filter:'facility_id=eq.'+evaluation.facility_id},()=>{clearTimeout(timer);timer=setTimeout(synchronize,300);}).on('postgres_changes',{event:'UPDATE',schema:'public',table:'wash_evaluations',filter:'id=eq.'+evaluationId},synchronize).on('postgres_changes',{event:'*',schema:'public',table:'wash_participants',filter:'evaluation_id=eq.'+evaluationId},synchronize).subscribe();
     const {data:{subscription}}=P.client.auth.onAuthStateChange((event,s)=>{if(event==='SIGNED_OUT'||(!s&&navigator.onLine)){hooks.readonly(true);hooks.clear();location.replace('/plataforma.html');}});
     setInterval(synchronize,5000);
-    addEventListener('offline',()=>{needsRefresh=true;persistLocal().catch(()=>hooks.status('error','No se pudo guardar en este dispositivo.'));});
-    addEventListener('online',synchronize);
+    addEventListener('offline',()=>{sync('offline');needsRefresh=true;persistLocal().catch(()=>hooks.status('error','No se pudo guardar en este dispositivo.'));});
+    addEventListener('online',()=>{sync('syncing');return synchronize();});
     addEventListener('pagehide',()=>persistLocal().catch(()=>{}));
-    addEventListener('beforeunload',e=>{if(M.stable(hooks.get())!==lastLocal){persistLocal().catch(()=>{});e.preventDefault();e.returnValue='';}});
+    addEventListener('beforeunload',e=>{if(localIdentity(hooks.get())!==lastLocal){persistLocal().catch(()=>{});e.preventDefault();e.returnValue='';}});
+    if(navigator.onLine){if(M.changed(base,logical(hooks.get())).length)sync('pending');else synced();}else sync('offline');
     await persist();return true;
   }
   async function save(){
@@ -125,9 +130,10 @@
     await persist();
     if(inFlight)return false;
     if(conflicts.length){hooks.status('error','Conflicto pendiente: revise las dos versiones.');return false;}
-    if(!navigator.onLine){needsRefresh=true;hooks.status('pending','Guardado en este dispositivo; pendiente de sincronizar.');return false;}
+    if(!navigator.onLine){sync('offline');needsRefresh=true;hooks.status('pending','Guardado en este dispositivo; pendiente de sincronizar.');return false;}
     if(needsRefresh&&!await refresh())return false;
-    inFlight=true;
+    inFlight=true;sync('syncing');
+    const hadPending=Boolean(pending);
     try{
       if(pending){if(!canWrite(pending))throw Error('No tiene permiso para modificar estos datos. Se conserva el borrador local.');await sendPending();}
       const candidates=M.changed(base,logical(hooks.get()));
@@ -142,10 +148,10 @@
         await persist();
         await sendPending();
       }
-      const remaining=M.changed(base,logical(hooks.get())).length;hooks.status(remaining?'pending':'saved',remaining?'Hay cambios nuevos pendientes de sincronizar.':'Guardado en la nube.');return !remaining;
+      const remaining=M.changed(base,logical(hooks.get())).length;if(remaining)sync('pending');else if(hadPending||candidates.length)synced();else sync('synced');await persist();hooks.status(remaining?'pending':'saved',remaining?'Hay cambios nuevos pendientes de sincronizar.':'Guardado en la nube.');return !remaining;
     }catch(e){
       if(e.code==='40001'||e.code==='23505'){hooks.status('error','Actualizando y sincronizando cambios…');inFlight=false;await refresh();return false;}
-      hooks.status('pending','Guardado local; sincronización pendiente: '+e.message);return false;
+      sync(navigator.onLine?'error':'offline');hooks.status('pending','Guardado local; sincronización pendiente: '+e.message);return false;
     }finally{inFlight=false;}
   }
   async function resolve(key,choice){

@@ -128,3 +128,9 @@ El formato nuevo de reevaluación continúa la numeración de nombres anteriores
 ### Organización por rol
 
 Para la administración global, la sección se llama **País y establecimientos**. Países y administradores incluye el total de establecimientos de cada país y permite desplegar su lista. Para administradores, coordinadores y evaluadores se llama **Establecimientos y equipos**. La tabla reúne equipos asignados, transferencia del equipo responsable y participantes de cada medición. Solo los roles autorizados reciben controles de modificación; las mediciones validadas conservan sus participantes históricos. En Evaluaciones queda un único enlace para continuar cada medición abierta.
+
+### Transferencia a otro equipo del país
+
+En Establecimientos y equipos, Transferir equipo responsable ofrece los otros equipos activos del mismo país que tienen coordinador, aunque todavía no estén asignados al establecimiento. La confirmación asigna el nuevo equipo al establecimiento y transfiere el acceso a la medición en una sola transacción. Si hay conflicto de versión o falta permiso, no queda una asignación parcial. El equipo actual se excluye de las opciones. Los participantes anteriores quedan retirados de esa evaluación; se conserva la autoría y las versiones históricas. Las asignaciones anteriores al establecimiento se mantienen, porque pueden seguir interviniendo en su plan y monitoreo.
+
+Al final de la organización, Integrantes de los equipos muestra equipo, integrante, rol, establecimientos y país. Incluye equipos sin integrantes. El propietario consulta todos; el administrador, los de su país; coordinadores y evaluadores, sus propios equipos. Los encabezados desplegables de cada medición ya no muestran una línea superior.

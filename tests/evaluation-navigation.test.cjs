@@ -8,7 +8,7 @@ test('navegación de evaluación conserva validación y abre pasos 4 y 5 sin sal
 });
 test('plantillas válidas, retorno en el pie y accesos duplicados retirados',()=>{
  const index=fs.readFileSync('index.html','utf8'),portal=fs.readFileSync('plataforma.html','utf8');
- for(const h of [index,portal])compile(h.split(/<body[^>]*>/)[1].split('<script')[0],{onError:e=>{throw e;}});
+ for(const h of [index,portal]){const compiled=compile(h.split(/<body[^>]*>/)[1].split('<script')[0],{onError:e=>{throw e;}});new Function('Vue',compiled.code);}
  assert.ok(!index.includes('Espacio de trabajo y acceso'));assert.ok(!index.includes('Establecimiento y evaluaciones'));assert.ok(!index.includes('Plan de mejora vigente'));
  const footer=index.split('<!-- Acciones del pie del menú -->')[1].split('</aside>')[0];assert.ok(footer.indexOf('Retornar a la plataforma')>footer.indexOf('Importar'));assert.ok(!index.includes('<iframe'));assert.ok(!index.includes('cloud-consult'));assert.ok(!index.includes(':disabled="cloudReadonly">'));assert.ok(index.includes('Nueva Revisión')||index.includes('Nueva revisión'));
  const js=fs.readFileSync('js/platform-portal.js','utf8');assert.ok(!js.includes("{id:'plan',name:"));assert.ok(!js.includes("{id:'monitoring',name:"));

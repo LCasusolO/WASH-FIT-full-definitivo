@@ -3,9 +3,10 @@
   const P=root.WashPlatform,M=root.WashPlatformModel;
   let evaluation,facility,store,hooks,base=[],rows=[],conflicts=[],inFlight=false,pending=null,lastView='',channel,timer,active=false;
   let currentOperation=null,pendingLocal=null,readOnly=true,planReadOnly=true,editingTeam='';
-  const context=()=>({teamId:editingTeam});
+  const context=()=>({teamId:editingTeam,includeEmpty:true});
   const logical=data=>M.editorRecords(data,rows,context());
   function canonical(data){const result=WashCore.normalizeDataset(data,INDICATORS_DATA);for(const ind of result.indicators){ind.responsible=WashCore.responsibleName(ind,result.generalInfo.team);ind.responsibleId='';for(const key of ['associatedRisks','action','resources','responsible','correctiveMeasures','monitoringComments'])if(ind[key])ind[key]=WashCore.bulletEdit(ind[key]).value;}return result;}
+  function cachedBase(cached){return M.editorRecords(canonical(M.dataset(cached.base,INDICATORS_DATA,WashCore.defaults(),cached.base.filter(r=>r.kind==='action'))),cached.rows||[],{teamId:cached.editingTeam||'',includeEmpty:true});}
   const evaluationId=new URLSearchParams(location.search).get('evaluation');
   const ready=P.ready;
   async function readRemote(){
@@ -27,6 +28,7 @@
   const recordKey=r=>r.kind+':'+r.record_key;
   const canWrite=r=>['general','indicator'].includes(r.kind)?!readOnly:!planReadOnly;
   const emptyAction=r=>r?.kind==='action'&&M.planFields.every(k=>k==='cost'?r.data[k]==null||r.data[k]==='':k==='trackingStatus'?!r.data[k]||r.data[k]==='No Iniciado':!String(r.data[k]||'').trim());
+  const obsoleteKeys=(previous,local)=>new Set(previous.filter(c=>{const current=local.find(r=>recordKey(r)===c.key);return emptyAction(c.local)&&(!c.base||emptyAction(c.base))&&(!current||emptyAction(current));}).map(c=>c.key));
   async function mergeRemote(before,local,remote,previous=[]){
     // Los campos del plan se proyectan usando las filas de su propia caché.
     // Una vista de consulta nunca publica un borrador antiguo sobre la nube.
@@ -36,8 +38,8 @@
       for(const record of protectedChanges)if(M.stable(backup[recordKey(record)]?.record)!==M.stable(record))backup[recordKey(record)]={record:M.clone(record),savedAt:new Date().toISOString()};
       await store.write('readonlyDrafts',backup);
     }
-    const obsolete=new Set(previous.filter(c=>{const current=local.find(r=>recordKey(r)===c.key);return emptyAction(c.local)&&(!c.base||emptyAction(c.base))&&(!current||emptyAction(current));}).map(c=>c.key));
-    const merged=M.merge(before,local.filter(r=>canWrite(r)&&!obsolete.has(recordKey(r))),remote,{lastWriteKinds:['general','indicator','action','monitor']});
+    const obsolete=obsoleteKeys(previous,local);
+    const merged=M.merge(before,local.filter(r=>canWrite(r)&&!obsolete.has(recordKey(r))),remote,{fieldMergeKinds:['general','indicator','action','monitor']});
     conflicts=M.retainConflicts(previous.filter(c=>canWrite(c.local)&&!obsolete.has(c.key)&&!['general','indicator','action','monitor'].includes(c.local.kind)),merged,remote);
     if(pending&&(!canWrite(pending)||obsolete.has(recordKey(pending)))){pending=null;pendingLocal=null;currentOperation=null;}
     return merged.records;
@@ -74,12 +76,22 @@
     hooks=callbacks;store=WashStorage.createStore(indexedDB,'user:'+session.user.id+':evaluation:'+evaluationId);
     const cached=await store.read('sync');
     try{
-      const remote=await readRemote();rows=remote.rows;
-      if(cached){pending=cached.pending;pendingLocal=cached.pendingLocal;currentOperation=cached.currentOperation;const local=M.editorRecords(cached.local,cached.rows||[],{teamId:cached.editingTeam||''});const merged=await mergeRemote(cached.base,local,remote.logical,cached.conflicts||[]);base=remote.logical;await apply(merged);}
+      let remote=await readRemote();rows=remote.rows;
+      if(cached){
+        pending=cached.pending;pendingLocal=cached.pendingLocal;currentOperation=cached.currentOperation;
+        const local=M.editorRecords(cached.local,cached.rows||[],{teamId:cached.editingTeam||'',includeEmpty:true});
+        let before=cachedBase(cached);
+        // Confirmar el envío previo antes de incorporar campos recibidos de la nube:
+        // esos campos nunca deben confundirse con una nueva edición del usuario.
+        if(pending&&canWrite(pending)&&!obsoleteKeys(cached.conflicts||[],local).has(recordKey(pending))){
+          base=before;rows=cached.rows||[];await hooks.apply(cached.local);await sendPending();before=base;remote=await readRemote();rows=remote.rows;
+        }
+        const merged=await mergeRemote(before,local,remote.logical,cached.conflicts||[]);base=remote.logical;await apply(merged);
+      }
       else {base=remote.logical;await apply(base);}
     }catch(e){
       if(e.message==='ACCESS_REVOKED'||navigator.onLine||!cached)throw e;
-      evaluation=cached.evaluation;editingTeam=cached.editingTeam||'';planReadOnly=cached.planReadOnly??true;hooks.planReadonly?.(planReadOnly);base=cached.base;rows=cached.rows;conflicts=[];pending=cached.pending;pendingLocal=cached.pendingLocal;currentOperation=cached.currentOperation;readOnly=cached.readOnly!==false || !['draft','editing'].includes(evaluation?.status);hooks.readonly(readOnly);await hooks.apply(cached.local);hooks.status('pending','Sin conexión: cambios guardados solo en este dispositivo.');
+      evaluation=cached.evaluation;editingTeam=cached.editingTeam||'';planReadOnly=cached.planReadOnly??true;hooks.planReadonly?.(planReadOnly);base=cachedBase(cached);rows=cached.rows;conflicts=[];pending=cached.pending;pendingLocal=cached.pendingLocal;currentOperation=cached.currentOperation;readOnly=cached.readOnly!==false || !['draft','editing'].includes(evaluation?.status);hooks.readonly(readOnly);await hooks.apply(cached.local);hooks.status('pending','Sin conexión: cambios guardados solo en este dispositivo.');
     }
     active=true;root.WashCloud.active=true;hooks.conflicts(conflicts);
     if(evaluation){
@@ -112,7 +124,8 @@
         const stored=rows.find(r=>r.kind===candidate.kind&&r.record_key===candidate.record_key);
         let data=candidate.data;
         if(candidate.kind==='general'&&Object.hasOwn(data,'photos'))data=await P.uploadPhotos(data,evaluation.facility_id,evaluationId);
-        const request={...(stored?{id:stored.id,version:stored.version}:{}),facility_id:evaluation.facility_id,evaluation_id:evaluationId,kind:candidate.kind,record_key:candidate.record_key,data};
+        const before=base.find(r=>recordKey(r)===recordKey(candidate));
+        const request={...(stored?{id:stored.id,version:stored.version}:{}),facility_id:evaluation.facility_id,evaluation_id:evaluationId,kind:candidate.kind,record_key:candidate.record_key,data,field_changes:M.fieldChanges(before?.data||{},data)};
         if(!pending||M.stable(pending)!==M.stable(request)){pending=request;pendingLocal=M.clone(candidate);currentOperation=crypto.randomUUID();}
         await persist();
         await sendPending();

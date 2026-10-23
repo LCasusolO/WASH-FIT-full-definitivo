@@ -7,10 +7,11 @@ function setup(){
   const database=[{id:crypto.randomUUID(),facility_id:facilityId,evaluation_id:evaluationId,kind:'general',record_key:'general',version:1,data:{...Core.defaults(),facilityName:'Ficticio',countryCode:'PER'}}];
   let editable=true,planEditable=true;
   let current=Core.normalizeDataset(Model.dataset(database,catalog,Core.defaults()),catalog),conflicts=[],lost=false,writes=0;
-  const operations=new Map(),navigator={onLine:true};let listeners={},root,reads=0;
+  const operations=new Map(),navigator={onLine:true};let listeners={},root,reads=0,now=Date.parse('2026-10-23T20:00:00Z'),syncInfo=null,failReads=false;
+  class ClockDate extends Date{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}}
   const platform={ready:Promise.resolve({enabled:true}),enabled:true,requireSession:async()=>({user:{id:userId}}),session:async()=>({user:{id:userId}}),hydratePhotos:async rows=>rows,uploadPhotos:async data=>data,
     client:{channel:()=>({on(){return this;},subscribe(){return this;}}),auth:{onAuthStateChange:()=>({data:{subscription:{}}})}},
-    rows:async table=>{reads++;if(!navigator.onLine)throw Error('offline');return table==='evaluations'?[{id:evaluationId,facility_id:facilityId,team_id:teamId,status:'editing'}]:table==='records'?Core.clone(database):table==='participants'?(editable?[{user_id:userId,active:true,role:'evaluator'}]:[]):table==='facilities'?[{id:facilityId,country_id:'country'}]:table==='assignments'?[{facility_id:facilityId,team_id:teamId}]:table==='team_members'?(planEditable?[{team_id:teamId,user_id:userId,role:'coordinator'}]:[]):[];},
+    rows:async table=>{reads++;if(failReads)throw Error('Servidor no disponible');if(!navigator.onLine)throw Error('offline');return table==='evaluations'?[{id:evaluationId,facility_id:facilityId,team_id:teamId,status:'editing'}]:table==='records'?Core.clone(database):table==='participants'?(editable?[{user_id:userId,active:true,role:'evaluator'}]:[]):table==='facilities'?[{id:facilityId,country_id:'country'}]:table==='assignments'?[{facility_id:facilityId,team_id:teamId}]:table==='team_members'?(planEditable?[{team_id:teamId,user_id:userId,role:'coordinator'}]:[]):[];},
     command:async(op,data,operation)=>{
       if(operations.has(operation))return Core.clone(operations.get(operation));
       if(!navigator.onLine)throw Error('offline');if(op!=='save_record')return {};
@@ -23,12 +24,12 @@ function setup(){
   };
   function boot(){
     listeners={};root={WashPlatform:platform,WashPlatformModel:Model,WashCore:Core};
-    const context=vm.createContext({window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,crypto,setInterval(){},setTimeout(){},clearTimeout(){},addEventListener(name,fn){(listeners[name]||=[]).push(fn);}});
+    const context=vm.createContext({window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,Date:ClockDate,crypto,setInterval(){},setTimeout(){},clearTimeout(){},addEventListener(name,fn){(listeners[name]||=[]).push(fn);}});
     vm.runInContext(fs.readFileSync('js/platform-editor.js','utf8'),context);
   }
   boot();
-  const hooks={get:()=>Core.clone(current),apply:async data=>{current=Core.clone(data);},readonly(){},status(){},conflicts:data=>{conflicts=data;},position(){}};
-  return {teamId,get reads(){return reads;},async dispatch(name){await Promise.all((listeners[name]||[]).map(fn=>fn()));},reopen(){current=Core.normalizeDataset(Model.dataset([],catalog,Core.defaults()),catalog);conflicts=[];boot();},setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},get cloud(){return root.WashCloud;},hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
+  const hooks={sync:value=>{syncInfo=value;},get:()=>Core.clone(current),apply:async data=>{current=Core.clone(data);},readonly(){},status(){},conflicts:data=>{conflicts=data;},position(){}};
+  return {teamId,advance(){now+=60000;},failReads(value){failReads=value;},get syncInfo(){return syncInfo;},get reads(){return reads;},async dispatch(name,event){await Promise.all((listeners[name]||[]).map(fn=>fn(event)));},reopen(){current=Core.normalizeDataset(Model.dataset([],catalog,Core.defaults()),catalog);conflicts=[];boot();},setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},get cloud(){return root.WashCloud;},hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
 }
 test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar el cambio',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();
@@ -179,4 +180,20 @@ test('reapertura offline sin caché falla sin habilitar edición y conserva perm
  const missing=setup();missing.navigator.onLine=false;await assert.rejects(missing.cloud.connect(missing.hooks),/OFFLINE/);assert.equal(missing.cloud.active,false);
  const app=setup();addPlan(app);await app.cloud.connect(app.hooks);app.navigator.onLine=false;app.current.indicators[0].action='Borrador sin conexión';await app.cloud.persistLocal();app.reopen();await app.cloud.connect(app.hooks);
  app.setEditable(false);app.setPlanEditable(false);app.navigator.onLine=true;const writes=app.writes;await app.dispatch('online');assert.equal(app.writes,writes);assert.match(app.current.indicators[0].action,/Acción de la nube/);assert.match((await app.store.read('readonlyDrafts'))['action:editor:A_1a'].record.data.action,/Borrador sin conexión/);
+});
+
+
+test('última sincronización se conserva offline y solo avanza tras completar comunicación con el servidor',async()=>{
+ const app=setup();await app.cloud.connect(app.hooks);const initial=app.syncInfo.lastSyncedAt;assert.equal(initial,'2026-10-23T20:00:00.000Z');assert.equal(app.syncInfo.state,'synced');app.advance();await app.cloud.save();assert.equal(app.syncInfo.lastSyncedAt,initial,'guardar sin cambios no finge un contacto nuevo');
+ app.navigator.onLine=false;app.current.indicators[0].score=1;await app.cloud.persistLocal();assert.equal(app.syncInfo.state,'offline');assert.equal(app.syncInfo.lastSyncedAt,initial);app.reopen();await app.cloud.connect(app.hooks);assert.equal(app.syncInfo.state,'offline');assert.equal(app.syncInfo.lastSyncedAt,initial);
+ app.navigator.onLine=true;app.failReads(true);await app.dispatch('online');assert.equal(app.syncInfo.state,'error');assert.equal(app.syncInfo.lastSyncedAt,initial);app.failReads(false);await app.dispatch('online');assert.equal(app.syncInfo.state,'synced');assert.notEqual(app.syncInfo.lastSyncedAt,initial);assert.equal((await app.store.read('sync')).lastSyncedAt,app.syncInfo.lastSyncedAt);
+});
+
+test('un guardado sin confirmar no adelanta la hora de sincronización',async()=>{
+ const app=setup();await app.cloud.connect(app.hooks);const initial=app.syncInfo.lastSyncedAt;app.advance();app.current.indicators[0].score=1;app.loseResponse();assert.equal(await app.cloud.save(),false);assert.equal(app.syncInfo.lastSyncedAt,initial);assert.equal(app.syncInfo.state,'error');await app.cloud.refresh();assert.equal(app.syncInfo.state,'synced');assert.notEqual(app.syncInfo.lastSyncedAt,initial);
+});
+
+
+test('la fecha transitoria del snapshot no impide salir después de guardar localmente',async()=>{
+ const app=setup();const original=app.hooks.get;app.hooks.get=()=>({...original(),savedAt:new Date().toISOString()});await app.cloud.connect(app.hooks);app.advance();let prevented=0;await app.dispatch('beforeunload',{preventDefault(){prevented++;}});assert.equal(prevented,0);app.current.indicators[0].notes='Pendiente de conservar';await app.dispatch('beforeunload',{preventDefault(){prevented++;}});assert.equal(prevented,1);await app.cloud.persistLocal();await app.dispatch('beforeunload',{preventDefault(){prevented++;}});assert.equal(prevented,1);
 });

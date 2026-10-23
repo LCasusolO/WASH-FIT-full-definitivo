@@ -199,6 +199,7 @@
 
       <!-- MAIN CONTENT SUITE -->
       <main class="flex-1 flex flex-col min-h-screen bg-white print-page overflow-auto lg:border-l lg:border-paho-grid">
+      <section v-if="cloudMode" class="sync-banner no-print" :class="'sync-'+syncView.tone" aria-label="Estado de conexión y sincronización"><div class="sync-main"><span class="sync-dot" aria-hidden="true"></span><div><strong role="status" aria-live="polite">{{syncView.label}}</strong><p>{{syncView.detail}}</p></div></div><small class="sync-time">Última sincronización: <time v-if="syncView.timestamp" :datetime="syncView.timestamp">{{syncView.time}}</time><span v-else>{{syncView.time}}</span></small></section>
       <section v-if="cloudMode && cloudConflicts.length" class="cloud-sync-conflicts no-print" aria-label="Resolver conflictos de sincronización">
         <article v-for="conflict in cloudConflicts" :key="conflict.key" class="cloud-conflict">
           <h2>{{ cloudConflictTitle(conflict) }}</h2>

@@ -27,3 +27,9 @@ test('un conflicto sigue bloqueando el guardado tras nuevos refrescos y al reabr
   assert.equal(Model.retainConflicts(first.conflicts,refresh,[row(2)]).length,1,'no auto resolver usando el último guardado');
   assert.equal(Model.retainConflicts(first.conflicts,Model.merge([row(2)],[row(1)],[row(1)]),[row(1)]).length,0,'confirmación de una operación idéntica');
 });
+
+
+test('estado de sincronización muestra conexión y fecha real sin confundir un guardado local',()=>{
+ const time='2026-10-23T20:00:00.000Z',offline=Model.syncDisplay(false,'synced',time);assert.equal(offline.label,'Sin conexión');assert.equal(offline.timestamp,time);assert.match(offline.detail,/dispositivo/);assert.ok(offline.time.includes('2026'));
+ assert.equal(Model.syncDisplay(true,'pending',time).label,'En línea · Cambios pendientes');assert.equal(Model.syncDisplay(true,'error',time).label,'En línea · Sin sincronizar');assert.equal(Model.syncDisplay(true,'syncing',time).tone,'syncing');assert.equal(Model.syncDisplay(true,'synced',time).tone,'synced');assert.equal(Model.syncDisplay(false,'offline','').time,'Aún no realizada');assert.equal(Model.syncDisplay(true,'synced','invalid').timestamp,'');
+});

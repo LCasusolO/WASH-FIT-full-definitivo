@@ -148,6 +148,8 @@ createApp({
     const cloudPlanReadonly = ref(false);
     const cloudActiveReadonly = computed(()=>cloudMode.value && (['step4','step5'].includes(activeView.value)?cloudPlanReadonly.value:cloudReadonly.value));
     const cloudStatus = ref('');
+    const cloudSyncState=ref('connecting'),lastSyncedAt=ref('');
+    const syncView=computed(()=>window.WashPlatformModel.syncDisplay(isOnline.value,cloudSyncState.value,lastSyncedAt.value));
     const cloudConflicts = ref([]);
     const cloudConflictReadonly = conflict => ['general','indicator'].includes(conflict.local.kind) ? cloudReadonly.value : cloudPlanReadonly.value;
     const cloudConflictTitle = conflict => ({'general:location':'Revisar la ubicación del establecimiento','general:identification':'Revisar los datos del establecimiento','general:team':'Revisar el equipo implementador','general:population':'Revisar la población atendida','general:summary':'Revisar el resumen','general:photos':'Revisar las fotografías'})[conflict.key] || 'Revisar cambios de la evaluación';
@@ -1119,6 +1121,7 @@ createApp({
             apply: async dataset => { loadingDraft.value = true; try { applyDataset(dataset); await nextTick(); } finally { loadingDraft.value = false; } },
             readonly: value => { cloudReadonly.value = value; },
             planReadonly: value => {cloudPlanReadonly.value=value;},
+            sync: value=>{cloudSyncState.value=value.state;lastSyncedAt.value=value.lastSyncedAt;},
             status: (state, text) => { saveState.value = state; cloudStatus.value = text; },
             conflicts: value => { cloudConflicts.value = value; },
             position: value => { if (['instructions','general','assessment','step3','step4','step5','dashboard'].includes(value.view)){activeView.value = value.view;} if (modulesList.some(m => m.id === value.module)) activeModuleTab.value = value.module; },
@@ -1153,7 +1156,7 @@ createApp({
     const facilityValuation = computed(() => answeredCount.value ? WashCore.valuation(answeredCount.value, totalVisibleIndicators.value, overallCompliance.value) : {label: 'Sin indicadores evaluados', colorClass: 'text-paho-gray-dark'});
 
     return {
-      cloudPlanReadonly,cloudActiveReadonly,cloudMode, cloudReadonly, cloudStatus, cloudConflicts, cloudConflictReadonly, cloudConflictTitle, cloudConflictText, downloadLocalConflictCopy, resolveCloudConflict, openWorkspace, consultModule,
+      syncView,lastSyncedAt,cloudPlanReadonly,cloudActiveReadonly,cloudMode, cloudReadonly, cloudStatus, cloudConflicts, cloudConflictReadonly, cloudConflictTitle, cloudConflictText, downloadLocalConflictCopy, resolveCloudConflict, openWorkspace, consultModule,
       loadingDraft, saveState, savedAt, saveLabel, hasBackup, isOnline, offlineReady, photoBusy, isMobile,
       newEvaluation, restoreBackup, saveDraft, handlePhotoDrop, handlePhotoKeys,
       populationWarning, reportPreview, reportRendering, reportRadarSvg, reportIndicators, reportRisks, reportPlans,

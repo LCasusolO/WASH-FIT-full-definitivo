@@ -144,10 +144,9 @@ createApp({
     const indicators = ref(WashCore.clone(INDICATORS_DATA).map(ind => ({...ind, assessmentStatus: ''})));
     const loadingDraft = ref(true);
     const cloudMode = ref(false);
-    const cloudPanels = ref({step4:false,step5:false});
-    const cloudPanelUrl = view => window.WashCloud?.workspaceUrl(view)||'';
-    const resizeCloudPanel = event => {const frame=event.target;const resize=()=>{if(frame.contentDocument)frame.style.height=Math.max(650,frame.contentDocument.documentElement.scrollHeight)+'px';};resize();if(window.ResizeObserver&&frame.contentDocument?.body)new window.ResizeObserver(resize).observe(frame.contentDocument.body);};
     const cloudReadonly = ref(false);
+    const cloudPlanReadonly = ref(false);
+    const cloudActiveReadonly = computed(()=>cloudMode.value && (['step4','step5'].includes(activeView.value)?cloudPlanReadonly.value:cloudReadonly.value));
     const cloudStatus = ref('');
     const cloudConflicts = ref([]);
     const resolveCloudConflict = (key, choice) => window.WashCloud.resolve(key, choice);
@@ -509,6 +508,7 @@ createApp({
     const assessmentPending = computed(() => getFilteredIndicatorsByModule.value.filter(ind => !WashCore.assessmentComplete(ind)));
     const assessmentInvalid = ind => assessmentAttempted.value && !WashCore.assessmentComplete(ind);
     const validateAssessmentDomain = () => {
+      if(cloudMode.value && cloudReadonly.value)return true;
       assessmentAttempted.value = true;
       if (!assessmentPending.value.length) return true;
       triggerToast('Seleccione una respuesta o explique en Notas/hallazgos por qué no se aplica el indicador o no pudo evaluarlo.', 'error');
@@ -840,7 +840,6 @@ createApp({
     const switchView = (viewName) => {
       if (activeView.value === 'assessment' && ['step3', 'step4', 'step5', 'dashboard'].includes(viewName) && !validateAssessmentDomain()) return;
       activeView.value = viewName;
-      if(cloudMode.value&&Object.hasOwn(cloudPanels.value,viewName))cloudPanels.value[viewName]=true;
       if (cloudMode.value) void window.WashCloud.position(viewName, activeModuleTab.value);
       mobileMenuOpen.value = false;
 
@@ -931,6 +930,7 @@ createApp({
     let historyOrigin = null;
     const latestReview = ind => ind.history?.at(-1) || null;
     const openNewReview = ind => {
+      if(cloudMode.value && cloudPlanReadonly.value)return;
       reviewOrigin = document.activeElement;
       reviewIndicator.value = ind;
       reviewDraft.value = WashCore.createReviewDraft(ind, generalInfo.value.team);
@@ -945,10 +945,12 @@ createApp({
       nextTick(() => reviewOrigin?.focus());
     };
     const saveNewReview = () => {
-      if (reviewSaving.value || !reviewIndicator.value || !reviewDraft.value) return;
+      if ((cloudMode.value && cloudPlanReadonly.value) || reviewSaving.value || !reviewIndicator.value || !reviewDraft.value) return;
       reviewSaving.value = true;
       try {
-        WashCore.saveReviewDraft(reviewIndicator.value, reviewDraft.value, generalInfo.value.team);
+        const current=indicators.value.find(ind=>ind.id===reviewIndicator.value.id);
+        if(!current)throw Error('El indicador ya no está disponible. Vuelva a abrir la revisión.');
+        WashCore.saveReviewDraft(current, reviewDraft.value, generalInfo.value.team);
         closeReviewEditor();
         triggerToast('Revisión registrada.');
       } catch (error) { reviewError.value = error.message; }
@@ -1105,9 +1107,10 @@ createApp({
             get: snapshot,
             apply: async dataset => { loadingDraft.value = true; try { applyDataset(dataset); await nextTick(); } finally { loadingDraft.value = false; } },
             readonly: value => { cloudReadonly.value = value; },
+            planReadonly: value => {cloudPlanReadonly.value=value;},
             status: (state, text) => { saveState.value = state; cloudStatus.value = text; },
             conflicts: value => { cloudConflicts.value = value; },
-            position: value => { if (['instructions','general','assessment','step3','step4','step5','dashboard'].includes(value.view)){activeView.value = value.view;if(Object.hasOwn(cloudPanels.value,value.view))cloudPanels.value[value.view]=true;} if (modulesList.some(m => m.id === value.module)) activeModuleTab.value = value.module; },
+            position: value => { if (['instructions','general','assessment','step3','step4','step5','dashboard'].includes(value.view)){activeView.value = value.view;} if (modulesList.some(m => m.id === value.module)) activeModuleTab.value = value.module; },
             clear: () => { generalInfo.value = WashCore.defaults(); indicators.value = []; }
           });
           if (window.WashCloud.active) { await window.WashCloud.save(); if (cloudReadonly.value) cloudStatus.value = 'Solo lectura: medición validada, en revisión o sin permiso de edición.'; if (activeView.value === 'general') initMap(); }
@@ -1139,7 +1142,7 @@ createApp({
     const facilityValuation = computed(() => answeredCount.value ? WashCore.valuation(answeredCount.value, totalVisibleIndicators.value, overallCompliance.value) : {label: 'Sin indicadores evaluados', colorClass: 'text-paho-gray-dark'});
 
     return {
-      cloudPanels,cloudPanelUrl,resizeCloudPanel,cloudMode, cloudReadonly, cloudStatus, cloudConflicts, resolveCloudConflict, openWorkspace, consultModule,
+      cloudPlanReadonly,cloudActiveReadonly,cloudMode, cloudReadonly, cloudStatus, cloudConflicts, resolveCloudConflict, openWorkspace, consultModule,
       loadingDraft, saveState, savedAt, saveLabel, hasBackup, isOnline, offlineReady, photoBusy, isMobile,
       newEvaluation, restoreBackup, saveDraft, handlePhotoDrop, handlePhotoKeys,
       populationWarning, reportPreview, reportRendering, reportRadarSvg, reportIndicators, reportRisks, reportPlans,

@@ -82,8 +82,12 @@ establecer la política de retención y el mantenimiento de respaldos.
 
 `/api/accounts` comunica el navegador con la Edge Function `wash-accounts`. La función valida la identidad con Supabase Auth y utiliza un RPC reservado a `service_role` para aplicar las reglas de administración por país. Las credenciales privilegiadas permanecen en Supabase. `wash_accounts`, las políticas RLS y los controles de sesión bloquean cuentas suspendidas y cambios de contraseña pendientes. El registro público está cerrado y los flujos anteriores de invitación quedan deshabilitados. Véase `CUENTAS-ADMINISTRADAS.md`.
 
-### Navegación de los pasos 4 y 5
+### Navegación y pasos originales
 
-La plataforma muestra Evaluaciones, País y equipos, Usuarios y permisos e Historial. El plan y el monitoreo se abren desde los pasos de `index.html`, dentro de la evaluación. Los paneles usan el mismo origen y validan conjuntamente el identificador de evaluación y establecimiento; conservan las políticas y operaciones de guardado existentes. Cada paso mantiene su formulario local por usuario, establecimiento y tipo de panel, para no sobrescribir el borrador del otro paso. La navegación entre pasos conserva los paneles abiertos.
+Los pasos 4 y 5 conservan las tablas originales de `index.html`, sin paneles incrustados. La plataforma mantiene Evaluaciones, País y equipos, Usuarios y permisos e Historial. El retorno aparece bajo Exportar e Importar. No hay franja adicional de accesos ni botones de dominios fuera de la navegación original.
 
-La franja superior de accesos duplicados se retiró. El retorno al espacio de trabajo está debajo de Exportar e Importar y sincroniza las respuestas antes de navegar. Los conflictos se siguen mostrando cuando existen y la consulta de dominios permanece disponible en mediciones de solo lectura.
+`editorRecords` adapta los campos del plan a registros `action` y las revisiones a registros `monitor` con historial por indicador. Las respuestas y puntuaciones permanecen en `general`/`indicator`; el monitoreo no sobrescribe la medición validada. El editor recupera los datos existentes y aplica versiones y conflictos al guardar. El historial se conserva también al consultar sin equipo asignado. El guardado de una revisión utiliza el indicador actual, aunque una sincronización haya reemplazado su objeto mientras el diálogo estaba abierto.
+
+Los permisos de respuestas y de plan/monitoreo se verifican por separado. Los controles editables se deshabilitan individualmente: los botones de Instrucciones y navegación siguen disponibles en solo lectura. Los dominios se consultan desde sus pestañas originales.
+
+Las exportaciones nuevas incorporan un corte independiente del monitoreo, sin modificar snapshots de validación ni exportaciones anteriores. Los reintentos conservan el mismo corte. JSON y PDF incluyen las revisiones.

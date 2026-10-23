@@ -119,3 +119,12 @@ corrección adicional.
 - Paneles con contexto de evaluación y establecimiento y formularios separados por paso.
 - Navegador QA: alta y guardado de una acción, conservación de borrador al alternar pasos, apertura de monitoreo y retorno al establecimiento correcto.
 - Retorno bajo Exportar/Importar; franja superior y accesos duplicados retirados.
+
+## Restauración de pasos originales — 23 de octubre de 2026
+
+- **132 pruebas aprobadas**, sin omisiones, y build correcto.
+- Se sustituyeron los paneles añadidos anteriormente por las tablas originales de los pasos 4 y 5.
+- Navegador con evaluación validada: los seis botones de Instrucciones abren sus pasos; no aparece la fila extra de dominios.
+- Edición del plan, nueva revisión e historial comprobados tras recargar; la puntuación inicial permanece intacta.
+- Regresión cubierta: una sincronización durante el diálogo no deja la revisión en un objeto obsoleto.
+- Exportación con monitoreo independiente, RLS, snapshots validados intactos y reintento idempotente comprobados en SQL.

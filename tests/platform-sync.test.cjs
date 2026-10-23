@@ -25,7 +25,7 @@ function setup(){
   const context=vm.createContext({window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,crypto,setInterval(){},setTimeout(){},clearTimeout(){},addEventListener(){}});
   vm.runInContext(fs.readFileSync('js/platform-editor.js','utf8'),context);
   const hooks={get:()=>Core.clone(current),apply:async data=>{current=Core.clone(data);},readonly(){},status(){},conflicts:data=>{conflicts=data;},position(){}};
-  return {setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},cloud:root.WashCloud,hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
+  return {teamId,setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},cloud:root.WashCloud,hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
 }
 test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar el cambio',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();
@@ -90,14 +90,32 @@ test('al perder permiso sobre el plan se actualiza desde la nube sin publicar un
  app.database.find(r=>r.kind==='action').data.cost=300;await app.cloud.refresh();assert.equal(app.current.indicators[0].cost,300);assert.equal(app.conflicts.length,0);
 });
 
-test('se conservan conflictos reales de un plan editable y los cambios locales de un plan aún autorizado',async()=>{
+test('un plan editable se sincroniza automáticamente y conserva la edición autorizada tras el cierre',async()=>{
  const app=setup();addPlan(app);await app.cloud.connect(app.hooks);app.current.indicators[0].action='Cambio real local';app.database.find(r=>r.kind==='action').data.cost=300;
- await app.cloud.refresh();assert.equal(app.conflicts.length,1);assert.equal(app.conflicts[0].local.kind,'action');assert.equal(app.writes,0);
+ await app.cloud.refresh();assert.equal(app.conflicts.length,0);assert.match(app.current.indicators[0].action,/Cambio real local/);assert.equal(await app.cloud.save(),true);assert.match(app.database.find(r=>r.kind==='action').data.action,/Cambio real local/);
  const live=setup();addPlan(live);await live.cloud.connect(live.hooks);live.current.indicators[0].action='Plan vigente';live.setEditable(false);await live.cloud.refresh();assert.equal(live.conflicts.length,0);assert.equal(live.current.indicators[0].action,'Plan vigente');assert.equal(await live.cloud.save(),true);assert.equal(live.database.find(r=>r.kind==='action').data.action,'Plan vigente');
 });
 
 test('limpiar un conflicto vacío antiguo no descarta una edición real realizada después',async()=>{
  const app=setup();await app.cloud.connect(app.hooks);const row=addPlan(app);await app.cloud.refresh();const cache=await app.store.read('sync');
  cache.conflicts=[{key:'action:'+row.record_key,local:{kind:'action',record_key:row.record_key,data:{indicator_id:'A_1a',cost:null,action:'',trackingStatus:'No Iniciado'}},remote:{kind:row.kind,record_key:row.record_key,data:row.data}}];cache.local.indicators[0].action='Acción nueva aún no enviada';await app.store.write('sync',cache);
- await app.cloud.connect(app.hooks);assert.match(app.current.indicators[0].action,/Acción nueva aún no enviada/);assert.equal(app.conflicts.length,1);assert.equal(app.writes,0);
+ await app.cloud.connect(app.hooks);assert.match(app.current.indicators[0].action,/Acción nueva aún no enviada/);assert.equal(app.conflicts.length,0);assert.equal(app.writes,0);
+});
+
+test('datos generales y monitoreo concurrentes se sincronizan sin aviso y adoptan después el último guardado remoto',async()=>{
+ const app=setup();const g=app.database[0];const row={id:crypto.randomUUID(),facility_id:g.facility_id,kind:'monitor',record_key:'editor:'+app.teamId+':A_1a:initial',version:1,status:'draft',data:{team_id:app.teamId,editor_indicator_id:'A_1a',editor_fields:{nextReviewDate:'2026-12-31'}}};app.database.push(row);await app.cloud.connect(app.hooks);
+ app.current.generalInfo.summary='Resumen local';app.current.indicators[0].nextReviewDate='2027-01-01';app.database[0].data.summary='Resumen remoto';row.data.editor_fields.nextReviewDate='2028-01-01';row.version++;
+ await app.cloud.refresh();assert.equal(app.conflicts.length,0);assert.equal(app.current.generalInfo.summary,'Resumen local');assert.equal(app.current.indicators[0].nextReviewDate,'2027-01-01');assert.equal(await app.cloud.save(),true);
+ const saved=app.database.find(r=>r.kind==='monitor');assert.equal(saved.data.editor_fields.nextReviewDate,'2027-01-01');saved.data.editor_fields.nextReviewDate='2029-01-01';saved.version++;await app.cloud.refresh();assert.equal(app.current.indicators[0].nextReviewDate,'2029-01-01');assert.equal(app.conflicts.length,0);
+});
+
+test('un commit con respuesta perdida no vuelve a escribir encima de un guardado remoto posterior al refrescar',async()=>{
+ const app=setup();await app.cloud.connect(app.hooks);app.current.generalInfo.summary='Commit A';app.loseResponse();assert.equal(await app.cloud.save(),false);
+ const row=app.database.find(r=>r.record_key==='summary');row.data.summary='Commit B posterior';row.version++;const writes=app.writes;
+ await app.cloud.refresh();assert.equal(app.current.generalInfo.summary,'Commit B posterior');assert.equal(app.writes,writes);assert.equal((await app.store.read('sync')).pending,null);assert.equal(app.conflicts.length,0);
+});
+
+test('resolver un reintento conserva la edición nueva realizada mientras faltaba la confirmación',async()=>{
+ const app=setup();await app.cloud.connect(app.hooks);app.current.generalInfo.summary='Commit A';app.loseResponse();await app.cloud.save();app.current.generalInfo.summary='Edición C aún no enviada';app.database.find(r=>r.record_key==='summary').data.summary='Commit B posterior';
+ await app.cloud.refresh();assert.equal(app.current.generalInfo.summary,'Edición C aún no enviada');assert.equal(await app.cloud.save(),true);assert.equal(app.database.find(r=>r.record_key==='summary').data.summary,'Edición C aún no enviada');assert.equal(app.conflicts.length,0);
 });

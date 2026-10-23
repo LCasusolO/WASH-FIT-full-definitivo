@@ -52,7 +52,7 @@
     for(const r of remote){const key=r.kind+':'+r.record_key;const before=b.get(key);const mine=l.get(key);
       if(!mine||stable(mine.data)===stable(before?.data)||stable(mine.data)===stable(r.data))result.push(r);
       else if(stable(r.data)===stable(before?.data))result.push({...r,data:mine.data});
-      else if(options.lastWriteIndicators&&r.kind==='indicator')result.push({...r,data:mine.data});
+      else if((options.lastWriteIndicators&&r.kind==='indicator')||options.lastWriteKinds?.includes(r.kind))result.push({...r,data:mine.data});
       else {result.push({...r,data:mine.data});conflicts.push({key,base:before,local:mine,remote:r});}
     }
     for(const [key,mine] of l)if(!remote.some(r=>r.kind+':'+r.record_key===key))result.push(mine);

@@ -161,7 +161,7 @@ En Evaluaciones se ve el avance por establecimiento, los cinco pasos y los pendi
 
 La comprobación incluye identificación, ubicación y población atendida total (un entero no negativo obligatorio), respuestas o justificaciones de los indicadores aplicables, problema/riesgos/gravedad/probabilidad de las brechas, acciones/recursos/responsable/plazo/presupuesto (0 si no requiere gasto), y fecha prevista de monitoreo. Los resultados futuros del monitoreo no bloquean el cierre. El plan y el monitoreo continúan en el establecimiento.
 
-Los cambios en indicadores se sincronizan automáticamente. Si dos personas modifican el mismo indicador, prevalece el último guardado aceptado por el servidor; editar indicadores distintos conserva ambos cambios. Los reintentos de un guardado no restauran versiones antiguas. Se mantienen las comprobaciones de permisos y las protecciones de concurrencia de datos generales, plan y monitoreo. Sin conexión se conserva el borrador; al reconectar vuelve a sincronizarse.
+Los cambios en indicadores se sincronizan automáticamente. Si dos personas modifican el mismo indicador, prevalece el último guardado aceptado por el servidor; editar indicadores distintos conserva ambos cambios. Los reintentos de un guardado no restauran versiones antiguas. La misma regla del último guardado se aplica a datos generales, plan y monitoreo, con comprobación de permisos y estados. Sin conexión se conserva el borrador; al reconectar vuelve a sincronizarse.
 
 El avance de cada paso se presenta como porcentaje; el 100 % se reserva para pasos completos. Ver campos pendientes abre los enlaces de corrección. En indicadores sin calificación, cualquier comentario no vacío permite completar la respuesta, igual en el navegador y en el servidor; no se exige una explicación adicional al texto «No aplica».
 
@@ -169,4 +169,10 @@ El avance de cada paso se presenta como porcentaje; el 100 % se reserva para pas
 
 Al consultar una evaluación sin permiso para editar una sección, sus datos se toman automáticamente de la nube. Los borradores locales anteriores de esa sección se conservan aparte en el almacenamiento del navegador y no se envían al servidor ni exigen resolver un conflicto. Esto también limpia conflictos pendientes de una caché antigua en modo de consulta.
 
-Al reabrir una evaluación, el borrador se reconstruye con las filas de su propia caché. Un plan creado después por otra persona no genera un conflicto artificial con campos vacíos. Los conflictos vacíos anteriores se descartan cuando no contienen una edición real; los cambios reales concurrentes de un plan editable siguen protegidos. La edición del plan y monitoreo autorizada por pertenencia al equipo continúa disponible aunque la medición esté en solo lectura.
+Al reabrir una evaluación, el borrador se reconstruye con las filas de su propia caché. Un plan creado después por otra persona no genera un conflicto artificial con campos vacíos. Los conflictos vacíos anteriores se descartan cuando no contienen una edición real; los cambios reales concurrentes de un plan editable se sincronizan con la regla del último guardado aceptado por el servidor. La edición del plan y monitoreo autorizada por pertenencia al equipo continúa disponible aunque la medición esté en solo lectura.
+
+### Sincronización automática de los cinco pasos
+
+Coordinadores y evaluadores no resuelven avisos de versiones locales frente a la nube. Datos generales, indicadores, acciones del plan y borradores de monitoreo usan el último guardado aceptado por el servidor para el mismo registro; los registros distintos conservan sus cambios independientes. Las diferencias antiguas pendientes se incorporan automáticamente al reconectar si siguen siendo editables. Los usuarios en consulta reciben la nube sin publicar borradores.
+
+Los reintentos conservan su identificador de operación: si un guardado ya fue aceptado, confirmarlo otra vez no sobrescribe un guardado posterior ni descarta una edición nueva pendiente del usuario. Los permisos de edición y los registros de monitoreo en revisión o validados conservan sus bloqueos; la sincronización no modifica copias históricas.

@@ -147,7 +147,7 @@ pertenecer al equipo y estar asignado a la evaluación.
 
 ## 7. Configuración inicial de un país
 
-Desde **País y equipos**, el propietario:
+Desde **País y establecimientos**, el propietario:
 
 1. Registra el país con su código de tres letras, por ejemplo `PER`.
 2. Selecciona el país.

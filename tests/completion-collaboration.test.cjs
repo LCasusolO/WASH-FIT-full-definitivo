@@ -33,6 +33,8 @@ test('comprobación real de cinco pasos, cierre autorizado e indicadores concurr
   const progress=await checks();const rows=(await r.queryAs(token,"select * from wash_records where evaluation_id=$1 and kind='indicator'",[ev.id])).rows;const indicators=catalog.map(i=>({...i,...rows.find(r=>r.record_key===i.id)?.data}));
   assert.equal(progress.steps[1].total-1,indicators.filter(i=>Core.visibleIndicator(i,{...general.data,level},indicators)).length,'SQL y catálogo usan la misma aplicabilidad');
  }
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_records set data=data||'{\"score\":0}'::jsonb where evaluation_id=$1 and kind='indicator'",[ev.id]);await fill(r.db,ev.id);await r.db.query("update wash_records set data=data-'cost' where evaluation_id=$1 and kind='action' and data->>'indicator_id'='A_2'",[ev.id]);});
+ p=await checks();assert.equal(p.complete,false);assert.equal(p.percent,99,'no muestra 100% mientras existan pendientes');await r.queued(()=>fill(r.db,ev.id));
  const operation=crypto.randomUUID(),payload={evaluation_id:ev.id,version:1};const completed=await command('complete_evaluation',payload,operation);assert.equal(completed.status,'validated');assert.deepEqual(await command('complete_evaluation',payload,operation),completed);
  assert.equal((await r.queryAs(token,"select count(*)::int as n from wash_snapshots where evaluation_id=$1 and purpose='validation'",[ev.id])).rows[0].n,1);
  await assert.rejects(command('save_record',{id:first.id,version:1,data:{score:0}},crypto.randomUUID(),second),/FORBIDDEN/);

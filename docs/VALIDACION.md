@@ -97,3 +97,8 @@ QA aislado se comprobaron el rol visible y la confirmación de Actualizar con lo
 archivos físicos versionados, sin errores ni advertencias de consola. La
 verificación del nuevo esquema en producción requiere integrar y desplegar esta
 corrección adicional.
+
+
+## Cuentas administradas
+
+121 pruebas aprobadas, build correcto y plantilla Vue compilada. El flujo de alta, confirmación simulada, cambio obligatorio e ingreso por usuario se comprobó en navegador contra el mismo SQL y handler con Auth ficticio. Las pruebas incluyen alta de administrador y evaluador, aislamiento nacional, reintentos, restablecimiento, suspensión, sesiones anteriores y pérdida de permisos de coordinador sin modificar snapshots. El registro público se desactivó en Supabase y su API devolvió 422 para un intento de alta. La infraestructura conserva las dos cuentas existentes. La confirmación SMTP de nuevas personas se completará cuando sus destinatarios utilicen el aplicativo; no se crearon cuentas de prueba en producción.

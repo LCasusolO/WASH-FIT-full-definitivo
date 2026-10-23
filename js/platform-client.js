@@ -31,6 +31,12 @@
   async function request(url,options={}){
     const s=await session();return fetch(url,{...options,headers:{...options.headers,...(s?{Authorization:'Bearer '+s.access_token}:{})}});
   }
+  async function accountAction(action,data={}){
+    const send=['login','recover','send_confirmation'].includes(action)?fetch:request;
+    const response=await send('/api/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...data})});
+    const result=await response.json();if(!response.ok){const error=Error(result.error||'No se pudo completar la operación.');error.code=result.code;throw error;}return result;
+  }
+  async function accountStatus(){await ready;const {data,error}=await client.rpc('wash_account_status');if(error)throw error;return data;}
   async function hydratePhotos(records){
     return Promise.all(records.map(async r=>{
       if(r.kind!=='general'||!r.data.photos)return r;
@@ -87,5 +93,5 @@
     try{const result=await root.WashArchive.save(pending.job,progress,request);await command('export_complete',{id:pending.job.exportId,files:result.files});await store.write('pendingExport',null);return result;}
     catch(error){await store.write('pendingExport',pending);throw error;}
   }
-  root.WashPlatform={ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
+  root.WashPlatform={accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
 })(window);

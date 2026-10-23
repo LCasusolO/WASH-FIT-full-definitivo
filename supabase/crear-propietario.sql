@@ -9,4 +9,5 @@ begin
     raise exception 'Primero crea y verifica la cuenta con ese correo en Authentication > Users.';
   end if;
   insert into public.wash_owners(user_id) values(account_id) on conflict do nothing;
+  update public.wash_accounts set status='active' where user_id=account_id;
 end $$;

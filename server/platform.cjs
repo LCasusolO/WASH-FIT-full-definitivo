@@ -8,6 +8,9 @@ async function authorize(req, env=process.env, request=fetch) {
   const userResponse = await request(env.SUPABASE_URL + '/auth/v1/user', {headers,signal:AbortSignal.timeout(15000)});
   const user = await userResponse.json();
   if (!userResponse.ok || !user.id || !user.email_confirmed_at) throw Object.assign(Error('La sesión venció o el correo no está verificado.'), {status:401});
+  const statusResponse=await request(env.SUPABASE_URL+'/rest/v1/rpc/wash_account_status',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(15000)});
+  const account=await statusResponse.json();
+  if(!statusResponse.ok||!account?.ready)throw Object.assign(Error('Complete la activación de su cuenta o vuelva a ingresar.'),{status:403});
   const read = async path => {
     const response = await request(env.SUPABASE_URL + '/rest/v1/' + path, {headers,signal:AbortSignal.timeout(15000)});
     if (!response.ok) throw Object.assign(Error('No se pudo verificar el acceso.'),{status:503});

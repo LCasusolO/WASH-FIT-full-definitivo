@@ -1,5 +1,7 @@
 # Activación de WASH FIT con países, equipos y monitoreo continuo
 
+> La administración de cuentas vigente está en [CUENTAS-ADMINISTRADAS.md](CUENTAS-ADMINISTRADAS.md). Las instrucciones siguientes sobre registro público e invitaciones describen la versión anterior y no deben usarse para el nuevo sistema.
+
 ## Estado de esta entrega
 
 El código incorpora el espacio de trabajo `plataforma.html`, cuentas Supabase,

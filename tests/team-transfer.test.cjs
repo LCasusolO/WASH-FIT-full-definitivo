@@ -1,0 +1,32 @@
+const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const {createRuntime}=require('./support/managed-runtime.cjs');
+test('transferencia atómica a otro equipo del país: permisos, asignación, versiones y reintentos',async t=>{
+ const r=await createRuntime();t.after(()=>r.close());
+ async function person(name,scope,role,team){const u=await r.insert(name+'@example.invalid','Fixture-role-123',undefined,true);await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=$1",[u.id]);});await r.service('set_role',r.owner.id,{user_id:u.id,scope,role,country_id:r.country.id,team_id:team});return(await r.signIn({email:u.email,password:'Fixture-role-123'})).data.session.access_token;}
+ const admin=await person('admin','country','admin');
+ const cmd=async(token,op,data,id=crypto.randomUUID())=>(await r.queryAs(token,'select wash_command($1,$2,$3) as result',[op,JSON.stringify(data),id])).rows[0].result;
+ const facility=await cmd(admin,'facility',{country_id:r.country.id,name:'Centro QA'});
+ const source=await cmd(admin,'team',{country_id:r.country.id,name:'Origen'}),target=await cmd(admin,'team',{country_id:r.country.id,name:'Destino'}),third=await cmd(admin,'team',{country_id:r.country.id,name:'Tercero'}),empty=await cmd(admin,'team',{country_id:r.country.id,name:'Sin coordinador'});
+ const originalCoordinator=await person('source','team','coordinator',source.id),newCoordinator=await person('target','team','coordinator',target.id);await person('third','team','coordinator',third.id);
+ await cmd(admin,'assign',{team_id:source.id,facility_id:facility.id});
+ const e=await cmd(originalCoordinator,'evaluation',{facility_id:facility.id,team_id:source.id,kind:'initial'});
+ const record=await cmd(originalCoordinator,'save_record',{evaluation_id:e.id,kind:'general',record_key:'general',data:{facilityName:'Centro QA'}});
+ const payload={evaluation_id:e.id,team_id:target.id,version:e.version};
+ const assignments=async team=>(await r.queryAs(admin,'select * from wash_assignments where team_id=$1 and facility_id=$2',[team,facility.id])).rows;
+ await assert.rejects(cmd(originalCoordinator,'transfer_evaluation',payload),/FORBIDDEN/);assert.equal((await assignments(target.id)).length,0);
+ await assert.rejects(cmd(admin,'transfer_evaluation',{...payload,team_id:empty.id}),/FORBIDDEN/);assert.equal((await assignments(empty.id)).length,0);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query('update wash_teams set active=false where id=$1',[third.id]);});
+ await assert.rejects(cmd(admin,'transfer_evaluation',{...payload,team_id:third.id}),/FORBIDDEN/);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query('update wash_teams set active=true where id=$1',[third.id]);});
+ const operation=crypto.randomUUID(),result=await cmd(admin,'transfer_evaluation',payload,operation);assert.equal(result.team_id,target.id);assert.equal(result.version,e.version+1);assert.equal((await assignments(target.id)).length,1);
+ assert.deepEqual(await cmd(admin,'transfer_evaluation',payload,operation),result);
+ await assert.rejects(cmd(admin,'transfer_evaluation',{...payload,team_id:third.id},operation),/OPERATION_REUSED/);assert.equal((await assignments(third.id)).length,0);
+ await assert.rejects(cmd(admin,'transfer_evaluation',{...payload,team_id:third.id}),/VERSION_CONFLICT/);assert.equal((await assignments(third.id)).length,0);
+ await assert.rejects(cmd(admin,'transfer_evaluation',{...payload,version:result.version}),/TEAM_ALREADY_RESPONSIBLE/);
+ await assert.rejects(cmd(originalCoordinator,'save_record',{id:record.id,version:record.version,data:{facilityName:'No autorizado'}}),/FORBIDDEN/);
+ const updated=await cmd(newCoordinator,'save_record',{id:record.id,version:record.version,data:{facilityName:'Continúa destino'}});assert.equal(updated.data.facilityName,'Continúa destino');
+ const people=(await r.queryAs(admin,'select * from wash_participants where evaluation_id=$1',[e.id])).rows;assert.equal(people.filter(p=>p.active).length,1);assert.equal(people.filter(p=>!p.active).length,1);
+ const event=(await r.queryAs(admin,"select * from wash_events where evaluation_id=$1 and operation='transfer_evaluation'",[e.id])).rows;assert.equal(event.length,1);
+ const foreign=crypto.randomUUID();await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("insert into wash_countries(id,code,name) values($1,'BOL','Otro país')",[foreign]);await r.db.query('update wash_teams set country_id=$1 where id=$2',[foreign,third.id]);});
+ await assert.rejects(cmd(admin,'transfer_evaluation',{...payload,team_id:third.id,version:result.version}),/FORBIDDEN/);assert.equal((await assignments(third.id)).length,0);
+});

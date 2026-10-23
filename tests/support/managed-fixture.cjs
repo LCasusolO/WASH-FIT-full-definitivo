@@ -17,6 +17,14 @@ const {createRuntime}=require('./managed-runtime.cjs');
   }
 
  });
+ if(process.env.WASH_QA_ROLES==='1'){
+  const team=await r.queued(async()=>{await r.db.exec('reset role');return(await r.db.query('select id from wash_teams limit 1')).rows[0].id;});
+  for(const role of ['admin','coordinator','evaluator']){
+   const person=await r.insert(role+'@example.invalid','Fixture-role-123',undefined,true);
+   await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set username=$2,full_name=$2,status='active',must_change_password=false where user_id=$1",[person.id,role+'-qa']);});
+   await r.service('set_role',r.owner.id,{user_id:person.id,scope:role==='admin'?'country':'team',country_id:r.country.id,team_id:team,role});
+  }
+ }
  const accounts=require('../../api/accounts').createHandler({env:{WASH_MULTIUSER:'true',WASH_APP_ORIGIN:origin,SUPABASE_URL:origin,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture'},request:(url,opts)=>r.handler(new Request(url,opts))});
  async function handle(req,res){
   const url=new URL(req.url,origin);res.setHeader('Cache-Control','no-store');res.status=n=>{res.statusCode=n;return res;};res.json=x=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(x));};

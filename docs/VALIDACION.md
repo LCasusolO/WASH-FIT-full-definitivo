@@ -144,3 +144,11 @@ corrección adicional.
 - Revisión con propietario y administrador ficticios: búsqueda por nombre, búsqueda sin coincidencias y apertura del editor de rol sin modificar permisos.
 - Tabla con encabezados semánticos, contador de resultados y desplazamiento horizontal para pantallas pequeñas.
 - 133 pruebas aprobadas y build correcto.
+
+## Plataforma global por rol — 22 de octubre de 2026
+
+- 136 pruebas aprobadas, sin fallos ni omisiones; build correcto.
+- Tabla general con dos establecimientos: el contexto seleccionado no altera la exportación ni los permisos de otra fila.
+- SQL comprueba separación de creación global/nacional y mantiene aislamiento por país y equipo.
+- Navegador QA: cuatro KPI sin filtros superiores; tabla de evaluaciones y opciones de cada fila; propietario limitado a países/administradores; administrador crea establecimiento; coordinador consulta integrantes.
+- Migración aplicada y restricciones comprobadas en producción mediante una transacción revertida, sin crear cuentas ni establecimientos reales.

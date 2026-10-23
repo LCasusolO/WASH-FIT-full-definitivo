@@ -9,18 +9,26 @@ El registro público y las invitaciones de acceso anteriores se sustituyen por c
 La cuenta propietaria existente conserva correo y contraseña y recibe el usuario `propietario`. Puede seguir ingresando con su correo.
 
 1. Abrir `plataforma.html` e ingresar.
-2. Seleccionar país y entrar a **Usuarios y permisos**.
+2. Registrar el país en **País y equipos** y entrar a **Usuarios y permisos**.
 3. Completar nombre completo y correo.
 4. Seleccionar el rol Administrador del país y el país. No requiere un equipo. El usuario se genera automáticamente al final, por ejemplo `admin-peru`.
 5. Crear la cuenta y copiar la contraseña temporal mostrada en pantalla. Comunicar las credenciales personalmente por un medio privado. No se envían contraseñas por correo.
 
-Para crear integrantes, completar nombre y correo, elegir Coordinador responsable o Evaluador, seleccionar país y equipo, y revisar el usuario generado al final. Ejemplos: `coordinador-maria-nunez` y `evaluador-luis-casusol`. Si hay coincidencias, el servidor añade un número (`-2`, `-3`, etc.). El nombre de usuario no se escribe manualmente en el alta. Las cuentas existentes conservan su usuario al recibir otro acceso.
+El alta global se limita a países y administradores nacionales. Los establecimientos, equipos y cuentas de integrantes los registra el administrador de cada país.
 
 El rol Lector se retiró de formularios y operaciones administrativas. Las asignaciones antiguas de lectura se revocan sin transformarlas en permisos de edición. Los registros históricos se conservan.
 
 ### Administrador nacional
 
 Puede registrar coordinadores y evaluadores para los equipos de sus países. No puede nombrar administradores nacionales ni modificar accesos de otros países. El directorio solo muestra las personas y asignaciones de su ámbito.
+
+Para crear integrantes, completar nombre y correo, elegir Coordinador responsable o Evaluador, seleccionar país y equipo, y revisar el usuario generado al final. Ejemplos: `coordinador-maria-nunez` y `evaluador-luis-casusol`. Si hay coincidencias, el servidor añade un número (`-2`, `-3`, etc.). El nombre de usuario no se escribe manualmente en el alta. Las cuentas existentes conservan su usuario al recibir otro acceso.
+
+### Vista por rol
+
+El administrador nacional registra establecimientos, crea equipos y los asigna a establecimientos desde **País y equipos**. El coordinador y el evaluador consultan allí únicamente una tabla de integrantes de sus propios equipos.
+
+El panel superior muestra total de países, establecimientos, equipos y evaluaciones activas (borrador, elaboración o revisión), limitado a los datos autorizados de cada cuenta. No hay filtros superiores de país/establecimiento. **Evaluaciones** muestra una tabla general con país, establecimiento, nombre, equipo, estado y opciones por fila. **Nueva evaluación** abre el formulario para un establecimiento autorizado; conserva la separación entre medición inicial y reevaluación. El portal ya no ofrece importar evaluaciones. El historial conserva su selector de establecimiento dentro de su propia sección.
 
 ### Primer ingreso
 

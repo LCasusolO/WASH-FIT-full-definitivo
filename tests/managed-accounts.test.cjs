@@ -27,6 +27,12 @@ test('cuentas administradas: autoridad, sesiones, altas y cambios de permisos',a
  await service('set_role','admin',{user_id:users.coordinator,scope:'team',team_id:team.id,role:'coordinator'});
  await service('set_role','admin',{user_id:users.editor,scope:'team',team_id:team.id,role:'evaluator'});
  const evaluation=await command('coordinator','evaluation',{facility_id:facility.id,team_id:team.id,name:'Inicial',kind:'initial'});
+ await t.test('las altas globales y nacionales están separadas también en SQL',async()=>{
+  await assert.rejects(command('owner','facility',{country_id:country.id,name:'No permitido'}),/COUNTRY_ADMIN_CREATION_REQUIRED/);
+  await assert.rejects(command('owner','team',{country_id:country.id,name:'No permitido'}),/COUNTRY_ADMIN_CREATION_REQUIRED/);
+  await assert.rejects(service('reserve','owner',{scope:'team',role:'evaluator',team_id:team.id}),/OWNER_CREATES_ADMINS_ONLY/);
+  await assert.rejects(command('coordinator','facility',{country_id:country.id,name:'No permitido'}),/FORBIDDEN/);
+ });
  await t.test('solo el propietario puede nombrar administradores y el administrador no cruza países',async()=>{
   await assert.rejects(service('set_role','admin',{user_id:users.outsider,scope:'country',country_id:country.id,role:'admin'}),/FORBIDDEN/);
   await assert.rejects(service('set_role','admin',{user_id:users.outsider,scope:'team',team_id:foreignTeam.id,role:'evaluator'}),/FORBIDDEN/);

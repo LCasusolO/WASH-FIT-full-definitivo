@@ -95,3 +95,9 @@ Las exportaciones nuevas incorporan un corte independiente del monitoreo, sin mo
 ### Identidad visual del portal
 
 El portal utiliza los recursos OPS existentes y estilos propios en `css/platform.css`. Mantiene las cuatro pestañas y los selectores país/establecimiento. El acceso incorpora ayuda y visibilidad de contraseña; las tarjetas muestran estados, roles e iniciales. Los iconos locales se renderizan desde nombres fijos con Vue. La copia de credenciales utiliza `temporary_password` y solo se ejecuta por acción del usuario; si el navegador la bloquea, conserva la tarjeta para copia manual.
+
+### Resumen global y separación de altas por rol
+
+El portal cuenta países, establecimientos, equipos y evaluaciones activas sobre las filas autorizadas por RLS. La tabla general de evaluaciones resuelve permisos, equipos disponibles y exportación con el establecimiento de cada fila, sin depender del contexto del historial ni del formulario de alta. El selector de establecimiento del historial es local a esa sección.
+
+`portal_role_creation` restringe las altas globales a países y administradores. Los administradores nacionales crean establecimientos, equipos y cuentas de sus integrantes; coordinadores/evaluadores consultan la tabla de su equipo. Se conservan las cuentas y asignaciones previas. Las funciones internas anteriores quedan sin permisos de ejecución directa para los roles del cliente y servicio; las envolturas conservan las comprobaciones anteriores y añaden las restricciones de creación.

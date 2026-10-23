@@ -47,16 +47,20 @@ Restablecer una contraseña obliga a cambiarla y bloquea las sesiones anteriores
 
 Un administrador nacional solo puede restablecer cuentas de integrantes cuyo alcance esté íntegramente bajo su administración y que no sean propietarios ni administradores nacionales. Las cuentas compartidas fuera de su ámbito requieren al propietario.
 
-No hay eliminación física de cuentas desde el aplicativo: se conserva la autoría y se utilizan suspensión y retiro de permisos.
+El propietario dispone de **Eliminar cuenta** para administradores, coordinadores, evaluadores y lectores. Retira todas sus asignaciones, desactiva sus participaciones vigentes e invalida sus sesiones. Puede hacerlo incluso si era el último administrador o coordinador: el propietario conserva el control para designar al reemplazo. No puede eliminar su propia cuenta ni otra cuenta propietaria.
+
+La cuenta desaparece del directorio habitual. **Ver cuentas eliminadas** permite **Restaurar cuenta sin permisos**. Después de restaurar, generar otra contraseña temporal y asignar expresamente los accesos necesarios. La restauración no devuelve las sesiones ni permisos anteriores.
+
+La eliminación es recuperable; conserva la identidad referenciada por evaluaciones, autores y auditorías. No borra las evaluaciones ni sus versiones validadas.
 
 ## Infraestructura
 
-- Migración: `supabase/migrations/20261022235838_managed_accounts.sql`.
+- Migraciones: `supabase/migrations/20261022235838_managed_accounts.sql` y `supabase/migrations/20261023010837_managed_account_lifecycle.sql`.
 - Edge Function: `supabase/functions/wash-accounts/index.ts` y `handler.mjs`.
 - Publicar como `wash-accounts`, con `verify_jwt=false`: el ingreso y recuperación son públicos; todas las operaciones administrativas verifican el JWT con Auth y el estado de la sesión en SQL.
 - La función usa las variables internas `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. No copiar la clave administrativa a Vercel ni al navegador.
 - Vercel usa las variables existentes y `/api/accounts` como proxy del mismo origen. No cambia el OAuth de Google Drive.
-- Desactivar **Allow new users to sign up** en Supabase. Además, un trigger impide nuevas cuentas que no estén marcadas por Auth Admin como administradas. El SDK público no puede establecer `raw_app_meta_data`.
+- Desactivar **Allow new users to sign up** en Supabase. Además, un trigger diferido al final de la transacción impide nuevas cuentas que no estén marcadas por Auth Admin como administradas. Auth Admin inserta primero el usuario y actualiza después sus metadatos; por eso no se valida en BEFORE INSERT. El SDK público no puede establecer `raw_app_meta_data`.
 - El cambio de contraseña consulta el estado actual y las sesiones de Auth; las políticas RLS y Storage comprueban esos mismos requisitos.
 
 La migración conserva las cuentas existentes, asigna usuarios únicos y mantiene el acceso previo. Revoca invitaciones pendientes y deshabilita las operaciones antiguas de invitación. Para una instalación completamente nueva, el primer propietario requiere un alta de bootstrap mediante Auth Admin con `app_metadata.wash_managed=true`, confirmación del correo, activación del perfil y `supabase/crear-propietario.sql`. No se debe habilitar el registro público para ese fin.

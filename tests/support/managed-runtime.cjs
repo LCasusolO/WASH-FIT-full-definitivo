@@ -13,7 +13,11 @@ async function createRuntime(){
  create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);alter table storage.objects enable row level security;`);
  for(const file of fs.readdirSync(path.join(__dirname,'../../supabase/migrations')).sort())await db.exec(fs.readFileSync(path.join(__dirname,'../../supabase/migrations',file),'utf8'));
  async function insert(email,password,metadata={wash_managed:true},confirmed=false){return queued(async()=>{
-  await db.exec('reset role');const id=crypto.randomUUID();await db.query('insert into auth.users values($1,$2,$3,$4)',[id,email,confirmed?new Date().toISOString():null,JSON.stringify(metadata)]);
+  await db.exec('reset role');const id=crypto.randomUUID();await db.transaction(async tx=>{
+   // Mismo orden que GoTrue Admin: INSERT sin metadatos propios; UPDATE antes del COMMIT.
+   await tx.query('insert into auth.users values($1,$2,$3,$4)',[id,email,confirmed?new Date().toISOString():null,JSON.stringify({provider:'email'})]);
+   await tx.query('update auth.users set raw_app_meta_data=$1 where id=$2',[JSON.stringify(metadata),id]);
+  });
   passwords.set(id,password);people.set(id,{id,email});return {id,email};
  });}
  async function user(id){return queued(async()=>{await db.exec('reset role');const r=(await db.query('select * from auth.users where id=$1',[id])).rows[0];return r?{id:r.id,email:r.email,email_confirmed_at:r.email_confirmed_at,aud:'authenticated',role:'authenticated',app_metadata:r.raw_app_meta_data,user_metadata:{},created_at:'2026-10-22T00:00:00Z'}:null;});}

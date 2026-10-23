@@ -127,3 +127,12 @@ test('usuario generado en servidor según rol, sufijos únicos y lector rechazad
  }
  await r.queued(async()=>{await r.db.exec('reset role');await assert.rejects(r.db.query("insert into wash_team_members(team_id,user_id,name,role) values($1,$2,'No permitido','reader')",[team,id]),/wash_team_members_role_check/);});
 });
+
+test('una cuenta activa cambia su contraseña personal conservando identidad y roles e invalidando la sesión anterior',async t=>{
+ const r=await createRuntime();t.after(()=>r.close());
+ const signed=await r.signIn({email:'owner@example.invalid',password:'Fixture-password-123'}),oldToken=signed.data.session.access_token;
+ const changed=await r.call({action:'complete_password',new_password:'Otra-personal-QA-789!'},oldToken);assert.equal(changed.status,200);const token=changed.body.session.access_token;
+ assert.equal((await r.call({action:'list'},oldToken)).status,403);assert.equal((await r.call({action:'list'},token)).status,200);
+ assert.equal((await r.call({action:'login',login:'propietario',password:'Fixture-password-123'})).status,401);
+ const login=await r.call({action:'login',login:'propietario',password:'Otra-personal-QA-789!'});assert.equal(login.status,200);assert.equal(login.body.session.user.id,r.owner.id);
+});

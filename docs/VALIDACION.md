@@ -198,3 +198,11 @@ corrección adicional.
 - Evaluación conserva estado de guardado y cumplimiento; se retiran los dos botones de borradores antiguos. Privacidad desaparece al contraer el menú.
 - Regresión de sincronización: cambios locales de ubicación sin permiso se detectan al cargar, aun si la nube no cambió; guardar local se rechaza, aceptar nube resuelve sin escrituras y limpia la petición pendiente del mismo campo. No reaparece al reabrir.
 - Navegador QA con administrador ficticio: desplegable Mi cuenta, cierre con Escape, encabezado limpio y menú contraído sin privacidad. No se borraron datos ni se resolvieron conflictos de cuentas reales.
+
+## Acceso simplificado y cuenta en móvil — 23 de octubre de 2026
+
+- 154 pruebas aprobadas; build correcto.
+- Mi cuenta: se retiran rol duplicado en barra y países/equipos del panel; se añaden cambio de contraseña y salida al final. Ingreso sin panel narrativo.
+- Pruebas de contraseña: confirmación y longitud antes de enviar, cancelación sin envío, limpieza al terminar, renovación de sesión. Cuenta activa cambia clave mediante handler y SQL reales en QA; se conservan identidad y permisos y la sesión anterior deja de administrar.
+- Navegador QA: ingreso simple, menú en escritorio y móvil, apertura/cancelación del formulario sin introducir contraseñas nuevas en el navegador. No se modificaron credenciales reales.
+- Evaluación a 390 px con porcentaje y sin respuestas; a 320 px no hay desbordamiento de la barra (ancho y contenido 282 px). Estado Solo lectura, con avisos de error/conflicto preservados. Consola sin errores. Tamaño del navegador restaurado al terminar.

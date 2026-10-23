@@ -48,3 +48,10 @@ test('geolocalización no solicita ni aplica coordenadas sin permiso, incluso si
  app.cloudReadonly.value=false;app.locateCurrentPosition();assert.equal(calls,1);app.cloudReadonly.value=true;success({coords:{latitude:1,longitude:2}});
  assert.equal(app.generalInfo.value.latitude,null);assert.equal(app.locationBusy.value,false);assert.match(app.locationStatus.value,/Solo lectura/);
 });
+
+test('el estado de consulta dice Solo lectura y conserva los avisos de errores o conflictos',()=>{
+ const app=load();app.cloudMode.value=true;app.cloudReadonly.value=true;app.cloudStatus.value='Solo lectura: medición validada, en revisión o sin permiso de edición.';app.saveState.value='saved';assert.equal(app.saveLabel.value,'Solo lectura');
+ app.cloudConflicts.value=[{key:'general:location'}];app.cloudStatus.value='Revise los cambios locales.';assert.equal(app.saveLabel.value,'Revise los cambios locales.');
+ app.cloudConflicts.value=[];app.activeView.value='step4';app.cloudPlanReadonly.value=false;app.cloudStatus.value='Guardado en la nube.';assert.equal(app.saveLabel.value,'Guardado en la nube.');app.cloudPlanReadonly.value=true;assert.equal(app.saveLabel.value,'Solo lectura');
+ app.cloudConflicts.value=[];app.saveState.value='error';app.cloudStatus.value='No se pudo verificar el acceso.';assert.equal(app.saveLabel.value,'No se pudo verificar el acceso.');
+});

@@ -9,7 +9,7 @@ function response(){return {headers:{},setHeader(k,v){this.headers[k]=v;},status
 test('API exige sesión verificada y no confía en user_id del navegador',async()=>{
   await assert.rejects(authorize({headers:{}},env,()=>{throw Error('No debe consultar');}),e=>e.status===401);
   await assert.rejects(authorize({headers:{authorization:'Bearer fixture'}},env,async()=>Response.json({id:'x',email_confirmed_at:null})),e=>e.status===401);
-  const access=await authorize({headers:{authorization:'Bearer fixture'}},env,async()=>Response.json({id:'alice',email_confirmed_at:'2026-10-22'}));assert.equal(access.user.id,'alice');
+  const access=await authorize({headers:{authorization:'Bearer fixture'}},env,async url=>Response.json(url.includes('wash_account_status')?{ready:true}:{id:'alice',email_confirmed_at:'2026-10-22'}));assert.equal(access.user.id,'alice');
   await assert.rejects(exportAccess({...access,read:async()=>[]},'00000000-0000-4000-8000-000000000001'),e=>e.status===403);
 });
 test('PDF exige una exportación propia antes de renderizar en modo multiusuario',async()=>{

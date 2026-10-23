@@ -76,3 +76,8 @@ no es `true`. La activación del espacio de trabajo requiere las migraciones de
 Las evidencias del bucket privado se conservan sin sobrescritura ni borrado desde
 el navegador, para mantener los documentos históricos. El administrador debe
 establecer la política de retención y el mantenimiento de respaldos.
+
+
+## Cuentas administradas
+
+`/api/accounts` comunica el navegador con la Edge Function `wash-accounts`. La función valida la identidad con Supabase Auth y utiliza un RPC reservado a `service_role` para aplicar las reglas de administración por país. Las credenciales privilegiadas permanecen en Supabase. `wash_accounts`, las políticas RLS y los controles de sesión bloquean cuentas suspendidas y cambios de contraseña pendientes. El registro público está cerrado y los flujos anteriores de invitación quedan deshabilitados. Véase `CUENTAS-ADMINISTRADAS.md`.

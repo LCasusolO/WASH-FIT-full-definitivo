@@ -5,7 +5,7 @@ const root = process.cwd();
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.json': 'application/json' };
 http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
-  if (['/api/drive-archive', '/api/chrome-report', '/api/platform-config', '/api/platform-report'].includes(pathname)) {
+  if (['/api/accounts', '/api/drive-archive', '/api/chrome-report', '/api/platform-config', '/api/platform-report'].includes(pathname)) {
     const limit = pathname === '/api/chrome-report' ? 4 * 1024 * 1024 : 2 * 1024 * 1024;
     const chunks = []; let size = 0;
     req.on('data', chunk => { size += chunk.length; if (size <= limit) chunks.push(chunk); });

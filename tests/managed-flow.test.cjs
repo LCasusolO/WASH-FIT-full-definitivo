@@ -96,6 +96,13 @@ test('cuentas eliminadas con el mecanismo anterior también liberan el correo al
  const fresh=await r.call({action:'create',name:'Administrador nuevo',email:req.email,scope:'country',country_id:r.country.id,role:'admin',request_id:crypto.randomUUID()},owner);assert.equal(fresh.status,200);assert.notEqual([...r.people.values()].find(p=>p.email===req.email).id,id);
 });
 
+test('eliminar un alta que falló al asignar permisos libera también la reserva de usuario',async t=>{
+ const r=await createRuntime();t.after(()=>r.close());const token=(await r.signIn({email:'owner@example.invalid',password:'Fixture-password-123'})).data.session.access_token;
+ const req={action:'create',name:'Alta interrumpida',email:'pending-delete@example.invalid',scope:'country',country_id:r.country.id,role:'admin',request_id:crypto.randomUUID()};r.failNextService('provision');assert.equal((await r.call(req,token)).status,400);
+ const id=[...r.people.values()].find(p=>p.email===req.email).id;assert.equal((await r.call({action:'delete',user_id:id},token)).status,200);
+ const fresh=await r.call({...req,request_id:crypto.randomUUID()},token);assert.equal(fresh.status,200);assert.equal(fresh.body.username,'admin-peru-qa');assert.notEqual([...r.people.values()].find(p=>p.email===req.email).id,id);
+});
+
 test('validación de metadatos al finalizar la transacción: rechaza inserción sin autorización y revierte el perfil',async t=>{
  const r=await createRuntime();t.after(()=>r.close());const id=crypto.randomUUID();
  await assert.rejects(r.insert('public@example.invalid','Not-used-123!',{}),/REGISTRATION_CLOSED/);

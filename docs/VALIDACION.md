@@ -155,10 +155,12 @@ corrección adicional.
 
 ## Eliminación y reutilización del correo — 22 de octubre de 2026
 
-- 140 pruebas aprobadas y build correcto.
+- 141 pruebas aprobadas y build correcto.
 - Mismo correo y usuario disponibles tras eliminar; una nueva alta recibe otro UUID, contraseña nueva y confirmación pendiente. La contraseña y JWT antiguos no dan acceso a la cuenta nueva.
 - Administrador limitado a integrantes cuyo alcance completo administra; propietarios, otros administradores y su propia cuenta protegidos. El ámbito conserva su control aunque se retiren las membresías durante la eliminación.
 - Pruebas con fallos simulados de Auth y de finalización: acceso bloqueado, reintentos idempotentes y nueva cuenta intacta aun si reutilizó el correo antes de finalizar el registro antiguo.
 - Compatible con cuentas eliminadas mediante el mecanismo anterior. El historial validado conserva su identidad y contenido.
 - Navegador QA: opción del administrador visible para un integrante autorizado y filtro de cuentas eliminadas disponible. No se ejecutaron eliminaciones reales desde el navegador.
 - Migración y Edge Function v5 aplicadas. Sondas de autorización y bloqueo de finalización anticipada comprobadas en producción mediante transacción revertida.
+
+- Eliminación de alta interrumpida: cierra la reserva pendiente y permite reutilizar el usuario sin sufijos innecesarios.

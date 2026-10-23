@@ -1,9 +1,5 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.WashPlatformModel=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
-  function evaluationPanelUrl(evaluation,view){
-    if(!evaluation?.id||!evaluation.facility_id||!['plan','monitoring'].includes(view))return '';
-    return '/plataforma.html?'+new URLSearchParams({embedded:'1',evaluation:evaluation.id,facility:evaluation.facility_id,view}).toString();
-  }
   function accountUsername({role,name,countryName}){
     const label=role==='admin'?countryName:name;
     const slug=String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -23,11 +19,32 @@
     const generalRows=records.filter(r=>r.kind==='general');
     const generalInfo=Object.assign(clone(defaults),...generalRows.filter(r=>r.record_key==='general').map(r=>clone(r.data)),...generalRows.filter(r=>r.record_key!=='general').map(r=>clone(r.data)));
     const answers=new Map(records.filter(r=>r.kind==='indicator').map(r=>[r.record_key,r.data]));
-    const actions=new Map(plan.filter(r=>r.kind==='action').map(r=>[r.data.indicator_id,r.data]));
+    const actions=new Map([...plan].filter(r=>r.kind==='action').sort((a,b)=>String(a.updated_at||'').localeCompare(String(b.updated_at||''))).map(r=>[r.data.indicator_id,r.data]));
+    const monitors=[...records,...plan].filter(r=>r.kind==='monitor'&&r.data.editor_indicator_id).sort((a,b)=>String(a.updated_at||'').localeCompare(String(b.updated_at||'')));
     return {schemaVersion:2,savedAt:new Date().toISOString(),generalInfo,indicators:catalog.map(ind=>{
       const answer=answers.get(ind.id)||{};const action=actions.get(ind.id)||{};
-      return {...clone(ind),assessmentStatus:'',...answer,...Object.fromEntries(planFields.filter(key=>Object.hasOwn(action,key)).map(key=>[key,action[key]]))};
+      const reviews=monitors.filter(r=>r.data.editor_indicator_id===ind.id).map(r=>Object.fromEntries(monitoringFields.filter(k=>Object.hasOwn(r.data.editor_fields||{},k)).map(k=>[k,clone(r.data.editor_fields[k])])));
+      const history=[...new Map(reviews.flatMap(r=>r.history||[]).map(h=>[stable([h.recordedAt,h.indicatorChange,h.responsible,h.correctiveMeasures||'',h.monitoringComments||'',h.nextReviewDate||'',h.reviewChanges||null]),clone(h)])).values()].sort((a,b)=>String(a.recordedAt).localeCompare(String(b.recordedAt)));
+      const monitoring=Object.assign({},...reviews);if(history.length)monitoring.history=history;
+      return {...clone(ind),assessmentStatus:'',...answer,...Object.fromEntries(planFields.filter(key=>Object.hasOwn(action,key)).map(key=>[key,action[key]])),...monitoring};
     })};
+  }
+  function editorRecords(data,stored=[],context={}){
+    const result=split(data),ordered=[...stored].sort((a,b)=>String(a.updated_at||'').localeCompare(String(b.updated_at||'')));
+    for(const ind of data.indicators){
+      const action=ordered.filter(r=>r.kind==='action'&&r.data.indicator_id===ind.id).at(-1);
+      const fields=Object.fromEntries(planFields.filter(k=>Object.hasOwn(ind,k)).map(k=>[k,clone(ind[k])]));
+      if(action||planFields.some(k=>k==='trackingStatus'?fields[k]&&fields[k]!=='No Iniciado':k==='cost'?fields[k]!=null&&fields[k]!=='':k==='responsibleId'?false:!!fields[k]))result.push({kind:'action',record_key:action?.record_key||'editor:'+ind.id,data:{...clone(action?.data||{}),indicator_id:ind.id,...fields}});
+      if(!context.teamId){for(const row of ordered.filter(r=>r.kind==='monitor'&&r.data.editor_indicator_id===ind.id))result.push({kind:row.kind,record_key:row.record_key,data:clone(row.data)});continue;}
+      const monitors=ordered.filter(r=>r.kind==='monitor'&&r.data.editor_indicator_id===ind.id&&r.data.team_id===context.teamId);
+      const draft=monitors.filter(r=>r.status!=='validated').at(-1),locked=monitors.filter(r=>r.status==='validated').at(-1);
+      const monitorFields=Object.fromEntries(monitoringFields.filter(k=>Object.hasOwn(ind,k)).map(k=>[k,clone(ind[k])]));
+      if(context.teamId&&(draft||ind.history?.length||monitoringFields.some(k=>k!=='history'&&k!=='indicatorChange'&&!!monitorFields[k]))){
+        const last=ind.history?.at(-1)||{};
+        result.push({kind:'monitor',record_key:draft?.record_key||'editor:'+context.teamId+':'+ind.id+':'+(locked?.id||'initial'),data:{...clone(draft?.data||{}),team_id:context.teamId,editor_indicator_id:ind.id,editor_fields:monitorFields,date:String(last.recordedAt||draft?.data.date||'').slice(0,10),title:'Revisión de '+ind.id,participants:last.responsible||ind.responsible||'',responsible:last.responsible||ind.responsible||'',findings:last.monitoringComments||monitorFields.monitoringComments||'',correctiveMeasures:last.correctiveMeasures||monitorFields.correctiveMeasures||'',nextReviewDate:last.nextReviewDate||monitorFields.nextReviewDate||'',items:[{indicator_id:ind.id,change:last.indicatorChange||'sin_cambios',notes:last.revisionNotes||''}]}});
+      }
+    }
+    return result;
   }
   function changed(base,next) {const map=new Map(base.map(r=>[r.kind+':'+r.record_key,r]));return next.filter(r=>stable(map.get(r.kind+':'+r.record_key)?.data)!==stable(r.data));}
   function merge(base,local,remote) {
@@ -49,5 +66,5 @@
     }
     return [...result.values()];
   }
-  return {evaluationPanelUrl,accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone};
+  return {editorRecords,accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone};
 });

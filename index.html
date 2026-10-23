@@ -199,7 +199,6 @@
 
       <!-- MAIN CONTENT SUITE -->
       <main class="flex-1 flex flex-col min-h-screen bg-white print-page overflow-auto lg:border-l lg:border-paho-grid">
-      <nav v-if="cloudMode && cloudReadonly && activeView==='assessment'" class="cloud-consult no-print" aria-label="Consultar dominios"><button v-for="mod in modulesList" @click="consultModule(mod.id)">{{ mod.name }}</button></nav>
       <section v-if="cloudMode && cloudConflicts.length" class="cloud-sync-conflicts no-print" aria-label="Resolver conflictos de sincronización">
         <article v-for="conflict in cloudConflicts" :key="conflict.key" class="cloud-conflict">
           <h2>Conflicto: {{ conflict.key }}</h2>
@@ -228,9 +227,7 @@
         </div>
       </header>
 
-        <section v-if="cloudMode && cloudPanels.step4" v-show="activeView==='step4'" class="cloud-step-panel no-print"><iframe :src="cloudPanelUrl('plan')" title="Plan de mejora del establecimiento" @load="resizeCloudPanel"></iframe></section>
-        <section v-if="cloudMode && cloudPanels.step5" v-show="activeView==='step5'" class="cloud-step-panel no-print"><iframe :src="cloudPanelUrl('monitoring')" title="Monitoreo y revisión · paso 5" @load="resizeCloudPanel"></iframe></section>
-        <fieldset class="evaluation-fields" :disabled="cloudReadonly">
+        <fieldset class="evaluation-fields">
         <!-- PANELS FRAME -->
         <div class="flex-1 p-6 lg:p-10 space-y-8">
 
@@ -347,7 +344,7 @@
               </div>
               <div class="p-4 bg-paho-very-dark-blue border border-white/10 text-center w-full md:w-auto">
                 <span class="block text-xs text-paho-light-blue">Fecha de Registro</span>
-                <input aria-label="Fecha de evaluación" type="date" v-model="generalInfo.evaluationDate" class="bg-transparent text-white text-sm font-bold focus:outline-none text-center mt-1 border-b border-dashed border-paho-light-blue pb-1 w-full md:w-auto">
+                <input aria-label="Fecha de evaluación" type="date" v-model="generalInfo.evaluationDate" class="bg-transparent text-white text-sm font-bold focus:outline-none text-center mt-1 border-b border-dashed border-paho-light-blue pb-1 w-full md:w-auto" :disabled="cloudActiveReadonly">
               </div>
             </div>
 
@@ -363,17 +360,17 @@
                     <div class="min-h-[32px] flex items-center justify-center">
                       <label for="facility-name" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Nombre del Establecimiento</label>
                     </div>
-                    <input id="facility-name" :readonly="cloudMode" aria-label="Nombre del establecimiento" type="text" v-model="generalInfo.facilityName" placeholder="Ej: Hospital de Especialidades Médicas" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark">
+                    <input id="facility-name" :readonly="cloudMode" aria-label="Nombre del establecimiento" type="text" v-model="generalInfo.facilityName" placeholder="Ej: Hospital de Especialidades Médicas" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark" :disabled="cloudActiveReadonly">
                   </div>
 
                   <div class="location-fields grid grid-cols-2 gap-4 md:col-span-2 lg:col-span-2">
                     <div class="space-y-2 min-w-0">
                       <div class="min-h-[32px] flex items-center justify-center"><label for="facility-country" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">País</label></div>
-                      <select id="facility-country" :disabled="cloudMode" v-model="generalInfo.countryCode" class="w-full px-3 py-3 border border-paho-grid text-sm bg-white"><option value="">Seleccionar país</option><option v-for="country in countries" :value="country[0]" :key="country[0]">{{ country[1] }} ({{ country[0] }})</option></select>
+                      <select id="facility-country" :disabled="cloudActiveReadonly || (cloudMode)" v-model="generalInfo.countryCode" class="w-full px-3 py-3 border border-paho-grid text-sm bg-white"><option value="">Seleccionar país</option><option v-for="country in countries" :value="country[0]" :key="country[0]">{{ country[1] }} ({{ country[0] }})</option></select>
                     </div>
                     <div class="space-y-2 min-w-0">
                       <div class="min-h-[32px] flex items-center justify-center"><label for="facility-location" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Ciudad</label></div>
-                      <input id="facility-location" aria-label="Ciudad" type="text" v-model="generalInfo.district" placeholder="Ej: Lima" class="w-full px-3 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark">
+                      <input id="facility-location" aria-label="Ciudad" type="text" v-model="generalInfo.district" placeholder="Ej: Lima" class="w-full px-3 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark" :disabled="cloudActiveReadonly">
                     </div>
                   </div>
 
@@ -381,7 +378,7 @@
                     <div class="min-h-[32px] flex items-center justify-center">
                       <label for="facility-level" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Nivel del Establecimiento</label>
                     </div>
-                    <select id="facility-level" aria-label="Nivel del establecimiento" v-model="generalInfo.level" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none bg-white transition-all text-paho-gray-dark">
+                    <select id="facility-level" aria-label="Nivel del establecimiento" v-model="generalInfo.level" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none bg-white transition-all text-paho-gray-dark" :disabled="cloudActiveReadonly">
                       <option v-for="level in levelOptions" :value="level">{{ level }}</option>
                     </select>
                   </div>
@@ -391,10 +388,10 @@
                       <label class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Tipo de Institución</label>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                      <button type="button" @click="generalInfo.type = 'Público'" :class="['py-3 px-4 border text-sm font-semibold transition-all rounded-none', generalInfo.type === 'Público' ? 'bg-paho-dark-blue border-paho-dark-blue text-white' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']">
+                      <button type="button" @click="generalInfo.type = 'Público'" :class="['py-3 px-4 border text-sm font-semibold transition-all rounded-none', generalInfo.type === 'Público' ? 'bg-paho-dark-blue border-paho-dark-blue text-white' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         Público
                       </button>
-                      <button type="button" @click="generalInfo.type = 'Privado'" :class="['py-3 px-4 border text-sm font-semibold transition-all rounded-none', generalInfo.type === 'Privado' ? 'bg-paho-dark-blue border-paho-dark-blue text-white' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']">
+                      <button type="button" @click="generalInfo.type = 'Privado'" :class="['py-3 px-4 border text-sm font-semibold transition-all rounded-none', generalInfo.type === 'Privado' ? 'bg-paho-dark-blue border-paho-dark-blue text-white' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         Privado
                       </button>
                     </div>
@@ -405,10 +402,10 @@
                       <label class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Ámbito de Intervención</label>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                      <button type="button" @click="generalInfo.setting = 'Urbano'" :class="['py-3 px-4 border text-sm font-semibold transition-all rounded-none', generalInfo.setting === 'Urbano' ? 'bg-paho-dark-blue border-paho-dark-blue text-white' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']">
+                      <button type="button" @click="generalInfo.setting = 'Urbano'" :class="['py-3 px-4 border text-sm font-semibold transition-all rounded-none', generalInfo.setting === 'Urbano' ? 'bg-paho-dark-blue border-paho-dark-blue text-white' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         Urbano
                       </button>
-                      <button type="button" @click="generalInfo.setting = 'Rural'" :class="['py-3 px-4 border text-sm font-semibold transition-all rounded-none', generalInfo.setting === 'Rural' ? 'bg-paho-dark-blue border-paho-dark-blue text-white' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']">
+                      <button type="button" @click="generalInfo.setting = 'Rural'" :class="['py-3 px-4 border text-sm font-semibold transition-all rounded-none', generalInfo.setting === 'Rural' ? 'bg-paho-dark-blue border-paho-dark-blue text-white' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         Rural
                       </button>
                     </div>
@@ -425,7 +422,7 @@
                       @focus="isPopFocused = true"
                       @blur="isPopFocused = false"
                       placeholder="Ej: 15,000 habitantes"
-                      class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark">
+                      class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark" :disabled="cloudActiveReadonly">
                   </div>
 
                   <div class="population-age-groups lg:col-span-4 pt-4 border-t border-paho-grid space-y-3">
@@ -441,7 +438,7 @@
                           @focus="focusedAgeGroup = 'under5'"
                           @blur="focusedAgeGroup = null"
                           placeholder="Cant."
-                          class="w-full px-3 py-2 border border-paho-grid text-xs bg-white text-paho-gray-dark focus:border-paho-blue outline-none rounded-none">
+                          class="w-full px-3 py-2 border border-paho-grid text-xs bg-white text-paho-gray-dark focus:border-paho-blue outline-none rounded-none" :disabled="cloudActiveReadonly">
                       </div>
 
                       <div>
@@ -453,7 +450,7 @@
                           @focus="focusedAgeGroup = 'age5to17'"
                           @blur="focusedAgeGroup = null"
                           placeholder="Cant."
-                          class="w-full px-3 py-2 border border-paho-grid text-xs bg-white text-paho-gray-dark focus:border-paho-blue outline-none rounded-none">
+                          class="w-full px-3 py-2 border border-paho-grid text-xs bg-white text-paho-gray-dark focus:border-paho-blue outline-none rounded-none" :disabled="cloudActiveReadonly">
                       </div>
 
                       <div>
@@ -465,7 +462,7 @@
                           @focus="focusedAgeGroup = 'over18to59'"
                           @blur="focusedAgeGroup = null"
                           placeholder="Cant."
-                          class="w-full px-3 py-2 border border-paho-grid text-xs bg-white text-paho-gray-dark focus:border-paho-blue outline-none rounded-none">
+                          class="w-full px-3 py-2 border border-paho-grid text-xs bg-white text-paho-gray-dark focus:border-paho-blue outline-none rounded-none" :disabled="cloudActiveReadonly">
                       </div>
 
                       <div>
@@ -477,7 +474,7 @@
                           @focus="focusedAgeGroup = 'over60'"
                           @blur="focusedAgeGroup = null"
                           placeholder="Cant."
-                          class="w-full px-3 py-2 border border-paho-grid text-xs bg-white text-paho-gray-dark focus:border-paho-blue outline-none rounded-none">
+                          class="w-full px-3 py-2 border border-paho-grid text-xs bg-white text-paho-gray-dark focus:border-paho-blue outline-none rounded-none" :disabled="cloudActiveReadonly">
                       </div>
                     </div>
                   </div>
@@ -492,7 +489,7 @@
                 </div>
                 <div class="location-controls grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div class="space-y-2 self-center min-w-0">
-                    <button type="button" @click="locateCurrentPosition" :disabled="locationBusy" :aria-busy="locationBusy" class="inline-flex items-center gap-2 px-4 py-3 border border-paho-dark-blue text-paho-dark-blue bg-white hover:bg-paho-card text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
+                    <button type="button" @click="locateCurrentPosition" :disabled="cloudActiveReadonly || (locationBusy)" :aria-busy="locationBusy" class="inline-flex items-center gap-2 px-4 py-3 border border-paho-dark-blue text-paho-dark-blue bg-white hover:bg-paho-card text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
                       <i data-lucide="locate-fixed" class="w-4 h-4" aria-hidden="true"></i>
                       {{ locationBusy ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual' }}
                     </button>
@@ -505,14 +502,14 @@
                     <div class="min-h-[32px] flex items-center justify-center">
                       <label for="latitude" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Latitud</label>
                     </div>
-                    <input id="latitude" aria-label="Latitud" type="number" step="any" v-model.number="generalInfo.latitude" @input="onCoordinatesInput" placeholder="Ej: -12.1485" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark">
+                    <input id="latitude" aria-label="Latitud" type="number" step="any" v-model.number="generalInfo.latitude" @input="onCoordinatesInput" placeholder="Ej: -12.1485" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark" :disabled="cloudActiveReadonly">
                   </div>
 
                   <div class="space-y-2">
                     <div class="min-h-[32px] flex items-center justify-center">
                       <label for="longitude" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Longitud</label>
                     </div>
-                    <input id="longitude" aria-label="Longitud" type="number" step="any" v-model.number="generalInfo.longitude" @input="onCoordinatesInput" placeholder="Ej: -76.9841" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark">
+                    <input id="longitude" aria-label="Longitud" type="number" step="any" v-model.number="generalInfo.longitude" @input="onCoordinatesInput" placeholder="Ej: -76.9841" class="w-full px-4 py-3 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark" :disabled="cloudActiveReadonly">
                   </div>
 
                   </div>
@@ -528,7 +525,7 @@
                   <h4 class="text-base font-bold text-paho-very-dark-blue">Equipo Implementador del WASH FIT</h4>
                   <p class="text-xs text-paho-gray-medium mt-1">Registre los profesionales encargados de planificar, validar y ejecutar la intervención.</p>
                 </div>
-                <button @click="addTeamMember" class="no-print flex items-center gap-2 px-4 py-2.5 bg-paho-dark-blue hover:bg-paho-very-dark-blue text-white text-xs font-bold transition-all rounded-none">
+                <button @click="addTeamMember" class="no-print flex items-center gap-2 px-4 py-2.5 bg-paho-dark-blue hover:bg-paho-very-dark-blue text-white text-xs font-bold transition-all rounded-none" :disabled="cloudActiveReadonly">
                   <i data-lucide="plus" class="w-4 h-4"></i>
                   <span>Agregar Integrante</span>
                 </button>
@@ -550,7 +547,7 @@
                     <tr v-for="(member, index) in generalInfo.team" :key="index" class="hover:bg-paho-card transition-colors">
                       <td data-label="Nombre Completo" class="py-3.5 px-4">
                         <div v-if="member.isEditing" class="no-print">
-                          <input aria-label="Nombre" type="text" v-model="member.name" placeholder="Ej: Dr. Carlos Pérez" class="w-full px-3 py-1.5 border border-paho-grid text-xs font-semibold text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none">
+                          <input aria-label="Nombre" type="text" v-model="member.name" placeholder="Ej: Dr. Carlos Pérez" class="w-full px-3 py-1.5 border border-paho-grid text-xs font-semibold text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none" :disabled="cloudActiveReadonly">
                         </div>
                         <div class="text-xs font-bold text-paho-gray-dark py-2">
                           {{ member.name || '—' }}
@@ -559,7 +556,7 @@
 
                       <td data-label="Cargo / Rol en Institución" class="py-3.5 px-4">
                         <div v-if="member.isEditing" class="no-print">
-                          <input aria-label="Cargo" type="text" v-model="member.role" placeholder="Ej: Jefe de Epidemiología" class="w-full px-3 py-1.5 border border-paho-grid text-xs text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none">
+                          <input aria-label="Cargo" type="text" v-model="member.role" placeholder="Ej: Jefe de Epidemiología" class="w-full px-3 py-1.5 border border-paho-grid text-xs text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none" :disabled="cloudActiveReadonly">
                         </div>
                         <div class="text-xs text-paho-gray-medium py-2">
                           {{ member.role || '—' }}
@@ -568,7 +565,7 @@
 
                       <td data-label="Institución de Procedencia" class="py-3.5 px-4">
                         <div v-if="member.isEditing" class="no-print">
-                          <input aria-label="Institución" type="text" v-model="member.institution" placeholder="Ej: Ministerio de Salud" class="w-full px-3 py-1.5 border border-paho-grid text-xs text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none">
+                          <input aria-label="Institución" type="text" v-model="member.institution" placeholder="Ej: Ministerio de Salud" class="w-full px-3 py-1.5 border border-paho-grid text-xs text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none" :disabled="cloudActiveReadonly">
                         </div>
                         <div class="text-xs text-paho-gray-medium py-2">
                           {{ member.institution || '—' }}
@@ -577,7 +574,7 @@
 
                       <td data-label="Responsabilidad en Equipo WASH" class="py-3.5 px-4">
                         <div v-if="member.isEditing" class="no-print">
-                          <input aria-label="Responsabilidad" type="text" v-model="member.responsibility" placeholder="Ej: Coordinador de Limpieza" class="w-full px-3 py-1.5 border border-paho-grid text-xs text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none">
+                          <input aria-label="Responsabilidad" type="text" v-model="member.responsibility" placeholder="Ej: Coordinador de Limpieza" class="w-full px-3 py-1.5 border border-paho-grid text-xs text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none" :disabled="cloudActiveReadonly">
                         </div>
                         <div class="text-xs text-paho-gray-medium py-2">
                           {{ member.responsibility || '—' }}
@@ -586,7 +583,7 @@
 
                       <td data-label="Correo Electrónico" class="py-3.5 px-4">
                         <div v-if="member.isEditing" class="no-print">
-                          <input aria-label="Correo electrónico" type="email" v-model="member.email" placeholder="ejemplo@correo.com" class="w-full px-3 py-1.5 border border-paho-grid text-xs text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none">
+                          <input aria-label="Correo electrónico" type="email" v-model="member.email" placeholder="ejemplo@correo.com" class="w-full px-3 py-1.5 border border-paho-grid text-xs text-paho-gray-dark focus:border-paho-blue outline-none bg-white rounded-none" :disabled="cloudActiveReadonly">
                         </div>
                         <div class="text-xs text-paho-gray-medium py-2">
                           {{ member.email || '—' }}
@@ -595,16 +592,16 @@
 
                       <td data-label="Acción" class="py-3.5 px-4 text-right no-print">
                         <div class="flex items-center justify-end gap-1.5">
-                          <button v-if="member.isEditing" @click="confirmTeamMember(index)" class="flex items-center gap-1 px-3 py-1.5 bg-paho-dark-blue hover:bg-paho-very-dark-blue text-white text-[10px] font-bold transition-all rounded-none" title="Confirmar integrante">
+                          <button v-if="member.isEditing" @click="confirmTeamMember(index)" class="flex items-center gap-1 px-3 py-1.5 bg-paho-dark-blue hover:bg-paho-very-dark-blue text-white text-[10px] font-bold transition-all rounded-none" title="Confirmar integrante" :disabled="cloudActiveReadonly">
                             <i data-lucide="check" class="w-3.5 h-3.5"></i>
                             <span>Confirmar</span>
                           </button>
 
                           <template v-else>
-                            <button @click="editTeamMember(index)" class="p-1.5 text-paho-gray-medium hover:text-paho-dark-blue hover:bg-paho-card transition-all" title="Modificar">
+                            <button @click="editTeamMember(index)" class="p-1.5 text-paho-gray-medium hover:text-paho-dark-blue hover:bg-paho-card transition-all" title="Modificar" :disabled="cloudActiveReadonly">
                               <i data-lucide="edit-3" class="w-4 h-4"></i>
                             </button>
-                            <button @click="removeTeamMember(index)" class="p-1.5 text-paho-gray-medium hover:text-red-500 hover:bg-red-50 transition-all" title="Eliminar">
+                            <button @click="removeTeamMember(index)" class="p-1.5 text-paho-gray-medium hover:text-red-500 hover:bg-red-50 transition-all" title="Eliminar" :disabled="cloudActiveReadonly">
                               <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                           </template>
@@ -629,7 +626,7 @@
                     <h4 class="text-base font-bold text-paho-very-dark-blue">Resumen y Conclusiones de la Evaluación</h4>
                     <p class="text-xs text-paho-gray-medium mt-1 text-justify">Escriba una síntesis ejecutiva sobre los hallazgos principales y áreas clave que requieren intervención urgente.</p>
                   </div>
-                  <textarea aria-label="Resumen y conclusiones" v-model="generalInfo.summary" rows="7" placeholder="Redacte aquí una breve descripción del estado general..." class="w-full p-4 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark text-justify"></textarea>
+                  <textarea aria-label="Resumen y conclusiones" v-model="generalInfo.summary" rows="7" placeholder="Redacte aquí una breve descripción del estado general..." class="w-full p-4 border border-paho-grid text-sm focus:border-paho-blue outline-none transition-all bg-white text-paho-gray-dark text-justify" :disabled="cloudActiveReadonly"></textarea>
                 </div>
               </div>
 
@@ -640,7 +637,7 @@
                     <p class="text-xs text-paho-gray-medium mt-1">Suba evidencias críticas observadas en campo. {{ photoBusy ? 'Procesando fotografías…' : '' }}</p>
                   </div>
 
-                  <input type="file" id="real-file-input" class="hidden" accept="image/*" multiple @change="handleFileChange" />
+                  <input type="file" id="real-file-input" class="hidden" accept="image/*" multiple @change="handleFileChange" :disabled="cloudActiveReadonly" />
 
                   <div role="button" tabindex="0" aria-label="Seleccionar o arrastrar fotografías" :aria-busy="photoBusy" @keydown.enter.prevent="triggerMockUpload" @keydown.space.prevent="triggerMockUpload" @dragover.prevent @drop.prevent="handlePhotoDrop" @click="triggerMockUpload" class="no-print border-2 border-dashed border-paho-grid hover:border-paho-blue p-6 text-center cursor-pointer transition-colors bg-white">
                     <div class="p-3 bg-paho-card border border-paho-grid inline-block mb-3">
@@ -678,7 +675,7 @@
                             placeholder="Escriba un nombre o descripción..."
                             class="w-full px-2 py-1 bg-white border border-paho-grid text-[11px] font-bold text-paho-very-dark-blue focus:border-paho-blue focus:outline-none rounded-none placeholder:font-normal placeholder:text-paho-gray-medium/70"
                             title="Haga clic para renombrar la evidencia"
-                          />
+                          :disabled="cloudActiveReadonly" />
 
                           <button
                             type="button"
@@ -782,7 +779,7 @@
                       <!-- 1. CUMPLE (Score 2) -->
                       <button @click="setIndicatorScore(ind, 2)"
                               :class="['w-full p-4 border text-left transition-all duration-150 outline-none flex items-start gap-4 rounded-none cursor-pointer',
-                                       ind.score === 2 ? 'bg-emerald-50 border-emerald-300 text-paho-gray-dark' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']">
+                                       ind.score === 2 ? 'bg-emerald-50 border-emerald-300 text-paho-gray-dark' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         <div class="flex items-center h-5 mt-0.5 flex-shrink-0">
                           <div class="w-4 h-4 rounded-full border flex items-center justify-center bg-white transition-all duration-150"
                                :class="ind.score === 2 ? 'border-emerald-500 bg-emerald-50' : 'border-paho-gray-medium'">
@@ -798,7 +795,7 @@
                       <!-- 2. CUMPLE PARCIALMENTE (Score 1) -->
                       <button @click="setIndicatorScore(ind, 1)"
                               :class="['w-full p-4 border text-left transition-all duration-150 outline-none flex items-start gap-4 rounded-none cursor-pointer',
-                                       ind.score === 1 ? 'bg-amber-50 border-amber-300 text-paho-gray-dark' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']">
+                                       ind.score === 1 ? 'bg-amber-50 border-amber-300 text-paho-gray-dark' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         <div class="flex items-center h-5 mt-0.5 flex-shrink-0">
                           <div class="w-4 h-4 rounded-full border flex items-center justify-center bg-white transition-all duration-150"
                                :class="ind.score === 1 ? 'border-amber-500 bg-amber-50' : 'border-paho-gray-medium'">
@@ -814,7 +811,7 @@
                       <!-- 3. NO CUMPLE (Score 0) -->
                       <button @click="setIndicatorScore(ind, 0)"
                               :class="['w-full p-4 border text-left transition-all duration-150 outline-none flex items-start gap-4 rounded-none cursor-pointer',
-                                       ind.score === 0 ? 'bg-rose-50 border-rose-300 text-paho-gray-dark' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']">
+                                       ind.score === 0 ? 'bg-rose-50 border-rose-300 text-paho-gray-dark' : 'border-paho-grid text-paho-gray-dark bg-white hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         <div class="flex items-center h-5 mt-0.5 flex-shrink-0">
                           <div class="w-4 h-4 rounded-full border flex items-center justify-center bg-white transition-all duration-150"
                                :class="ind.score === 0 ? 'border-rose-500 bg-rose-50' : 'border-paho-gray-medium'">
@@ -842,7 +839,7 @@
 
                     <div class="space-y-1.5 w-full">
                       <label :for="'assessment-notes-' + ind.id" class="text-[10px] font-bold text-paho-gray-dark uppercase tracking-wider block">Comentarios de Campo / Hallazgos</label>
-                      <input :id="'assessment-notes-' + ind.id" aria-label="Comentarios de campo" :aria-invalid="assessmentInvalid(ind) ? 'true' : undefined" :aria-describedby="assessmentInvalid(ind) ? 'assessment-error-' + ind.id : undefined" type="text" v-model="ind.notes" :placeholder="ind.score === null ? 'Explique por qué no se aplica o no pudo evaluarlo...' : 'Describa el estado, fecha o condiciones...'" class="w-full px-4 py-2.5 text-xs border border-paho-grid bg-white focus:outline-none focus:border-paho-blue text-paho-gray-dark rounded-none">
+                      <input :id="'assessment-notes-' + ind.id" aria-label="Comentarios de campo" :aria-invalid="assessmentInvalid(ind) ? 'true' : undefined" :aria-describedby="assessmentInvalid(ind) ? 'assessment-error-' + ind.id : undefined" type="text" v-model="ind.notes" :placeholder="ind.score === null ? 'Explique por qué no se aplica o no pudo evaluarlo...' : 'Describa el estado, fecha o condiciones...'" class="w-full px-4 py-2.5 text-xs border border-paho-grid bg-white focus:outline-none focus:border-paho-blue text-paho-gray-dark rounded-none" :disabled="cloudActiveReadonly">
                       <p v-if="assessmentInvalid(ind)" :id="'assessment-error-' + ind.id" class="text-xs text-red-700">Seleccione una respuesta o explique por qué no se aplica el indicador o no pudo evaluarlo. No basta con dejar el campo vacío o solo símbolos.</p>
                     </div>
                   </div>
@@ -856,13 +853,13 @@
                       <button
                         type="button"
                         @click="setSanitationSystem('alcantarillado')"
-                        :class="['py-3 px-4 text-xs font-bold border transition-all text-center rounded-none', generalInfo.sanitationSystem === 'alcantarillado' ? 'bg-paho-dark-blue text-white border-paho-dark-blue' : 'bg-white text-paho-gray-dark border-paho-grid hover:bg-paho-card']">
+                        :class="['py-3 px-4 text-xs font-bold border transition-all text-center rounded-none', generalInfo.sanitationSystem === 'alcantarillado' ? 'bg-paho-dark-blue text-white border-paho-dark-blue' : 'bg-white text-paho-gray-dark border-paho-grid hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         Sí — Sistema con alcantarillado público
                       </button>
                       <button
                         type="button"
                         @click="setSanitationSystem('insitu')"
-                        :class="['py-3 px-4 text-xs font-bold border transition-all text-center rounded-none', generalInfo.sanitationSystem === 'insitu' ? 'bg-paho-dark-blue text-white border-paho-dark-blue' : 'bg-white text-paho-gray-dark border-paho-grid hover:bg-paho-card']">
+                        :class="['py-3 px-4 text-xs font-bold border transition-all text-center rounded-none', generalInfo.sanitationSystem === 'insitu' ? 'bg-paho-dark-blue text-white border-paho-dark-blue' : 'bg-white text-paho-gray-dark border-paho-grid hover:bg-paho-card']" :disabled="cloudActiveReadonly">
                         No — Sistema sin alcantarillado
                       </button>
                     </div>
@@ -886,7 +883,7 @@
               </div>
 
               <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                <button @click="clearCurrentModule" class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold border border-red-200 transition-colors rounded-none" title="Eliminar todo el llenado de este dominio">
+                <button @click="clearCurrentModule" class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold border border-red-200 transition-colors rounded-none" title="Eliminar todo el llenado de este dominio" :disabled="cloudActiveReadonly">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                   <span>Reiniciar el llenado del Dominio</span>
                 </button>
@@ -1005,7 +1002,7 @@
                 rows="6"
                 placeholder="Indique servicio/área, componente afectado y causa concreta observada. Ej.: Fuga en tuberías y grifos sin agua en sala de partos."
                 class="w-full h-36 min-h-[140px] p-3 border border-paho-grid rounded-none text-xs text-left resize-none bg-white focus:border-paho-blue focus:ring-1 focus:ring-paho-blue outline-none leading-relaxed placeholder:text-paho-gray-medium/60 block"
-              ></textarea>
+               :disabled="cloudActiveReadonly"></textarea>
             </td>
 
             <!-- Riesgos Asociados -->
@@ -1015,7 +1012,7 @@
                 rows="6"
                 placeholder="Especifique consecuencias en salud de pacientes, personal o dignidad. Ej.: Infecciones neonatales por falta de higiene de manos."
                 class="w-full h-36 min-h-[140px] p-3 border border-paho-grid rounded-none text-xs text-left resize-none bg-white focus:border-paho-blue focus:ring-1 focus:ring-paho-blue outline-none leading-relaxed placeholder:text-paho-gray-medium/60 block"
-              ></textarea>
+               :disabled="cloudActiveReadonly"></textarea>
             </td>
 
 <!-- Gravedad (G: 0 a 10) -->
@@ -1024,7 +1021,7 @@
     <select aria-label="Gravedad"
       v-model.number="ind.severity"
       class="w-full max-w-[145px] px-2.5 py-1.5 border border-paho-grid bg-white text-xs font-semibold text-left cursor-pointer focus:border-paho-blue outline-none rounded-none"
-    >
+     :disabled="cloudActiveReadonly">
       <option :value="null" class="text-left">—</option>
       <option v-for="opt in severityOptions" :key="opt.val" :value="opt.val" class="text-left">
         {{ opt.label }}
@@ -1039,7 +1036,7 @@
     <select aria-label="Probabilidad"
       v-model.number="ind.likelihood"
       class="w-full max-w-[145px] px-2.5 py-1.5 border border-paho-grid bg-white text-xs font-semibold text-left cursor-pointer focus:border-paho-blue outline-none rounded-none"
-    >
+     :disabled="cloudActiveReadonly">
       <option :value="null" class="text-left">—</option>
       <option v-for="opt in likelihoodOptions" :key="opt.val" :value="opt.val" class="text-left">
         {{ opt.label }}
@@ -1091,7 +1088,7 @@
 
 
 <!-- MODULE 4: PASO 4: PLAN DE MEJORA -->
-<div v-show="!cloudMode && (activeView === 'step4' || isPrintingAll)" class="space-y-8">
+<div v-show="activeView === 'step4' || isPrintingAll" class="space-y-8">
 
   <!-- Encabezado con Filtro de Brechas (Sin box rojo y con ajuste anti-desborde) -->
   <div class="bg-paho-card p-6 border border-paho-grid flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1199,7 +1196,7 @@
                 rows="6"
                 placeholder="Inicie con un verbo en infinitivo indicando la solución técnica o conductual. Ej.: Instalar nueva línea de PVC y dos grifos clínicos."
                 class="w-full h-36 min-h-[140px] p-3 border border-paho-grid rounded-none text-xs text-left resize-none bg-white text-paho-gray-dark focus:border-paho-blue focus:ring-1 focus:ring-paho-blue outline-none leading-relaxed placeholder:text-paho-gray-medium/60 block"
-              ></textarea>
+               :disabled="cloudActiveReadonly"></textarea>
             </td>
 
             <!-- Fecha de Realización -->
@@ -1208,7 +1205,7 @@
                 type="date"
                 v-model="ind.targetDate"
                 class="w-full p-2.5 border border-paho-grid rounded-none text-xs text-paho-gray-dark focus:outline-none focus:border-paho-blue bg-white"
-              >
+               :disabled="cloudActiveReadonly">
             </td>
 
             <!-- Recursos Necesarios -->
@@ -1218,12 +1215,12 @@
                 rows="6"
                 placeholder="Detalle los materiales, herramientas y perfiles humanos requeridos. Ej.: Tanque 1.000 L, tubos PVC, herramientas y fontanero institucional."
                 class="w-full h-36 min-h-[140px] p-3 border border-paho-grid rounded-none text-xs text-left resize-none bg-white text-paho-gray-dark focus:border-paho-blue outline-none leading-relaxed placeholder:text-paho-gray-medium/60 block"
-              ></textarea>
+               :disabled="cloudActiveReadonly"></textarea>
             </td>
 
             <!-- Responsable -->
             <td data-label="Responsable" class="py-5 px-4 align-top">
-              <textarea :value="bulletValue(ind.responsible)" @focus="focusBulletField" @input="updateBulletField($event, ind, 'responsible')" @keydown="enterBulletField($event, ind, 'responsible')" @blur="blurBulletField" aria-label="Responsables" rows="3" placeholder="Escriba uno o varios responsables" class="w-full min-w-0 h-24 p-2 border border-paho-grid text-xs resize-none overflow-y-auto"></textarea>
+              <textarea :value="bulletValue(ind.responsible)" @focus="focusBulletField" @input="updateBulletField($event, ind, 'responsible')" @keydown="enterBulletField($event, ind, 'responsible')" @blur="blurBulletField" aria-label="Responsables" rows="3" placeholder="Escriba uno o varios responsables" class="w-full min-w-0 h-24 p-2 border border-paho-grid text-xs resize-none overflow-y-auto" :disabled="cloudActiveReadonly"></textarea>
             </td>
 
             <!-- Presupuesto (USD) -->
@@ -1239,7 +1236,7 @@
                     @blur="focusedCostId = null"
                     placeholder="0.00"
                     class="w-full pl-6 pr-2 py-2 border border-paho-grid text-xs font-semibold focus:outline-none focus:border-paho-blue bg-white text-paho-gray-dark rounded-none text-right"
-                  >
+                   :disabled="cloudActiveReadonly">
                 </div>
                 <span class="block text-[10px] text-paho-gray-medium mt-1 font-medium">USD</span>
               </div>
@@ -1250,7 +1247,7 @@
               <select aria-label="Estado de seguimiento"
                 v-model="ind.trackingStatus"
                 class="w-full p-2.5 border border-paho-grid rounded-none text-xs bg-white text-paho-gray-dark focus:outline-none focus:border-paho-blue font-medium cursor-pointer"
-              >
+               :disabled="cloudActiveReadonly">
                 <option value="No Iniciado">No iniciado</option>
                 <option value="En Progreso">En curso (según lo previsto)</option>
                 <option value="Retrasado">En curso (se prevé retraso)</option>
@@ -1292,7 +1289,7 @@
 </div>
 
 <!-- MODULE 5: PASO 5: MONITOREO Y REVISIÓN DEL PLAN -->
-<div v-show="!cloudMode && (activeView === 'step5' || isPrintingAll)" class="space-y-8">
+<div v-show="activeView === 'step5' || isPrintingAll" class="space-y-8">
 
   <!-- Encabezado con Filtro de Brechas Integrado -->
   <div class="bg-paho-card p-6 border border-paho-grid flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1393,7 +1390,7 @@
               <select aria-label="Cambio del indicador"
                 v-model="ind.indicatorChange"
                 class="w-full p-2.5 border border-paho-grid rounded-none text-xs bg-white text-paho-gray-dark focus:outline-none focus:border-paho-blue font-medium cursor-pointer"
-              >
+               :disabled="cloudActiveReadonly">
                 <option value="mejorado">Ha mejorado</option>
                 <option value="empeorado">Ha empeorado</option>
                 <option value="sin_cambios">No ha cambiado</option>
@@ -1407,7 +1404,7 @@
                 rows="6"
                 placeholder="Describa las acciones correctivas o de sostenibilidad..."
                 class="w-full h-36 min-h-[140px] p-3 border border-paho-grid rounded-none text-xs text-left resize-none bg-white text-paho-gray-dark focus:border-paho-blue focus:ring-1 focus:ring-paho-blue outline-none leading-relaxed placeholder:text-paho-gray-medium/60 block"
-              ></textarea>
+               :disabled="cloudActiveReadonly"></textarea>
             </td>
 
             <!-- Fecha de Revisión -->
@@ -1416,7 +1413,7 @@
                 type="date"
                 v-model="ind.nextReviewDate"
                 class="w-full p-2.5 border border-paho-grid rounded-none text-xs text-paho-gray-dark focus:outline-none focus:border-paho-blue bg-white"
-              >
+               :disabled="cloudActiveReadonly">
             </td>
 
             <!-- Comentarios / Notas Adicionales -->
@@ -1426,10 +1423,10 @@
                 rows="6"
                 placeholder="Notas adicionales de control o auditoría técnica..."
                 class="w-full h-36 min-h-[140px] p-3 border border-paho-grid rounded-none text-xs text-left resize-none bg-white text-paho-gray-dark focus:border-paho-blue outline-none leading-relaxed placeholder:text-paho-gray-medium/60 block"
-              ></textarea>
+               :disabled="cloudActiveReadonly"></textarea>
             </td>
             <td data-label="Revisiones" class="py-5 px-4 align-top"><div class="flex flex-col gap-3 min-w-[150px]">
-              <button type="button" @click="openNewReview(ind)" class="px-4 py-3 bg-paho-dark-blue text-white text-sm font-bold">Nueva revisión</button>
+              <button type="button" @click="openNewReview(ind)" class="px-4 py-3 bg-paho-dark-blue text-white text-sm font-bold" :disabled="cloudActiveReadonly">Nueva revisión</button>
               <button type="button" @click="openHistoryDialog(ind)" class="px-4 py-3 border border-paho-grid text-paho-dark-blue text-sm font-bold">Ver historial ({{ ind.history?.length || 0 }})</button>
             </div></td>
           </tr>
@@ -1862,15 +1859,15 @@
           <p v-if="reviewError" role="alert" class="text-sm text-red-700 mb-4">{{ reviewError }}</p>
           <section class="p-4 bg-paho-card border border-paho-grid mb-5"><h3 class="text-sm font-bold mb-2">Acción de mejora</h3><p class="text-sm whitespace-pre-wrap">{{ reviewBullets(reviewIndicator.action) || 'Sin acción de mejora registrada.' }}</p></section>
           <div class="review-form-grid">
-            <div class="review-full"><label for="review-change">¿Ha mejorado, empeorado o no ha cambiado?</label><select id="review-change" v-model="reviewDraft.indicatorChange"><option value="mejorado">Ha mejorado</option><option value="empeorado">Ha empeorado</option><option value="sin_cambios">No ha cambiado</option></select></div>
-            <div><label for="review-responsible">Responsables del Plan de mejora</label><textarea id="review-responsible" :value="bulletValue(reviewDraft.responsible)" @focus="focusBulletField" @input="updateBulletField($event, reviewDraft, 'responsible')" @keydown="enterBulletField($event, reviewDraft, 'responsible')" @blur="blurBulletField" rows="3"></textarea></div>
+            <div class="review-full"><label for="review-change">¿Ha mejorado, empeorado o no ha cambiado?</label><select id="review-change" v-model="reviewDraft.indicatorChange" :disabled="cloudMode && cloudPlanReadonly"><option value="mejorado">Ha mejorado</option><option value="empeorado">Ha empeorado</option><option value="sin_cambios">No ha cambiado</option></select></div>
+            <div><label for="review-responsible">Responsables del Plan de mejora</label><textarea id="review-responsible" :value="bulletValue(reviewDraft.responsible)" @focus="focusBulletField" @input="updateBulletField($event, reviewDraft, 'responsible')" @keydown="enterBulletField($event, reviewDraft, 'responsible')" @blur="blurBulletField" rows="3" :disabled="cloudMode && cloudPlanReadonly"></textarea></div>
 
-            <section class="review-full review-additions" aria-labelledby="review-measures-title"><h3 id="review-measures-title">Medidas correctivas o adicionales</h3><div class="review-previous"><h4>Registrado anteriormente</h4><p>{{ reviewBullets(reviewDraft.previousCorrectiveMeasures) || 'Sin registros anteriores.' }}</p></div><label for="review-measures">Agregar nueva medida correctiva</label><textarea id="review-measures" :value="bulletValue(reviewDraft.newCorrectiveMeasures)" @focus="focusBulletField" @input="updateBulletField($event, reviewDraft, 'newCorrectiveMeasures')" @keydown="enterBulletField($event, reviewDraft, 'newCorrectiveMeasures')" @blur="blurBulletField" rows="3"></textarea></section>
-            <section class="review-full review-additions" aria-labelledby="review-comments-title"><h3 id="review-comments-title">Comentarios y notas adicionales</h3><div class="review-previous"><h4>Registrado anteriormente</h4><p>{{ reviewBullets(reviewDraft.previousMonitoringComments) || 'Sin registros anteriores.' }}</p></div><label for="review-comments">Agregar nuevo comentario adicional</label><textarea id="review-comments" :value="bulletValue(reviewDraft.newMonitoringComments)" @focus="focusBulletField" @input="updateBulletField($event, reviewDraft, 'newMonitoringComments')" @keydown="enterBulletField($event, reviewDraft, 'newMonitoringComments')" @blur="blurBulletField" rows="3"></textarea></section>
-            <div class="review-full"><label for="review-next-date">Próxima revisión (opcional)</label><input id="review-next-date" type="date" v-model="reviewDraft.nextReviewDate"></div>
+            <section class="review-full review-additions" aria-labelledby="review-measures-title"><h3 id="review-measures-title">Medidas correctivas o adicionales</h3><div class="review-previous"><h4>Registrado anteriormente</h4><p>{{ reviewBullets(reviewDraft.previousCorrectiveMeasures) || 'Sin registros anteriores.' }}</p></div><label for="review-measures">Agregar nueva medida correctiva</label><textarea id="review-measures" :value="bulletValue(reviewDraft.newCorrectiveMeasures)" @focus="focusBulletField" @input="updateBulletField($event, reviewDraft, 'newCorrectiveMeasures')" @keydown="enterBulletField($event, reviewDraft, 'newCorrectiveMeasures')" @blur="blurBulletField" rows="3" :disabled="cloudMode && cloudPlanReadonly"></textarea></section>
+            <section class="review-full review-additions" aria-labelledby="review-comments-title"><h3 id="review-comments-title">Comentarios y notas adicionales</h3><div class="review-previous"><h4>Registrado anteriormente</h4><p>{{ reviewBullets(reviewDraft.previousMonitoringComments) || 'Sin registros anteriores.' }}</p></div><label for="review-comments">Agregar nuevo comentario adicional</label><textarea id="review-comments" :value="bulletValue(reviewDraft.newMonitoringComments)" @focus="focusBulletField" @input="updateBulletField($event, reviewDraft, 'newMonitoringComments')" @keydown="enterBulletField($event, reviewDraft, 'newMonitoringComments')" @blur="blurBulletField" rows="3" :disabled="cloudMode && cloudPlanReadonly"></textarea></section>
+            <div class="review-full"><label for="review-next-date">Próxima revisión (opcional)</label><input id="review-next-date" type="date" v-model="reviewDraft.nextReviewDate" :disabled="cloudMode && cloudPlanReadonly"></div>
           </div>
         </div>
-        <footer class="review-editor-footer"><button type="button" @click="closeReviewEditor" class="review-cancel">Cancelar</button><button type="submit" :disabled="reviewSaving" class="review-save">Guardar revisión</button></footer>
+        <footer class="review-editor-footer"><button type="button" @click="closeReviewEditor" class="review-cancel">Cancelar</button><button type="submit" :disabled="(cloudMode && cloudPlanReadonly) || reviewSaving" class="review-save">Guardar revisión</button></footer>
       </form>
     </dialog>
 

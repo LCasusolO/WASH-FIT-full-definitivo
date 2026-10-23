@@ -10,6 +10,12 @@ const {createRuntime}=require('./managed-runtime.cjs');
   await r.db.query("insert into wash_team_members values($1,$2,'Propietario QA','coordinator')",[t,r.owner.id]);await r.db.query('insert into wash_assignments values($1,$2)',[t,f]);
   qaEvaluation=(await r.db.query("insert into wash_evaluations(facility_id,team_id,name,kind,created_by) values($1,$2,'Evaluación ficticia QA','initial',$3) returning id",[f,t,r.owner.id])).rows[0].id;
   await r.db.query("insert into wash_participants values($1,$2,'Propietario QA','coordinator',true)",[qaEvaluation,r.owner.id]);
+  if(process.env.WASH_QA_VALIDATED==='1'){
+   await r.db.query("insert into wash_records(facility_id,evaluation_id,kind,record_key,data,updated_by) values($1,$2,'general','identification',$3,$4)",[f,qaEvaluation,JSON.stringify({facilityName:'Establecimiento ficticio QA',countryCode:'PER'}),r.owner.id]);
+   await r.db.query("insert into wash_records(facility_id,evaluation_id,kind,record_key,data,updated_by) values($1,$2,'indicator','A_1a',$3,$4)",[f,qaEvaluation,JSON.stringify({score:0,problemDesc:'Falta reparar el abastecimiento',severity:5,likelihood:5}),r.owner.id]);
+   await r.db.query("update wash_evaluations set status='validated' where id=$1",[qaEvaluation]);
+  }
+
  });
  const accounts=require('../../api/accounts').createHandler({env:{WASH_MULTIUSER:'true',WASH_APP_ORIGIN:origin,SUPABASE_URL:origin,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture'},request:(url,opts)=>r.handler(new Request(url,opts))});
  async function handle(req,res){

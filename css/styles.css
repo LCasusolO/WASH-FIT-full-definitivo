@@ -252,13 +252,9 @@ button, [role=button], summary { cursor: pointer; }
 @media print { .report-radar svg { max-width: 175mm; } }
 /* Estado del expediente compartido; los controles de solo lectura usan fieldset. */
 .evaluation-fields{border:0;padding:0;margin:0;min-width:0;flex:1;display:flex;flex-direction:column}
-.cloud-banner{padding:16px;background:#eaf4fc;border-bottom:1px solid #bdcfdd}
-.cloud-banner button{padding:8px 12px;margin:4px;border:1px solid #075d97;color:#075d97;background:white;font-weight:bold}
-.cloud-banner button:disabled{opacity:.5}
-.cloud-banner p{margin-top:8px}
 .cloud-conflict{border:2px solid #a32a32;background:#fff7f7;padding:12px;margin-top:12px}
 .cloud-versions{display:flex;gap:12px;flex-wrap:wrap}
 .cloud-versions label{flex:1;min-width:220px}
 .cloud-versions textarea{width:100%;min-height:140px;border:1px solid #aab8c3;font:12px monospace;padding:8px}
 
-.cloud-step-panel{padding:1rem;min-width:0}.cloud-step-panel iframe{display:block;width:100%;height:650px;border:0;background:#fff}.cloud-consult{padding:.5rem 1rem;display:flex;flex-wrap:wrap;gap:.4rem}.cloud-consult button{padding:.4rem;border:1px solid #bdcfdd;color:#075d97}.cloud-sync-conflicts{padding:1rem}
+.cloud-sync-conflicts{padding:1rem}

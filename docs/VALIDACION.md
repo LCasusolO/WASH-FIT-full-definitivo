@@ -181,3 +181,12 @@ corrección adicional.
 - Reintento, creación activa duplicada, referencia modificada, independencia entre establecimientos y Reeval-1000 comprobados.
 - Navegador QA: creación de Reeval-001 sin nombre manual; sin errores de consola.
 - Migración aplicada y comprobada en producción: asignación en servidor, bloqueo transaccional por establecimiento y función anterior sin ejecución directa del cliente.
+
+## Permisos del mapa y coordinación del administrador — 23 de octubre de 2026
+
+- 150 pruebas aprobadas; build correcto.
+
+- Clic, creación y arrastre del marcador bloqueados en solo lectura, incluidos eventos tardíos y geolocalización pendiente al retirarse permisos. Se conserva la visualización de coordenadas remotas y el zoom.
+- SQL comprueba que el administrador sin participación no guarda datos generales; al asignarse coordinador de un equipo propio puede guardar y conserva su rol nacional. No puede asignarse a equipos ajenos; un evaluador no puede concederse coordinación.
+- Tabla de equipos permite autoasignación administrativa por país; ninguna cuenta real se reasignó durante las pruebas.
+- Navegador QA con datos ficticios: mapa bloqueado, autoasignación, coordenadas editables y guardado. Caché en solo lectura y caché antigua sin permisos comprobadas con pruebas de sincronización.

@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 function portal(clipboard){
  const data={countries:[{id:'a',name:'A'},{id:'b',name:'B'}],owners:[{user_id:'owner'}],facilities:[{id:'fa',country_id:'a'},{id:'fb',country_id:'b'}],teams:[{id:'ta',country_id:'a'}],snapshots:[]};
  let state,mounted,commands=[];
- const P={ready:Promise.resolve({enabled:true}),session:async()=>({user:{id:'owner'}}),pendingExport:async()=>null,accountStatus:async()=>({ready:true,status:'active',session_valid:true,has_access:true,can_manage:false}),accountAction:async(action)=>{commands.push({op:action});return {message:'Si la cuenta existe, recibirá un enlace para recuperar el acceso.'};},rows:async(t,f)=>structuredClone((data[t]||[]).filter(r=>!f||r.facility_id===f.facility_id)),command:async(op,d)=>{commands.push({op,data:d});if(op==='country'){const c={...d,id:'new'};data.countries.push(c);return c;}return{};},exportFiles:async(e,f)=>commands.push({op:'export',evaluation:e,facility:f}),client:{auth:{onAuthStateChange:()=>({data:{subscription:{}}}),resetPasswordForEmail:async()=>{commands.push({op:'recover'});return{};}},channel:()=>({on(){return this},subscribe(){return this}})}};
+ const P={ready:Promise.resolve({enabled:true}),session:async()=>({user:{id:'owner'}}),pendingExport:async()=>null,accountStatus:async()=>({ready:true,status:'active',session_valid:true,has_access:true,can_manage:false}),accountAction:async(action,data)=>{commands.push({op:action,data});return {message:'Si la cuenta existe, recibirá un enlace para recuperar el acceso.'};},rows:async(t,f)=>structuredClone((data[t]||[]).filter(r=>!f||r.facility_id===f.facility_id)),command:async(op,d)=>{commands.push({op,data:d});if(op==='country'){const c={...d,id:'new'};data.countries.push(c);return c;}return{};},exportFiles:async(e,f)=>commands.push({op:'export',evaluation:e,facility:f}),client:{auth:{onAuthStateChange:()=>({data:{subscription:{}}}),resetPasswordForEmail:async()=>{commands.push({op:'recover'});return{};}},channel:()=>({on(){return this},subscribe(){return this}})}};
  const context=vm.createContext({console,navigator:{clipboard},URLSearchParams,location:{search:'',hash:'',origin:'https://example.invalid',pathname:'/plataforma.html'},history:{replaceState(){}},sessionStorage:{getItem(){return null},removeItem(){}},indexedDB:{},WashStorage:{createStore:()=>({read:async()=>null,write:async()=>{}})},WashPlatform:P,WashPlatformModel:{clone:structuredClone,accountUsername:require('../js/platform-model.js').accountUsername},INDICATORS_DATA:[{id:'A_1'}],WashCore:{},crypto,setInterval(){},setTimeout,clearTimeout});
  vm.runInContext(fs.readFileSync('vendor/vue.global.js','utf8'),context);
  context.document={getElementById(){return{focus(){}}}};
@@ -62,4 +62,12 @@ test('administrador ve establecimientos sin evaluar y asigna el equipo a la fila
 test('crear evaluación no requiere ni envía un nombre manual',async()=>{
  const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.start();await app.state.startEvaluation('fa');await app.state.createEvaluation();
  const command=app.commands.find(c=>c.op==='evaluation');assert.ok(command);assert.equal(command.data.kind,'initial');assert.equal(Object.hasOwn(command.data,'name'),false);assert.equal(app.state.error.value,'');
+});
+
+test('administrador se asigna coordinador solo en equipos del país que administra',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];await app.start();
+ await app.state.joinAsCoordinator({id:'ta',country_id:'a',name:'Equipo A'});
+ const call=app.commands.find(c=>c.op==='set_role');assert.deepEqual(JSON.parse(JSON.stringify(call.data)),{user_id:'owner',scope:'team',team_id:'ta',role:'coordinator'});assert.match(app.state.message.value,/Conserva su rol/);
+ const before=app.commands.length;await app.state.joinAsCoordinator({id:'foreign',country_id:'b'});assert.equal(app.commands.length,before);assert.match(app.state.error.value,/permiso/);
+ app.data.country_members=[];await app.state.refresh();await app.state.joinAsCoordinator({id:'ta',country_id:'a'});assert.equal(app.commands.length,before);
 });

@@ -40,6 +40,18 @@ test('cuentas administradas: autoridad, sesiones, altas y cambios de permisos',a
   await assert.rejects(command('outsider','country',{code:'XXX',name:'No permitido'}),/FORBIDDEN/);
   await assert.rejects(command('owner','invite',{}),/USE_ACCOUNT_MANAGEMENT/);
  });
+ await t.test('administrador puede coordinar su equipo sin perder el rol nacional ni editar equipos ajenos',async()=>{
+  await assert.rejects(command('admin','save_record',{evaluation_id:evaluation.id,kind:'general',record_key:'general',data:{latitude:1,longitude:2}}),/FORBIDDEN/);
+  await assert.rejects(service('set_role','admin',{user_id:users.admin,scope:'team',team_id:foreignTeam.id,role:'coordinator'}),/FORBIDDEN/);
+  await assert.rejects(service('set_role','editor',{user_id:users.editor,scope:'team',team_id:team.id,role:'coordinator'}),/FORBIDDEN/);
+  await service('set_role','admin',{user_id:users.admin,scope:'team',team_id:team.id,role:'coordinator'});
+  assert.equal((await as('admin',"select role from wash_country_members where user_id=$1",[users.admin])).rows[0].role,'admin');
+  const p=(await as('admin','select * from wash_participants where evaluation_id=$1 and user_id=$2',[evaluation.id,users.admin])).rows[0];assert.equal(p.role,'coordinator');assert.equal(p.active,true);
+  await command('admin','save_record',{evaluation_id:evaluation.id,kind:'general',record_key:'general',data:{latitude:1,longitude:2}});
+  await service('set_role','admin',{user_id:users.admin,scope:'team',team_id:team.id,role:'remove'});
+  await assert.rejects(command('admin','save_record',{evaluation_id:evaluation.id,kind:'general',record_key:'general',data:{latitude:3,longitude:4}}),/FORBIDDEN/);
+  await db.exec('reset role');await db.query("delete from wash_records where evaluation_id=$1 and kind='general'",[evaluation.id]);
+ });
  await t.test('directorio limitado al ámbito del administrador y credenciales compartidas protegidas',async()=>{
   const list=await service('list','admin');assert.ok(list.some(u=>u.user_id===users.editor));assert.ok(!list.some(u=>u.user_id===users.foreign));
   await assert.rejects(service('reset_begin','admin',{user_id:owner}),/FORBIDDEN/);

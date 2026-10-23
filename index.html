@@ -485,7 +485,8 @@
               <div class="bg-paho-card rounded-none border border-paho-grid p-8 space-y-6">
                 <div class="border-b border-paho-grid pb-4">
                   <h4 class="text-base font-bold text-paho-very-dark-blue">Geolocalización del Establecimiento</h4>
-                  <p class="text-xs text-paho-gray-medium mt-1">Haga clic en el mapa o arrastre el marcador para fijar la ubicación, o bien escriba las coordenadas de Latitud y Longitud en los campos siguientes para desplazar el marcador automáticamente.</p>
+                  <p v-if="cloudMode && cloudReadonly" class="text-xs text-paho-gray-medium mt-1">Ubicación en modo de consulta. Puede explorar el mapa; para cambiar las coordenadas debe participar como coordinador o evaluador en una evaluación abierta a edición.</p>
+                  <p v-else class="text-xs text-paho-gray-medium mt-1">Haga clic en el mapa o arrastre el marcador para fijar la ubicación, o bien escriba las coordenadas de Latitud y Longitud en los campos siguientes para desplazar el marcador automáticamente.</p>
                 </div>
                 <div class="location-controls grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div class="space-y-2 self-center min-w-0">

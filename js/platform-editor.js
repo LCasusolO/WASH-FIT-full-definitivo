@@ -24,7 +24,7 @@
     return {rows:selected,logical:M.editorRecords(canonical(dataset),selected,context())};
   }
 
-  async function persist(){if(store)await store.write('sync',{base,rows,local:hooks.get(),conflicts,pending,currentOperation,editingTeam,planReadOnly,evaluation});}
+  async function persist(){if(store)await store.write('sync',{base,rows,local:hooks.get(),conflicts,pending,currentOperation,editingTeam,readOnly,planReadOnly,evaluation});}
   async function apply(records){if(M.stable(logical(hooks.get()))===M.stable(records))return;await hooks.apply(canonical(M.dataset(records,INDICATORS_DATA,WashCore.defaults(),records.filter(r=>r.kind==='action'))));}
   async function refresh(){
     if(inFlight||!active||!navigator.onLine)return;
@@ -51,7 +51,7 @@
       else {base=remote.logical;await apply(base);}
     }catch(e){
       if(e.message==='ACCESS_REVOKED'||navigator.onLine||!cached)throw e;
-      evaluation=cached.evaluation;editingTeam=cached.editingTeam||'';planReadOnly=cached.planReadOnly??true;hooks.planReadonly?.(planReadOnly);base=cached.base;rows=cached.rows;conflicts=cached.conflicts||[];pending=cached.pending;currentOperation=cached.currentOperation;await hooks.apply(cached.local);readOnly=false;hooks.readonly(false);hooks.status('pending','Sin conexión: cambios guardados solo en este dispositivo.');
+      evaluation=cached.evaluation;editingTeam=cached.editingTeam||'';planReadOnly=cached.planReadOnly??true;hooks.planReadonly?.(planReadOnly);base=cached.base;rows=cached.rows;conflicts=cached.conflicts||[];pending=cached.pending;currentOperation=cached.currentOperation;readOnly=cached.readOnly!==false || !['draft','editing'].includes(evaluation?.status);hooks.readonly(readOnly);await hooks.apply(cached.local);hooks.status('pending','Sin conexión: cambios guardados solo en este dispositivo.');
     }
     active=true;root.WashCloud.active=true;hooks.conflicts(conflicts);
     if(evaluation){

@@ -6,7 +6,7 @@
     const response = await request('/api/drive-archive', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body), signal: AbortSignal.timeout(60000)});
     let result;
     try { result = await response.json(); } catch (_) { throw new Error('El repositorio central no está disponible.'); }
-    if (!response.ok) throw new Error(result.error || 'No se pudo guardar en el repositorio.');
+    if (!response.ok) throw Object.assign(new Error(result.error || 'No se pudo guardar en el repositorio.'),{code:result.code});
     return result;
   }
   async function upload(receipt, kind, blob, request, progress) {
@@ -26,7 +26,8 @@
     }
     return result.id;
   }
-  async function save(job, progress, request = fetch) {
+  async function save(job, progress, request = fetch, restarted = false) {
+    try {
     if (!job.session) job.session = await api({action: 'start', ...(job.exportId ? {exportId:job.exportId} : {}), facility: job.dataset.generalInfo.facilityName, countryCode: job.dataset.generalInfo.countryCode, location: job.dataset.generalInfo.district, jsonBytes: job.json.size, pdfBytes: job.pdf.size}, request);
     job.ids ||= [null, null];
     for (let i = 0; i < 2; i++) {
@@ -38,6 +39,10 @@
     const result = await api({action: 'verify', receipt: job.session.receipt, ids: job.ids}, request);
     if (!result.saved) throw new Error('El repositorio no confirmó ambos archivos.');
     return result;
+    } catch(error) {
+      if(error.code==='ARCHIVE_SESSION_EXPIRED'&&!restarted){delete job.session;delete job.ids;return save(job,progress,request,true);}
+      throw error;
+    }
   }
   return {save};
 });

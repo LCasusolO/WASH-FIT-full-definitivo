@@ -78,6 +78,18 @@ test('interrupted PDF resumes without uploading a second JSON or creating anothe
   assert.equal((await Archive.save(job,()=>{},request)).saved,true);
   assert.equal(starts,1);assert.equal(jsonPuts,1);assert.equal(pdfPuts,2);
 });
+
+test('an expired shared lease restarts the upload and does not reuse stale file receipts',async()=>{
+ const job={dataset:{generalInfo:{facilityName:'Hospital'}},json:new Blob(['json']),pdf:new Blob(['pdf']),session:{receipt:'expired'},ids:['stale-json',null]};let starts=0;
+ const saved=await Archive.save(job,()=>{},async(url,opts)=>{
+  const b=JSON.parse(opts.body);
+  if(b.receipt==='expired')return Response.json({error:'Expired',code:'ARCHIVE_SESSION_EXPIRED'},{status:409});
+  if(b.action==='start'){starts++;return Response.json({receipt:'fresh'});}
+  if(b.action==='status')return Response.json({offset:0});
+  if(b.action==='verify'){assert.deepEqual(b.ids,['file-json','file-pdf']);return Response.json({saved:true});}
+  return Response.json({id:'file-'+b.kind});
+ });assert.equal(saved.saved,true);assert.equal(starts,1);
+});
 test('server proxies signed upload chunks and recovers a confirmed file after a lost browser response', async () => {
   let uploaded;
   const handler=createHandler({env,request:async(url,options)=>{

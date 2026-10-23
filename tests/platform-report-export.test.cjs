@@ -19,12 +19,13 @@ test('descarga PDF y JSON con el mismo nombre anterior y genera PDF mediante Was
 });
 
 
-test('Drive conserva el nombre acordado y busca versiones por exportación, sin sobrescribir otra',async()=>{
+test('Drive conserva el nombre y comparte archivos por establecimiento entre exportaciones',async()=>{
  const {createHandler}=require('../api/drive-archive');const metadata=[],queries=[];const id='00000000-0000-4000-8000-000000000001';
  const env={WASH_MULTIUSER:'true',WASH_APP_ORIGIN:'https://fixture.invalid',SUPABASE_URL:'https://supabase.invalid',SUPABASE_PUBLISHABLE_KEY:'public',GOOGLE_CLIENT_ID:'fixture',GOOGLE_CLIENT_SECRET:'fixture',GOOGLE_REFRESH_TOKEN:'fixture'};
  const request=async(url,opts)=>{
   if(url.includes('/auth/'))return Response.json({id:'owner',email_confirmed_at:'2026-10-23'});
   if(url.includes('wash_account_status'))return Response.json({ready:true});
+  if(url.includes('/rpc/wash_command'))return Response.json({ok:true});
   if(url.includes('wash_exports'))return Response.json([{id,created_by:'owner',facility_id:'f'}]);
   if(url.includes('oauth2'))return Response.json({access_token:'fixture',expires_in:3600});
   if(url.startsWith('https://www.googleapis.com/drive/v3/files?')){queries.push(new URL(url).searchParams.get('q'));return Response.json({files:[]});}
@@ -33,5 +34,5 @@ test('Drive conserva el nombre acordado y busca versiones por exportación, sin 
  };
  const res={setHeader(){},status(code){this.code=code;return this},json(data){this.data=data}};
  await createHandler({env,request})({method:'POST',headers:{origin:env.WASH_APP_ORIGIN,authorization:'Bearer fixture'},body:{action:'start',exportId:id,facility:'Hospital dos de mayo',countryCode:'PER',jsonBytes:10,pdfBytes:20}},res);
- assert.equal(res.code,200,JSON.stringify(res.data));assert.deepEqual(metadata.map(x=>x.name),['PER-Hospital_dos_mayo.json','PER-Hospital_dos_mayo.pdf']);assert.ok(queries.every(q=>q.includes('washFitExport')&&q.includes(id)));assert.ok(metadata.every(m=>m.appProperties.washFitExport===id));
+ assert.equal(res.code,200,JSON.stringify(res.data));assert.deepEqual(metadata.map(x=>x.name),['PER-Hospital_dos_mayo.json','PER-Hospital_dos_mayo.pdf']);assert.ok(queries.every(q=>q.includes('washFitFacility')&&q.includes("value='f'")&&!q.includes('washFitExport')));assert.ok(metadata.every(m=>m.appProperties.washFitExport===id));
 });

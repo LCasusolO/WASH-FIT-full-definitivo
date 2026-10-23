@@ -200,3 +200,16 @@ La plataforma y la evaluación muestran una franja persistente, adaptada a escri
 En la evaluación, la hora avanza al completar la lectura y combinación con el servidor sin cambios pendientes, o al confirmar todos los guardados pendientes. Guardar únicamente en el dispositivo, un envío cuya respuesta no llegó o una consulta fallida no adelantan esa hora. Un guardado sin cambios tampoco simula un contacto nuevo con el servidor. En la plataforma, corresponde a la última actualización completa de sus datos; la tabla offline muestra por separado la última sincronización de cada evaluación.
 
 La franja no se imprime en los informes PDF y no sustituye la indicación **Solo lectura** ni el cumplimiento global.
+
+
+## Finalizar evaluación y archivos compartidos
+
+**Finalizar evaluación** comprueba los cinco pasos en el servidor. Si falta información, muestra los campos pendientes con enlaces para corregirlos. Si están completos, cierra la medición, conserva su versión histórica y permite continuar el monitoreo. El cierre no genera por sí mismo una descarga ni un archivo de Drive.
+
+Las exportaciones e impresiones actualizan una misma pareja JSON/PDF por establecimiento en el repositorio central, independientemente de la cuenta que exporte o de la exportación que se haya generado. Se conserva el nombre acordado y se reutilizan los identificadores de Drive; al cambiar el nombre del establecimiento se actualizan también esos mismos archivos. Las versiones históricas se conservan en la plataforma y pueden exportarse de nuevo.
+
+Una reserva temporal compartida impide dos subidas simultáneas al mismo establecimiento. Se renueva mientras se transfieren los fragmentos; si se pierde la conexión, el reintento puede recuperar la sesión o reiniciarla usando los archivos existentes. Si hay otra exportación activa, se informa para reintentar. No se crean archivos si no puede comprobarse la copia anterior.
+
+Después de verificar ambos archivos, se envían a la papelera las copias duplicadas anteriores identificadas por la app para ese mismo establecimiento. No se retiran archivos de otros establecimientos ni archivos sin esa identificación. La limpieza ocurre en la siguiente exportación correcta de cada establecimiento.
+
+En la plataforma el estado confirmado dice **En línea · Información actualizada**: su hora corresponde a la última consulta completa de las listas. En la evaluación permanece **En línea · Sincronizado**, referido a los cambios de esa evaluación.

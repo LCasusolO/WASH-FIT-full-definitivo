@@ -111,3 +111,11 @@ corrección adicional.
 - Lector retirado de API y restricciones de asignaciones vigentes. Sin conversión automática a permisos de edición.
 - Confirmación de correo, contraseña obligatoria, recuperación sin registro y eliminación/restauración siguen verificadas.
 - Generación de usuario comprobada en Supabase con transacción revertida y formulario revisado en navegador QA.
+
+## Navegación dentro de la evaluación — 23 de octubre de 2026
+
+- 129 pruebas aprobadas, sin fallos ni omisiones; build correcto.
+- Pasos 4 y 5 abiertos dentro de la evaluación, sin redirección y sin omitir la validación del dominio.
+- Paneles con contexto de evaluación y establecimiento y formularios separados por paso.
+- Navegador QA: alta y guardado de una acción, conservación de borrador al alternar pasos, apertura de monitoreo y retorno al establecimiento correcto.
+- Retorno bajo Exportar/Importar; franja superior y accesos duplicados retirados.

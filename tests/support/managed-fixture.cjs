@@ -4,6 +4,13 @@ const {createRuntime}=require('./managed-runtime.cjs');
 (async()=>{
  const r=await createRuntime();const port=59441,origin='http://127.0.0.1:'+port;
  await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("insert into wash_facilities(country_id,name) values($1,'Establecimiento ficticio QA')",[r.country.id]);await r.db.query("insert into wash_teams(country_id,name) values($1,'Equipo ficticio QA')",[r.country.id]);});
+ let qaEvaluation;
+ if(process.env.WASH_QA_EVALUATION==='1')await r.queued(async()=>{
+  await r.db.exec('reset role');const f=(await r.db.query('select id from wash_facilities limit 1')).rows[0].id,t=(await r.db.query('select id from wash_teams limit 1')).rows[0].id;
+  await r.db.query("insert into wash_team_members values($1,$2,'Propietario QA','coordinator')",[t,r.owner.id]);await r.db.query('insert into wash_assignments values($1,$2)',[t,f]);
+  qaEvaluation=(await r.db.query("insert into wash_evaluations(facility_id,team_id,name,kind,created_by) values($1,$2,'Evaluación ficticia QA','initial',$3) returning id",[f,t,r.owner.id])).rows[0].id;
+  await r.db.query("insert into wash_participants values($1,$2,'Propietario QA','coordinator',true)",[qaEvaluation,r.owner.id]);
+ });
  const accounts=require('../../api/accounts').createHandler({env:{WASH_MULTIUSER:'true',WASH_APP_ORIGIN:origin,SUPABASE_URL:origin,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture'},request:(url,opts)=>r.handler(new Request(url,opts))});
  async function handle(req,res){
   const url=new URL(req.url,origin);res.setHeader('Cache-Control','no-store');res.status=n=>{res.statusCode=n;return res;};res.json=x=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(x));};
@@ -24,5 +31,5 @@ const {createRuntime}=require('./managed-runtime.cjs');
   const root=path.resolve(__dirname,'../../dist'),file=path.resolve(root,'.'+(url.pathname==='/'?'/plataforma.html':decodeURIComponent(url.pathname)));if(!file.startsWith(root+path.sep))return res.status(403).end();
   const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css'};try{const data=fs.readFileSync(file);res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(data);}catch{return res.status(404).end();}
  }
- http.createServer((req,res)=>handle(req,res).catch(e=>res.status(400).json({message:e.message}))).listen(port,'127.0.0.1',()=>process.stdout.write('QA cuentas '+origin+'/plataforma.html\n'));
+ http.createServer((req,res)=>handle(req,res).catch(e=>res.status(400).json({message:e.message}))).listen(port,'127.0.0.1',()=>process.stdout.write('QA cuentas '+origin+'/plataforma.html\n'+(qaEvaluation?origin+'/index.html?evaluation='+qaEvaluation+'\n':'' )));
 })();

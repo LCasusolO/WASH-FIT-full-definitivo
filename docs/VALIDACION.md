@@ -240,3 +240,8 @@ corrección adicional.
 - 166 pruebas aprobadas y build correcto. Confirmación cambia de estado solo tras éxito, evita envíos mientras busy y reinicia el estado al cambiar el correo. Mostrar y ocultar son controles independientes; al cerrar la ventana se ocultan y limpian los campos.
 - Prueba del handler y SQL reales: administrador asigna el mismo correo a dos equipos, conserva identidad, usuario y contraseña, no crea otra cuenta y puede retirar un equipo sin perder el otro. Función existente, sin migración ni cambios de producción en cuentas reales.
 - Navegador QA: envío simulado cambia a Reenviar; botón Actualizar ausente; los dos campos de la ventana alternan text/password, con etiquetas accesibles y aria-pressed. Cancelación sin enviar credenciales, consola sin errores. Ningún correo real fue enviado ni contraseña cambiada durante la revisión visual.
+
+## Botón único de participantes — 23 de octubre de 2026
+
+- Pruebas de plantilla y portal aprobadas (21), build correcto. Se conserva el RPC existente de participantes, con permisos y protección del último coordinador.
+- Navegador QA con SQL real: activo → retirado cambia Retirar por Agregar; Agregar restaura el estado activo y vuelve a Retirar. No aparecen botones Asignar / actualizar. Consola sin errores. Solo se modificaron participantes ficticios.

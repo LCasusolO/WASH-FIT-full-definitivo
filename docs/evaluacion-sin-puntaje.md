@@ -1,6 +1,6 @@
 # Indicadores sin puntaje
 
-En el paso 2 se puede avanzar cuando cada indicador visible tiene un puntaje (0, 1 o 2) o una explicación escrita en Comentarios de campo / Hallazgos. No se exige un prefijo. Se rechazan campos vacíos, espacios, solo símbolos o números y la declaración «No aplica» sin explicación. La aplicación comprueba la presencia de texto, no su corrección técnica.
+En el paso 2 se puede avanzar cuando cada indicador visible tiene un puntaje (0, 1 o 2) o una explicación escrita en Comentarios de campo / Hallazgos. No se exige un prefijo. Se acepta cualquier texto no vacío, incluidos «No aplica», números o signos, igual que en la comprobación final del servidor. Los espacios y viñetas de formato sin contenido siguen vacíos. La aplicación no interpreta ni valida el significado del comentario.
 
 No existe un selector adicional. Es suficiente seleccionar Cumple, Cumple Parcialmente o No Cumple, o escribir una explicación libre en el campo de hallazgos. Un texto libre permite avanzar sin clasificar automáticamente su significado. La explicación no asigna un puntaje.
 

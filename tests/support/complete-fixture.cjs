@@ -4,7 +4,7 @@ const catalog=vm.runInNewContext(fs.readFileSync('js/data/indicators.js','utf8')
 async function fill(db,id){
  await db.exec('reset role');const ev=(await db.query('select * from wash_evaluations where id=$1',[id])).rows[0];
  let g=Core.defaults();for(const r of (await db.query("select data from wash_records where evaluation_id=$1 and kind='general' order by updated_at",[id])).rows)g={...g,...r.data};
- for(const [key,value]of Object.entries({facilityName:'Centro QA',countryCode:'PER',district:'Ciudad QA',level:'Primer Nivel',type:'Público',setting:'Urbano',sanitationSystem:'alcantarillado',evaluationDate:'2026-10-23',latitude:0,longitude:0}))if(g[key]==null||g[key]==='')g[key]=value;
+ for(const [key,value]of Object.entries({facilityName:'Centro QA',countryCode:'PER',district:'Ciudad QA',populationServed:100,level:'Primer Nivel',type:'Público',setting:'Urbano',sanitationSystem:'alcantarillado',evaluationDate:'2026-10-23',latitude:0,longitude:0}))if(g[key]==null||g[key]==='')g[key]=value;
  const identification=(await db.query("select id from wash_records where evaluation_id=$1 and kind='general' and record_key='identification'",[id])).rows[0];
  if(identification)await db.query('update wash_records set data=$2 where id=$1',[identification.id,JSON.stringify(g)]);else await db.query("insert into wash_records(facility_id,evaluation_id,kind,record_key,data,updated_by) values($1,$2,'general','identification',$3,$4)",[ev.facility_id,id,JSON.stringify(g),ev.created_by]);
  for(const i of catalog.filter(i=>i.id!=='S_8')){

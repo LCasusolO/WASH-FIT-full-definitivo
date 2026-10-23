@@ -1,5 +1,10 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.WashPlatformModel=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
+  function accountUsername({role,name,countryName}){
+    const label=role==='admin'?countryName:name;
+    const slug=String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    return (({admin:'admin-',coordinator:'coordinador-',evaluator:'evaluador-'})[role]+(slug||'usuario')).slice(0,50);
+  }
   const planFields=['action','resources','responsible','responsibleId','targetDate','cost','trackingStatus'];
   const monitoringFields=['revisionNotes','indicatorChange','correctiveMeasures','nextReviewDate','monitoringComments','history'];
   const generalGroups={location:['latitude','longitude'],population:['populationServed','ageGroups'],team:['team'],photos:['photos'],summary:['summary']};
@@ -40,5 +45,5 @@
     }
     return [...result.values()];
   }
-  return {planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone};
+  return {accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone};
 });

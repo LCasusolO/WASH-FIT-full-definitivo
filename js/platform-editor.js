@@ -2,7 +2,7 @@
   'use strict';
   const P=root.WashPlatform,M=root.WashPlatformModel;
   let evaluation,facility,store,hooks,base=[],rows=[],conflicts=[],inFlight=false,pending=null,lastView='',channel,timer,active=false;
-  let currentOperation=null,readOnly=true,planReadOnly=true,editingTeam='';
+  let currentOperation=null,pendingLocal=null,readOnly=true,planReadOnly=true,editingTeam='';
   const context=()=>({teamId:editingTeam});
   const logical=data=>M.editorRecords(data,rows,context());
   function canonical(data){const result=WashCore.normalizeDataset(data,INDICATORS_DATA);for(const ind of result.indicators){ind.responsible=WashCore.responsibleName(ind,result.generalInfo.team);ind.responsibleId='';for(const key of ['associatedRisks','action','resources','responsible','correctiveMeasures','monitoringComments'])if(ind[key])ind[key]=WashCore.bulletEdit(ind[key]).value;}return result;}
@@ -37,18 +37,28 @@
       await store.write('readonlyDrafts',backup);
     }
     const obsolete=new Set(previous.filter(c=>{const current=local.find(r=>recordKey(r)===c.key);return emptyAction(c.local)&&(!c.base||emptyAction(c.base))&&(!current||emptyAction(current));}).map(c=>c.key));
-    const merged=M.merge(before,local.filter(r=>canWrite(r)&&!obsolete.has(recordKey(r))),remote,{lastWriteIndicators:!readOnly});
-    conflicts=M.retainConflicts(previous.filter(c=>canWrite(c.local)&&!obsolete.has(c.key)&&(readOnly||c.local.kind!=='indicator')),merged,remote);
-    if(pending&&(!canWrite(pending)||obsolete.has(recordKey(pending)))){pending=null;currentOperation=null;}
+    const merged=M.merge(before,local.filter(r=>canWrite(r)&&!obsolete.has(recordKey(r))),remote,{lastWriteKinds:['general','indicator','action','monitor']});
+    conflicts=M.retainConflicts(previous.filter(c=>canWrite(c.local)&&!obsolete.has(c.key)&&!['general','indicator','action','monitor'].includes(c.local.kind)),merged,remote);
+    if(pending&&(!canWrite(pending)||obsolete.has(recordKey(pending)))){pending=null;pendingLocal=null;currentOperation=null;}
     return merged.records;
   }
-  async function persist(){if(store)await store.write('sync',{base,rows,local:hooks.get(),conflicts,pending,currentOperation,editingTeam,readOnly,planReadOnly,evaluation});}
+  async function persist(){if(store)await store.write('sync',{base,rows,local:hooks.get(),conflicts,pending,pendingLocal,currentOperation,editingTeam,readOnly,planReadOnly,evaluation});}
+  async function sendPending(){
+    if(!pending)return;
+    const request=pending,record=pendingLocal||{kind:request.kind,record_key:request.record_key,data:request.data};
+    const saved=await P.command('save_record',request,currentOperation);
+    rows=rows.filter(r=>r.id!==saved.id);rows.push(saved);
+    base=base.filter(r=>recordKey(r)!==recordKey(record));base.push(record);
+    pending=null;pendingLocal=null;currentOperation=null;await persist();
+  }
   async function apply(records){if(M.stable(logical(hooks.get()))===M.stable(records))return;await hooks.apply(canonical(M.dataset(records,INDICATORS_DATA,WashCore.defaults(),records.filter(r=>r.kind==='action'))));}
   async function refresh(){
     if(inFlight||!active||!navigator.onLine)return;
     inFlight=true;
     try{
-      const local=logical(hooks.get()),remote=await readRemote();
+      let remote=await readRemote();
+      if(pending&&canWrite(pending)){await sendPending();remote=await readRemote();}
+      const local=logical(hooks.get());
       const merged=await mergeRemote(base,local,remote.logical,conflicts);
       rows=remote.rows;base=remote.logical;
       hooks.conflicts(conflicts);await apply(merged);await persist();
@@ -65,11 +75,11 @@
     const cached=await store.read('sync');
     try{
       const remote=await readRemote();rows=remote.rows;
-      if(cached){pending=cached.pending;currentOperation=cached.currentOperation;const local=M.editorRecords(cached.local,cached.rows||[],{teamId:cached.editingTeam||''});const merged=await mergeRemote(cached.base,local,remote.logical,cached.conflicts||[]);base=remote.logical;await apply(merged);}
+      if(cached){pending=cached.pending;pendingLocal=cached.pendingLocal;currentOperation=cached.currentOperation;const local=M.editorRecords(cached.local,cached.rows||[],{teamId:cached.editingTeam||''});const merged=await mergeRemote(cached.base,local,remote.logical,cached.conflicts||[]);base=remote.logical;await apply(merged);}
       else {base=remote.logical;await apply(base);}
     }catch(e){
       if(e.message==='ACCESS_REVOKED'||navigator.onLine||!cached)throw e;
-      evaluation=cached.evaluation;editingTeam=cached.editingTeam||'';planReadOnly=cached.planReadOnly??true;hooks.planReadonly?.(planReadOnly);base=cached.base;rows=cached.rows;conflicts=cached.conflicts||[];pending=cached.pending;currentOperation=cached.currentOperation;readOnly=cached.readOnly!==false || !['draft','editing'].includes(evaluation?.status);hooks.readonly(readOnly);await hooks.apply(cached.local);hooks.status('pending','Sin conexión: cambios guardados solo en este dispositivo.');
+      evaluation=cached.evaluation;editingTeam=cached.editingTeam||'';planReadOnly=cached.planReadOnly??true;hooks.planReadonly?.(planReadOnly);base=cached.base;rows=cached.rows;conflicts=[];pending=cached.pending;pendingLocal=cached.pendingLocal;currentOperation=cached.currentOperation;readOnly=cached.readOnly!==false || !['draft','editing'].includes(evaluation?.status);hooks.readonly(readOnly);await hooks.apply(cached.local);hooks.status('pending','Sin conexión: cambios guardados solo en este dispositivo.');
     }
     active=true;root.WashCloud.active=true;hooks.conflicts(conflicts);
     if(evaluation){
@@ -95,6 +105,7 @@
     if(!navigator.onLine){hooks.status('pending','Guardado en este dispositivo; pendiente de sincronizar.');return false;}
     inFlight=true;
     try{
+      if(pending){if(!canWrite(pending))throw Error('No tiene permiso para modificar estos datos. Se conserva el borrador local.');await sendPending();}
       const candidates=M.changed(base,logical(hooks.get()));
       for(const candidate of candidates){
         if(['general','indicator'].includes(candidate.kind)?readOnly:planReadOnly)throw Error('No tiene permiso para modificar estos datos. Se conserva el borrador local.');
@@ -102,16 +113,13 @@
         let data=candidate.data;
         if(candidate.kind==='general'&&Object.hasOwn(data,'photos'))data=await P.uploadPhotos(data,evaluation.facility_id,evaluationId);
         const request={...(stored?{id:stored.id,version:stored.version}:{}),facility_id:evaluation.facility_id,evaluation_id:evaluationId,kind:candidate.kind,record_key:candidate.record_key,data};
-        if(!pending||M.stable(pending)!==M.stable(request)){pending=request;currentOperation=crypto.randomUUID();}
+        if(!pending||M.stable(pending)!==M.stable(request)){pending=request;pendingLocal=M.clone(candidate);currentOperation=crypto.randomUUID();}
         await persist();
-        const saved=await P.command('save_record',pending,currentOperation);
-        rows=rows.filter(r=>r.id!==saved.id);rows.push(saved);
-        base=base.filter(r=>r.kind!==candidate.kind||r.record_key!==candidate.record_key);base.push(candidate);
-        pending=null;currentOperation=null;await persist();
+        await sendPending();
       }
       const remaining=M.changed(base,logical(hooks.get())).length;hooks.status(remaining?'pending':'saved',remaining?'Hay cambios nuevos pendientes de sincronizar.':'Guardado en la nube.');return !remaining;
     }catch(e){
-      if(e.code==='40001'||e.code==='23505'){hooks.status('error','Hay cambios concurrentes. Revisando versiones…');inFlight=false;await refresh();return false;}
+      if(e.code==='40001'||e.code==='23505'){hooks.status('error','Actualizando y sincronizando cambios…');inFlight=false;await refresh();return false;}
       hooks.status('pending','Guardado local; sincronización pendiente: '+e.message);return false;
     }finally{inFlight=false;}
   }
@@ -119,7 +127,7 @@
     const conflict=conflicts.find(c=>c.key===key);if(!conflict)return;
     if(choice!=='remote'&&choice!=='local')throw Error('INVALID_CONFLICT_CHOICE');
     if(choice==='local'&&(['general','indicator'].includes(conflict.local.kind)?readOnly:planReadOnly))throw Error('No tiene permiso para guardar estos cambios. Use la versión de la nube.');
-    if(choice==='remote'&&pending&&pending.kind+':'+pending.record_key===key){pending=null;currentOperation=null;}
+    if(choice==='remote'&&pending&&pending.kind+':'+pending.record_key===key){pending=null;pendingLocal=null;currentOperation=null;}
     const current=logical(hooks.get());const result=current.map(r=>r.kind+':'+r.record_key===key?(choice==='remote'?conflict.remote:r):r);
     conflicts=conflicts.filter(c=>c.key!==key);hooks.conflicts(conflicts);await apply(result);await persist();if(!conflicts.length)await save();
   }

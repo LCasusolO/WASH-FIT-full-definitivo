@@ -136,3 +136,11 @@ corrección adicional.
 - Revisión móvil a 390 px: selectores apilados y cuatro pestañas en dos columnas.
 - Copia de credenciales comprobada con contraseña temporal y denegación del portapapeles.
 - Se conservan los permisos, el registro cerrado y las tablas originales de los pasos 4 y 5.
+
+## Directorio de usuarios en tabla — 23 de octubre de 2026
+
+- Directorio y buscador al final de Usuarios y permisos, después de los formularios y el historial.
+- Una fila por cuenta: identidad, correo, estado, roles/ámbito y acciones desplegables; se conservan las condiciones de autorización.
+- Revisión con propietario y administrador ficticios: búsqueda por nombre, búsqueda sin coincidencias y apertura del editor de rol sin modificar permisos.
+- Tabla con encabezados semánticos, contador de resultados y desplazamiento horizontal para pantallas pequeñas.
+- 133 pruebas aprobadas y build correcto.

@@ -204,14 +204,16 @@ hallazgos, crear otro registro fechado.
 
 ### Validación y correcciones
 
-La medición pasa de Borrador/En elaboración a En revisión y después a Validada.
-El coordinador puede devolverla para correcciones. Validar conserva una copia
+Comprobar y completar evaluación comprueba los cinco pasos en el servidor y cierra
+la medición completa en una operación. Los pendientes se muestran con enlaces.
+Los registros antiguos en revisión pueden devolverse para correcciones. El cierre conserva una copia
 inmutable de la medición, participantes y plan a esa fecha; no termina el trabajo
 del establecimiento ni bloquea el paso 5.
 
-La validación es una decisión del coordinador. No inventa respuestas ni certifica
-que se haya alcanzado el 100 % de cobertura. Revisar los indicadores pendientes
-y la cobertura antes de validar.
+El administrador autorizado o el coordinador participante puede solicitar el cierre.
+El servidor exige identificación, ubicación, respuestas o justificaciones, riesgos,
+plan y programación de monitoreo completos. No exige resultados futuros de monitoreo
+ni una revisión técnica indicador por indicador; tampoco certifica la calidad de las respuestas.
 
 Si una medición validada contiene un error, el coordinador o administrador puede
 iniciar una corrección con motivo de al menos diez caracteres. La versión validada

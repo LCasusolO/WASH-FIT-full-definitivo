@@ -33,13 +33,13 @@ test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar
   assert.equal(await app.cloud.save(),true);assert.equal(app.writes,1);
   assert.equal(app.database.filter(r=>r.kind==='indicator').length,1);
 });
-test('sincronización conserva conflictos tras refrescar y permite resolverlos explícitamente',async()=>{
-  const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;await app.cloud.save();
-  app.current.indicators[0].score=2;const row=app.database.find(r=>r.kind==='indicator');row.data.score=0;row.version++;
-  await app.cloud.refresh();assert.equal(app.conflicts.length,1);await app.cloud.refresh();assert.equal(app.conflicts.length,1);
-  assert.equal(await app.cloud.save(),false);assert.equal(app.current.indicators[0].score,2);
-  await app.cloud.resolve(app.conflicts[0].key,'remote');assert.equal(app.current.indicators[0].score,0);assert.equal(app.conflicts.length,0);
+test('indicador concurrente se sincroniza automáticamente sin conflicto y converge al último guardado',async()=>{
+ const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;await app.cloud.save();
+ app.current.indicators[0].score=2;const row=app.database.find(r=>r.kind==='indicator');row.data.score=0;row.version++;
+ await app.cloud.refresh();assert.equal(app.conflicts.length,0);assert.equal(app.current.indicators[0].score,2);assert.equal(await app.cloud.save(),true);assert.equal(app.database.find(r=>r.kind==='indicator').data.score,2);
+ const latest=app.database.find(r=>r.kind==='indicator');latest.data.score=1;latest.version++;const writes=app.writes;await app.cloud.refresh();assert.equal(app.current.indicators[0].score,1);assert.equal(app.writes,writes);assert.equal(app.conflicts.length,0);
 });
+
 test('un cambio sin conexión queda pendiente y se sincroniza al recuperar el servidor',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.navigator.onLine=false;app.current.generalInfo.summary='Trabajo pendiente';
   assert.equal(await app.cloud.save(),false);assert.equal(app.writes,0);

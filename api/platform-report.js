@@ -9,12 +9,13 @@ const labels={facilityName:'Establecimiento',countryCode:'País',district:'Ciuda
 function table(rows,headers){return '<table><thead><tr>'+headers.map(h=>'<th>'+escape(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(c=>'<td>'+escape(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';}
 function valueHtml(value){if(Array.isArray(value))return '<ul>'+value.map(v=>'<li>'+valueHtml(v)+'</li>').join('')+'</ul>';if(value&&typeof value==='object')return detail(value);return escape(value);}
 function detail(data){return Object.entries(data).filter(([k])=>!['photos','url','selectedS9Option','editor_fields','editor_indicator_id'].includes(k)).map(([k,v])=>'<div><strong>'+escape(labels[k]||k)+':</strong> '+valueHtml(v)+'</div>').join('');}
-async function reportHtml({payload,dataset,facility,country,job}){
+async function reportHtml({payload,dataset,facility,country,job,mapRequest=fetch}){
   const evaluation=payload.evaluation;
   if(evaluation){
     const monitors=(payload.monitoring||[]).filter(m=>!m.data.editor_indicator_id);
     const supplement=monitors.length?'<section class="report-step"><h2>Registros adicionales de monitoreo</h2>'+monitors.map(m=>'<article><h3>'+escape(m.data.title)+'</h3>'+detail(m.data)+(m.data.photos||[]).filter(p=>p.url).map(p=>'<figure><img src="'+escape(p.url)+'"><figcaption>'+escape(p.name)+'</figcaption></figure>').join('')+'</article>').join('')+'</section>':'';
-    return require('../server/original-report.cjs').render(dataset,{title:Core.fileBaseName({facilityName:facility.name,countryCode:country.code}),facility,country,payload,generatedAt:job.created_at,supplement});
+    const mapHtml=await require('../server/report-map.cjs').render(dataset.generalInfo.latitude,dataset.generalInfo.longitude,{request:mapRequest});
+    return require('../server/original-report.cjs').render(dataset,{title:Core.fileBaseName({facilityName:facility.name,countryCode:country.code}),facility,country,payload,generatedAt:job.created_at,supplement,mapHtml});
   }
   let body='<h1>WASH FIT · '+escape(evaluation?'Evaluación integral':'Plan de mejora y monitoreo')+'</h1><p>'+escape(country.name)+' · '+escape(facility.name)+'</p><p>Fecha de corte: '+escape(job.created_at)+' · Exportación: '+escape(job.id)+'</p>';
   body+='<h2>Plan de mejora a la fecha de corte</h2>'+(payload.plan||[]).map(a=>'<article><h3>'+escape(a.data.indicator_id)+'</h3>'+detail(a.data)+'</article>').join('');

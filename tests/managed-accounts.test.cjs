@@ -94,6 +94,7 @@ test('cuentas administradas: autoridad, sesiones, altas y cambios de permisos',a
  });
  await t.test('degradar coordinador revoca la reapertura de mediciones validadas y conserva el snapshot histórico',async()=>{
   await command('coordinator','save_record',{evaluation_id:evaluation.id,kind:'general',record_key:'general',data:{facilityName:'Centro'}});
+  await require('./support/complete-fixture.cjs').fill(db,evaluation.id);
   const review=await command('coordinator','evaluation_status',{evaluation_id:evaluation.id,version:1,status:'review'});
   const validated=await command('coordinator','evaluation_status',{evaluation_id:evaluation.id,version:review.version,status:'validated'});
   await service('set_role','admin',{user_id:users.second,scope:'team',team_id:team.id,role:'coordinator'});

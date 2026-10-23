@@ -21,6 +21,7 @@
     await requireSession();const {data:result,error}=await client.rpc('wash_command',{p_command:command,p_data:data,p_operation:operation});
     if(error){const err=Error(error.message==='VERSION_CONFLICT'?'Otra persona modificó este registro. Revise ambas versiones.':error.message);err.code=error.code;err.details=error.details;throw err;}return result;
   }
+  async function checks(evaluationId=null){await requireSession();const {data,error}=await client.rpc('wash_evaluation_checks',{p_evaluation:evaluationId});if(error)throw Error(error.message);return data;}
   async function rows(table,filters={},columns="*"){
     await requireSession();let query=client.from('wash_'+table).select(columns);for(const [key,value]of Object.entries(filters))query=query.eq(key,value);
     // Paginación explícita para que un país con >1000 registros no pierda resultados.
@@ -93,5 +94,5 @@
     try{const result=await root.WashArchive.save(pending.job,progress,request);await command('export_complete',{id:pending.job.exportId,files:result.files});await store.write('pendingExport',null);return result;}
     catch(error){await store.write('pendingExport',pending);throw error;}
   }
-  root.WashPlatform={accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
+  root.WashPlatform={checks,accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
 })(window);

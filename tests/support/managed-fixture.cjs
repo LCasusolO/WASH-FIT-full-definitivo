@@ -35,6 +35,7 @@ const {createRuntime}=require('./managed-runtime.cjs');
   const person=await r.insert('unconfirmed@example.invalid','Fixture-role-123',undefined,false);
   await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set username='unconfirmed-qa',status='active',must_change_password=false where user_id=$1",[person.id]);});
  }
+ if(process.env.WASH_QA_COMPLETE==='1'&&qaEvaluation)await r.queued(()=>require('./complete-fixture.cjs').fill(r.db,qaEvaluation));
  const accounts=require('../../api/accounts').createHandler({env:{WASH_MULTIUSER:'true',WASH_APP_ORIGIN:origin,SUPABASE_URL:origin,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture'},request:(url,opts)=>r.handler(new Request(url,opts))});
  async function handle(req,res){
   const url=new URL(req.url,origin);res.setHeader('Cache-Control','no-store');res.status=n=>{res.statusCode=n;return res;};res.json=x=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(x));};
@@ -46,6 +47,7 @@ const {createRuntime}=require('./managed-runtime.cjs');
   if(url.pathname==='/auth/v1/logout'){r.tokens.delete(token);return res.json({});}
   if(url.pathname==='/__qa/confirm'){let id=url.searchParams.get('user');if(!id)id=await r.queued(async()=>{await r.db.exec('reset role');return(await r.db.query('select user_id from wash_accounts where username=$1',[url.searchParams.get('username')])).rows[0]?.user_id;});await r.confirm(id);return res.json({confirmed:true});}
   if(url.pathname==='/rest/v1/rpc/wash_account_status')return res.json((await r.queryAs(token,'select wash_account_status() as data')).rows[0].data);
+  if(url.pathname==='/rest/v1/rpc/wash_evaluation_checks')return res.json((await r.queryAs(token,'select wash_evaluation_checks($1) as data',[req.body.p_evaluation||null])).rows[0].data);
   if(url.pathname==='/rest/v1/rpc/wash_command')return res.json((await r.queryAs(token,'select wash_command($1,$2,$3) as data',[req.body.p_command,JSON.stringify(req.body.p_data),req.body.p_operation])).rows[0].data);
   if(url.pathname.startsWith('/rest/v1/')){
    const table=url.pathname.split('/').at(-1);if(!/^wash_[a-z_]+$/.test(table))return res.status(400).json({});

@@ -40,12 +40,13 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
         if (![body.jsonBytes, body.pdfBytes].every(x => Number.isSafeInteger(x) && x > 0 && x <= MAX_BYTES) || typeof body.facility !== 'string' || body.facility.length > 500) return res.status(400).json({error: 'Nombre o tamaño de archivos inválido (máximo 40 MB por archivo).'});
         const authorization = 'Bearer ' + await token();
         const batch = crypto.randomUUID();
-        const name = Core.fileBaseName({facilityName: body.facility, countryCode: body.countryCode, district: body.location}) + (exportJob ? '-' + exportJob.id : '');
+        const name = Core.fileBaseName({facilityName: body.facility, countryCode: body.countryCode, district: body.location});
         const files = [{kind: 'json', name: name + '.json', mime: 'application/json', bytes: body.jsonBytes}, {kind: 'pdf', name: name + '.pdf', mime: 'application/pdf', bytes: body.pdfBytes}];
         for (const file of files) {
           // Reuse an existing file ID for the same country/facility name.
           const quote = value => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-          const query = new URLSearchParams({q: "'" + quote(folder) + "' in parents and trashed = false and name = '" + quote(file.name) + "' and mimeType = '" + file.mime + "'", fields: 'files(id),incompleteSearch', pageSize: '1', orderBy: 'createdTime', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true'});
+          const exportScope = exportJob ? " and appProperties has { key='washFitExport' and value='" + quote(exportJob.id) + "' }" : '';
+          const query = new URLSearchParams({q: "'" + quote(folder) + "' in parents and trashed = false and name = '" + quote(file.name) + "' and mimeType = '" + file.mime + "'" + exportScope, fields: 'files(id),incompleteSearch', pageSize: '1', orderBy: 'createdTime', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true'});
           const listed = await call('https://www.googleapis.com/drive/v3/files?' + query, {headers: {Authorization: authorization}});
           const matches = await listed.json();
           if (!listed.ok || !Array.isArray(matches.files) || matches.incompleteSearch) throw new Error('No se pudo comprobar la copia anterior.');

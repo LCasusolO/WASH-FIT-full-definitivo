@@ -31,6 +31,10 @@ const {createRuntime}=require('./managed-runtime.cjs');
   await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set username='destination-qa',full_name='Coordinadora destino QA',status='active',must_change_password=false where user_id=$1",[person.id]);});
   await r.service('set_role',r.owner.id,{user_id:person.id,scope:'team',country_id:r.country.id,team_id:team,role:'coordinator'});
  }
+ if(process.env.WASH_QA_UNCONFIRMED==='1'){
+  const person=await r.insert('unconfirmed@example.invalid','Fixture-role-123',undefined,false);
+  await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set username='unconfirmed-qa',status='active',must_change_password=false where user_id=$1",[person.id]);});
+ }
  const accounts=require('../../api/accounts').createHandler({env:{WASH_MULTIUSER:'true',WASH_APP_ORIGIN:origin,SUPABASE_URL:origin,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture'},request:(url,opts)=>r.handler(new Request(url,opts))});
  async function handle(req,res){
   const url=new URL(req.url,origin);res.setHeader('Cache-Control','no-store');res.status=n=>{res.statusCode=n;return res;};res.json=x=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(x));};

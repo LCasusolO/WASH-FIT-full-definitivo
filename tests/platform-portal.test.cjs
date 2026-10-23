@@ -112,3 +112,10 @@ test('transferencia ofrece otros equipos activos del país con coordinador y rec
  assert.equal(app.state.teamDirectory.value.length,4);assert.equal(app.state.teamDirectory.value.find(r=>r.team.id==='empty').member,null);
  app.data.country_members=[];app.data.team_members.push({team_id:'new',user_id:'owner',role:'evaluator'});await app.state.refresh();assert.ok(app.state.teamDirectory.value.every(r=>r.team.id==='new'));
 });
+
+
+test('evaluador solo consulta su directorio; coordinador y administrador conservan gestión',async()=>{
+ const app=portal();app.data.owners=[];app.data.team_members=[{team_id:'ta',user_id:'owner',name:'Evaluador QA',role:'evaluator'},{team_id:'ta',user_id:'other',name:'Coordinador QA',role:'coordinator'}];await app.start();assert.equal(app.state.evaluatorOnly.value,true);assert.equal(app.state.teamDirectory.value.length,2);
+ app.data.team_members[0].role='coordinator';await app.state.refresh();assert.equal(app.state.evaluatorOnly.value,false);
+ app.data.team_members[0].role='evaluator';app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];await app.state.refresh();assert.equal(app.state.evaluatorOnly.value,false);
+});

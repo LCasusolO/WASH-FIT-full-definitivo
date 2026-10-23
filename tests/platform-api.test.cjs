@@ -24,7 +24,7 @@ test('Drive bloquea exportaciones ajenas antes de llamar a Google',async()=>{
   const r=response();await Drive.createHandler({env,request})({method:'POST',headers:{origin:env.WASH_APP_ORIGIN,authorization:'Bearer fixture'},body:{action:'start',exportId:'00000000-0000-4000-8000-000000000001',facility:'A',jsonBytes:10,pdfBytes:10}},r);
   assert.equal(r.code,403);assert.ok(calls.every(url=>!url.includes('googleapis')));
 });
-test('reporte de monitoreo escapa HTML y muestra registros sin recalcular puntuaciones',()=>{
-  const html=reportHtml({payload:{plan:[],records:[{kind:'monitor',status:'validated',data:{title:'<script>bad</script>',findings:'Mejoró',items:[{indicator_id:'A_1a',change:'Mejoró'}]}}]},dataset:null,facility:{name:'Centro'},country:{name:'Perú'},job:{id:'fixture',created_at:'2026-10-22'}});
+test('reporte de monitoreo escapa HTML y muestra registros sin recalcular puntuaciones',async()=>{
+  const html=await reportHtml({payload:{plan:[],records:[{kind:'monitor',status:'validated',data:{title:'<script>bad</script>',findings:'Mejoró',items:[{indicator_id:'A_1a',change:'Mejoró'}]}}]},dataset:null,facility:{name:'Centro'},country:{name:'Perú'},job:{id:'fixture',created_at:'2026-10-22'}});
   assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>'));assert.ok(html.includes('Monitoreo'));assert.ok(!html.includes('Medición de indicadores'));
 });

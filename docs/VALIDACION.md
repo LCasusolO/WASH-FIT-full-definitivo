@@ -228,3 +228,9 @@ corrección adicional.
 - 160 pruebas aprobadas y build correcto. SQL real comprueba transferencia a equipo no asignado, asignación atómica, reintento idempotente, operación reutilizada con otro contenido, versión obsoleta, equipo actual, equipo sin coordinador/inactivo/de otro país y rechazo a coordinador sin administración. Verifica cambio de participantes y permisos de edición, conservación del registro y único evento de transferencia.
 - Opciones del navegador limitadas a otros equipos activos del país con coordinador. El directorio final incluye equipos sin integrantes y restringe los equipos por rol.
 - QA en navegador con cuentas y datos ficticios: otro equipo no asignado aparece en el selector; transferencia completa, nuevo coordinador activo y participantes anteriores retirados. Tabla final con integrantes y roles. Borde superior de cada encabezado de medición comprobado en 0 px. Consola sin errores. Ninguna asignación real fue modificada durante las pruebas.
+
+## Evaluador, confirmación y reporte original — 23 de octubre de 2026
+
+- 164 pruebas aprobadas y build correcto. Pruebas del reporte verifican seis pasos, tablas, radar, nombres y escape de HTML; cliente comprueba descarga de ambos archivos mediante WashChrome y mismo nombre. Drive conserva nombres y restringe búsquedas al identificador de exportación para no sobrescribir otro trabajo.
+- PDF de QA generado con Google Chrome real (productor Skia/PDF m155), 10 páginas con datos ficticios. Renderizado con Poppler; revisión visual de datos generales, plan, monitoreo y radar. Coordenadas de snapshot conservadas; no se solicitan mapas externos al exportar en servidor.
+- Navegador con evaluador ficticio: la organización muestra solo el directorio con equipo, integrantes, roles y establecimiento. Confirmación de correo centrada, diferencia entre centros de botón y formulario igual a 0 px. Consola sin errores. No se enviaron correos ni se exportaron datos reales durante estas pruebas.

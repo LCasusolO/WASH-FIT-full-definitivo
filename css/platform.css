@@ -43,3 +43,5 @@ label{display:block;font-size:.8rem;font-weight:650;margin:16px 0;color:#33485f}
 .evaluation-inline-label{font-size:.72rem;margin:0 0 10px}.evaluation-inline-start{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}.evaluation-inline-start label{margin:0}.facility-access-row{padding:14px 0;border-top:1px solid var(--line)}.facility-access-row h3{font-size:.9rem}.evaluation-access li{margin-bottom:10px}.evaluation-access small{margin-top:10px}.evaluation-access select{min-width:170px}
 
 .facility-evaluation{border-top:0;margin-top:0;padding-top:0}.facility-evaluation+.facility-evaluation{margin-top:16px}.team-members-directory table th,.team-members-directory table td{vertical-align:top}
+
+.login-form .confirmation-button{display:flex;justify-content:center;margin-left:auto;margin-right:auto;max-width:100%;text-align:center}

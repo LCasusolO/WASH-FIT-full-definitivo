@@ -38,10 +38,16 @@ const {createRuntime}=require('./managed-runtime.cjs');
  if(process.env.WASH_QA_COMPLETE==='1'&&qaEvaluation)await r.queued(()=>require('./complete-fixture.cjs').fill(r.db,qaEvaluation));
  if(process.env.WASH_QA_MISSING_POPULATION==='1'&&qaEvaluation)await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_records set data=data-'populationServed' where evaluation_id=$1 and kind='general'",[qaEvaluation]);});
  const accounts=require('../../api/accounts').createHandler({env:{WASH_MULTIUSER:'true',WASH_APP_ORIGIN:origin,SUPABASE_URL:origin,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture'},request:(url,opts)=>r.handler(new Request(url,opts))});
+ let qaOffline=false;
  async function handle(req,res){
   const url=new URL(req.url,origin);res.setHeader('Cache-Control','no-store');res.status=n=>{res.statusCode=n;return res;};res.json=x=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(x));};
   let raw='';for await(const part of req){raw+=part;if(raw.length>20000)return res.status(413).end();}req.body=raw?JSON.parse(raw):{};
   const token=(req.headers.authorization||'').replace(/^Bearer /,'');
+  if(process.env.WASH_QA_OFFLINE==='1'){
+   if(url.pathname==='/__qa/network'){qaOffline=url.searchParams.get('offline')==='1';return res.json({offline:qaOffline});}
+   if(url.pathname==='/__qa/remote-fields'){await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_records set data=data||jsonb_build_object('resources','Recursos remotos conservados','cost',7777),version=version+1 where evaluation_id=$1 and kind='action'",[qaEvaluation]);});return res.json({changed:true});}
+   if(qaOffline)return res.status(503).end('QA offline');
+  }
   if(url.pathname==='/api/platform-config')return res.json({enabled:true,url:origin,key:'sb_publishable_fixture'});
   if(url.pathname==='/api/accounts')return accounts(req,res);
   if(url.pathname==='/auth/v1/user'){const s=r.tokens.get(token);if(!s)return res.status(401).json({error:'No session'});return res.json(await r.user(s.user.id));}
@@ -57,7 +63,7 @@ const {createRuntime}=require('./managed-runtime.cjs');
    return res.json((await r.queryAs(token,'select * from public."'+table+'"'+(where.length?' where '+where.join(' and '):'')+' limit '+Math.min(1000,Number(url.searchParams.get('limit')||1000))+' offset '+Number(url.searchParams.get('offset')||0),params)).rows);
   }
   const root=path.resolve(__dirname,'../../dist'),file=path.resolve(root,'.'+(url.pathname==='/'?'/plataforma.html':decodeURIComponent(url.pathname)));if(!file.startsWith(root+path.sep))return res.status(403).end();
-  const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css'};try{const data=fs.readFileSync(file);res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(data);}catch{return res.status(404).end();}
+  const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css'};try{const data=fs.readFileSync(file);res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(process.env.WASH_QA_OFFLINE==='1'&&path.extname(file)==='.html'?data.toString().replace('<head>','<head>'+require('./offline-browser-fixture.cjs').script):data);}catch{return res.status(404).end();}
  }
  http.createServer((req,res)=>handle(req,res).catch(e=>res.status(400).json({message:e.message}))).listen(port,'127.0.0.1',()=>process.stdout.write('QA cuentas '+origin+'/plataforma.html\n'+(qaEvaluation?origin+'/index.html?evaluation='+qaEvaluation+'\n':'' )));
 })();

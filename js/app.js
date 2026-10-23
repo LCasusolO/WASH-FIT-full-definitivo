@@ -156,7 +156,7 @@ createApp({
     const resolveCloudConflict = async (key, choice) => { try { await window.WashCloud.resolve(key, choice); } catch(error) { triggerToast(error.message, 'error'); } };
     const consultModule = module => { activeView.value = 'assessment'; activeModuleTab.value = module; };
     const openWorkspace = async (view = 'evaluations') => {
-      if (await window.WashCloud.save()) window.WashCloud.workspace(view);
+      if (await window.WashCloud.save() || !navigator.onLine && await window.WashCloud.persistLocal()) window.WashCloud.workspace(view);
       else triggerToast('Conserve o sincronice los cambios pendientes antes de cambiar de pantalla.', 'error');
     };
     const saveState = ref('loading');
@@ -197,6 +197,7 @@ createApp({
     watch([generalInfo, indicators], () => {
       if (loadingDraft.value) return;
       revision++;
+      if(cloudMode.value&&window.WashCloud?.active){const localRevision=revision;window.WashCloud.persistLocal().then(()=>{persistedRevision=Math.max(persistedRevision,localRevision);}).catch(()=>{saveState.value='error';cloudStatus.value='No se pudo guardar en este dispositivo.';});}
       saveState.value = 'pending';
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => saveDraft(), 800);
@@ -1107,6 +1108,7 @@ createApp({
       window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 1024; });
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && !loadingDraft.value && revision !== persistedRevision) saveDraft(); });
       window.addEventListener('beforeunload', event => { if (!loadingDraft.value && revision !== persistedRevision) { event.preventDefault(); event.returnValue = ''; } });
+      window.addEventListener('pagehide',()=>{if(!loadingDraft.value)saveDraft();});
       window.addEventListener('afterprint', () => { reportPreview.value = false; });
       try {
         if (window.WashCloud && (await window.WashCloud.ready).enabled) {

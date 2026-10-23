@@ -13,7 +13,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(event.request).then(response => {
       if (!response.ok) throw new Error('Navigation unavailable');
       return response;
-    }).catch(() => caches.open(CACHE).then(cache => cache.match(url.pathname.endsWith('/plataforma.html') ? './plataforma.html' : url.pathname.endsWith('/privacidad.html') ? './privacidad.html' : './'))));
+    }).catch(() => caches.open(CACHE).then(cache => cache.match(url.pathname.endsWith('/plataforma.html') ? './plataforma.html' : url.pathname.endsWith('/privacidad.html') ? './privacidad.html' : url.pathname.endsWith('/index.html') ? './index.html' : './'))));
     return;
   }
   // Solo recursos estáticos de esta aplicación; los datos permanecen en IndexedDB.

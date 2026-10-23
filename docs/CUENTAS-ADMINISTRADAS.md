@@ -180,3 +180,14 @@ Los reintentos conservan su identificador de operación: si un guardado ya fue a
 Al reconectar una evaluación abierta, primero se confirma cualquier envío pendiente usando su identificador original y después se incorporan los campos remotos. Así, los datos recibidos nunca se vuelven a enviar como una edición propia. Vaciar texto, asignar cero o null y eliminar un campo son modificaciones explícitas; no se ignoran. Los formularios de acción y monitoreo de la plataforma guardan también únicamente sus campos modificados.
 
 Los envíos pendientes de versiones anteriores se convierten a cambios por campo usando su base local. Si el servidor ya había aceptado la operación antigua, devuelve su confirmación original y conserva los guardados posteriores.
+
+
+## Cerrar y volver a abrir sin internet
+
+Abra primero la evaluación con conexión en el dispositivo y navegador que utilizará. La aplicación prepara sus archivos para uso sin conexión y conserva el borrador de esa cuenta y evaluación en IndexedDB. Cada edición se guarda localmente de inmediato; el mensaje **Guardado en este dispositivo; pendiente de sincronizar** aparece al terminar el guardado local.
+
+Puede cerrar la aplicación y volver a abrirla sin internet. La plataforma muestra **Evaluaciones sin conexión** con las evaluaciones preparadas para esa cuenta; **Continuar sin conexión** recupera los datos y la sección utilizada, y permite seguir editando. No se consultan el establecimiento, el país ni la posición del servidor para recuperar el borrador. Los permisos locales desconocidos se consideran de solo lectura. La identidad local no incluye un token nuevo ni autoriza peticiones al servidor; tampoco exige renovar un token mientras no hay red.
+
+Cuando vuelve internet, se renueva la sesión si corresponde, se vuelven a comprobar los permisos y se combinan automáticamente los cambios por campo. Campos distintos conservan ambas ediciones, y en el mismo campo prevalece el último guardado aceptado por el servidor. Si ya no hay permiso para editar, el borrador se conserva aparte y no se publica. Cerrar sesión impide volver a abrir el directorio offline de esa cuenta hasta ingresar otra vez con conexión.
+
+Las evaluaciones que nunca se abrieron en ese dispositivo requieren conexión para prepararse. Borrar los datos del navegador o usar otro navegador no traslada el borrador local.

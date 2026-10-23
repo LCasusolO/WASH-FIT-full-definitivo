@@ -7,10 +7,10 @@ function setup(){
   const database=[{id:crypto.randomUUID(),facility_id:facilityId,evaluation_id:evaluationId,kind:'general',record_key:'general',version:1,data:{...Core.defaults(),facilityName:'Ficticio',countryCode:'PER'}}];
   let editable=true,planEditable=true;
   let current=Core.normalizeDataset(Model.dataset(database,catalog,Core.defaults()),catalog),conflicts=[],lost=false,writes=0;
-  const operations=new Map(),navigator={onLine:true};
+  const operations=new Map(),navigator={onLine:true};let listeners={},root,reads=0;
   const platform={ready:Promise.resolve({enabled:true}),enabled:true,requireSession:async()=>({user:{id:userId}}),session:async()=>({user:{id:userId}}),hydratePhotos:async rows=>rows,uploadPhotos:async data=>data,
     client:{channel:()=>({on(){return this;},subscribe(){return this;}}),auth:{onAuthStateChange:()=>({data:{subscription:{}}})}},
-    rows:async table=>{if(!navigator.onLine)throw Error('offline');return table==='evaluations'?[{id:evaluationId,facility_id:facilityId,team_id:teamId,status:'editing'}]:table==='records'?Core.clone(database):table==='participants'?(editable?[{user_id:userId,active:true,role:'evaluator'}]:[]):table==='facilities'?[{id:facilityId,country_id:'country'}]:table==='assignments'?[{facility_id:facilityId,team_id:teamId}]:table==='team_members'?(planEditable?[{team_id:teamId,user_id:userId,role:'coordinator'}]:[]):[];},
+    rows:async table=>{reads++;if(!navigator.onLine)throw Error('offline');return table==='evaluations'?[{id:evaluationId,facility_id:facilityId,team_id:teamId,status:'editing'}]:table==='records'?Core.clone(database):table==='participants'?(editable?[{user_id:userId,active:true,role:'evaluator'}]:[]):table==='facilities'?[{id:facilityId,country_id:'country'}]:table==='assignments'?[{facility_id:facilityId,team_id:teamId}]:table==='team_members'?(planEditable?[{team_id:teamId,user_id:userId,role:'coordinator'}]:[]):[];},
     command:async(op,data,operation)=>{
       if(operations.has(operation))return Core.clone(operations.get(operation));
       if(!navigator.onLine)throw Error('offline');if(op!=='save_record')return {};
@@ -21,11 +21,14 @@ function setup(){
       if(lost){lost=false;throw Error('La respuesta se perdió después del commit');}return Core.clone(result);
     }
   };
-  const root={WashPlatform:platform,WashPlatformModel:Model,WashCore:Core};
-  const context=vm.createContext({window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,crypto,setInterval(){},setTimeout(){},clearTimeout(){},addEventListener(){}});
-  vm.runInContext(fs.readFileSync('js/platform-editor.js','utf8'),context);
+  function boot(){
+    listeners={};root={WashPlatform:platform,WashPlatformModel:Model,WashCore:Core};
+    const context=vm.createContext({window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,crypto,setInterval(){},setTimeout(){},clearTimeout(){},addEventListener(name,fn){(listeners[name]||=[]).push(fn);}});
+    vm.runInContext(fs.readFileSync('js/platform-editor.js','utf8'),context);
+  }
+  boot();
   const hooks={get:()=>Core.clone(current),apply:async data=>{current=Core.clone(data);},readonly(){},status(){},conflicts:data=>{conflicts=data;},position(){}};
-  return {teamId,setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},cloud:root.WashCloud,hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
+  return {teamId,get reads(){return reads;},async dispatch(name){await Promise.all((listeners[name]||[]).map(fn=>fn()));},reopen(){current=Core.normalizeDataset(Model.dataset([],catalog,Core.defaults()),catalog);conflicts=[];boot();},setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},get cloud(){return root.WashCloud;},hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
 }
 test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar el cambio',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();
@@ -53,8 +56,7 @@ test('la caché offline conserva solo lectura y no concede permisos por ausencia
   if(cachedPermission===undefined)delete cache.readOnly;else cache.readOnly=cachedPermission;
   await app.store.write('sync',cache);app.navigator.onLine=false;let readonly;
   app.hooks.readonly=value=>readonly=value;
-  // Los detalles del establecimiento no están disponibles sin red en este adaptador.
-  await assert.rejects(app.cloud.connect(app.hooks),/offline/);assert.equal(readonly,true);
+  await app.cloud.connect(app.hooks);assert.equal(readonly,true);
  }
 });
 
@@ -160,4 +162,21 @@ test('un envío pendiente legado se convierte a campos y no borra el costo remot
  const app=setup();addPlan(app);await app.cloud.connect(app.hooks);const cached=await app.store.read('sync'),record=cached.base.find(r=>r.kind==='action'&&r.record_key==='editor:A_1a'),stored=app.database.find(r=>r.kind==='action');
  cached.local.indicators[0].action='Acción pendiente de la versión anterior';cached.pendingLocal={...record,data:{...record.data,action:'Acción pendiente de la versión anterior'}};cached.pending={id:stored.id,version:stored.version,facility_id:stored.facility_id,evaluation_id:stored.evaluation_id,kind:record.kind,record_key:record.record_key,data:cached.pendingLocal.data};cached.currentOperation=crypto.randomUUID();await app.store.write('sync',cached);
  stored.data.cost=1200;stored.version++;await app.cloud.connect(app.hooks);assert.match(app.current.indicators[0].action,/Acción pendiente de la versión anterior/);assert.equal(app.current.indicators[0].cost,1200);assert.equal(app.database.find(r=>r.kind==='action').data.cost,1200);assert.equal((await app.store.read('sync')).pending,null);
+});
+
+test('cerrar, reabrir sin red, editar y reconectar conserva campos de los demás automáticamente',async()=>{
+ const app=setup();addPlan(app);await app.cloud.connect(app.hooks);app.current.indicators[0].score=0;await app.cloud.save();
+ app.navigator.onLine=false;app.current.indicators[0].notes='Nota antes de cerrar';app.current.indicators[0].action='Plan antes de cerrar';app.current.indicators[0].correctiveMeasures='Medida antes de cerrar';await app.cloud.persistLocal();await app.cloud.position('step5','A');
+ const reads=app.reads;app.reopen();await app.cloud.connect(app.hooks);assert.equal(app.reads,reads,'reabrir sin conexión no consulta ninguna tabla');assert.equal(app.cloud.active,true);assert.equal(app.current.indicators[0].notes,'Nota antes de cerrar');assert.match(app.current.indicators[0].action,/Plan antes de cerrar/);assert.match(app.current.indicators[0].correctiveMeasures,/Medida antes de cerrar/);
+ app.current.indicators[0].notes='Nota después de reabrir';await app.cloud.persistLocal();
+ const indicator=app.database.find(r=>r.kind==='indicator'),action=app.database.find(r=>r.kind==='action'),general=app.database[0];indicator.data.score=2;indicator.version++;action.data.cost=4500;action.version++;
+ app.database.push({id:crypto.randomUUID(),facility_id:general.facility_id,evaluation_id:general.evaluation_id,kind:'monitor',record_key:'editor:'+app.teamId+':A_1a:initial',version:1,status:'draft',data:{team_id:app.teamId,editor_indicator_id:'A_1a',editor_fields:{monitoringComments:'Comentario del otro evaluador',nextReviewDate:'2027-04-01'}}});
+ app.navigator.onLine=true;await app.dispatch('online');assert.equal(app.current.indicators[0].score,2);assert.equal(app.current.indicators[0].cost,4500);assert.equal(app.database.find(r=>r.kind==='indicator').data.notes,'Nota después de reabrir');assert.match(app.database.find(r=>r.kind==='action').data.action,/Plan antes de cerrar/);const monitor=app.database.find(r=>r.kind==='monitor');assert.match(monitor.data.editor_fields.correctiveMeasures,/Medida antes de cerrar/);assert.match(monitor.data.editor_fields.monitoringComments,/Comentario del otro evaluador/);assert.equal(monitor.data.editor_fields.nextReviewDate,'2027-04-01');
+ const writes=app.writes;await app.dispatch('online');assert.equal(app.writes,writes,'reconectar otra vez no vuelve a guardar');
+});
+
+test('reapertura offline sin caché falla sin habilitar edición y conserva permisos restrictivos al reconectar',async()=>{
+ const missing=setup();missing.navigator.onLine=false;await assert.rejects(missing.cloud.connect(missing.hooks),/OFFLINE/);assert.equal(missing.cloud.active,false);
+ const app=setup();addPlan(app);await app.cloud.connect(app.hooks);app.navigator.onLine=false;app.current.indicators[0].action='Borrador sin conexión';await app.cloud.persistLocal();app.reopen();await app.cloud.connect(app.hooks);
+ app.setEditable(false);app.setPlanEditable(false);app.navigator.onLine=true;const writes=app.writes;await app.dispatch('online');assert.equal(app.writes,writes);assert.match(app.current.indicators[0].action,/Acción de la nube/);assert.match((await app.store.read('readonlyDrafts'))['action:editor:A_1a'].record.data.action,/Borrador sin conexión/);
 });

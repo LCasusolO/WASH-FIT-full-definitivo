@@ -68,13 +68,13 @@ test('updates activate automatically only after every offline asset is cached', 
 });
 
 test('opening or reloading uses current HTML online and the installed HTML offline', async () => {
-  for (const path of ['', 'index.html', '?facility=example']) {
+  for (const path of ['', 'index.html', 'index.html?evaluation=offline-id', '?facility=example']) {
     const app = worker();
     assert.equal(await app.navigate(path), app.current);
     assert.deepEqual(app.calls, ['network']);
     const offline = worker({ online: false });
     assert.equal(await offline.navigate(path), offline.offline);
-    assert.deepEqual(offline.calls, ['network', './']);
+    assert.deepEqual(offline.calls, ['network', path.startsWith('index.html')?'./index.html':'./']);
   }
   const unavailable = worker({ status: 503 });
   assert.equal(await unavailable.navigate(), unavailable.offline);

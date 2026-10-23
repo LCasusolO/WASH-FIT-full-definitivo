@@ -24,7 +24,7 @@ function setup(){
   const context=vm.createContext({window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,crypto,setInterval(){},setTimeout(){},clearTimeout(){},addEventListener(){}});
   vm.runInContext(fs.readFileSync('js/platform-editor.js','utf8'),context);
   const hooks={get:()=>Core.clone(current),apply:async data=>{current=Core.clone(data);},readonly(){},status(){},conflicts:data=>{conflicts=data;},position(){}};
-  return {cloud:root.WashCloud,hooks,navigator,database,get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
+  return {cloud:root.WashCloud,hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
 }
 test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar el cambio',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();
@@ -44,4 +44,15 @@ test('un cambio sin conexión queda pendiente y se sincroniza al recuperar el se
   assert.equal(await app.cloud.save(),false);assert.equal(app.writes,0);
   app.navigator.onLine=true;await app.cloud.refresh();assert.equal(app.current.generalInfo.summary,'Trabajo pendiente');
   assert.equal(await app.cloud.save(),true);assert.equal(app.database.find(r=>r.record_key==='summary').data.summary,'Trabajo pendiente');
+});
+
+test('la caché offline conserva solo lectura y no concede permisos por ausencia del campo',async()=>{
+ for(const cachedPermission of [true,undefined]){
+  const app=setup();await app.cloud.connect(app.hooks);const cache=await app.store.read('sync');
+  if(cachedPermission===undefined)delete cache.readOnly;else cache.readOnly=cachedPermission;
+  await app.store.write('sync',cache);app.navigator.onLine=false;let readonly;
+  app.hooks.readonly=value=>readonly=value;
+  // Los detalles del establecimiento no están disponibles sin red en este adaptador.
+  await assert.rejects(app.cloud.connect(app.hooks),/offline/);assert.equal(readonly,true);
+ }
 });

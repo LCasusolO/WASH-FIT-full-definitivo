@@ -993,7 +993,7 @@ createApp({
     const locationStatus = ref('');
     const locationFailed = ref(false);
     const locateCurrentPosition = () => {
-      if (locationBusy.value) return;
+      if (locationBusy.value || locationReadonly.value) return;
       locationFailed.value = false;
       const fail = message => { locationBusy.value = false; locationFailed.value = true; locationStatus.value = message; };
       if (window.isSecureContext === false || !navigator.geolocation) {
@@ -1006,6 +1006,7 @@ createApp({
       locationStatus.value = 'Obteniendo ubicación actual…';
       try {
         navigator.geolocation.getCurrentPosition(position => {
+          if (locationReadonly.value) { fail('Solo lectura: no tiene permiso para modificar la ubicación.'); return; }
           if (generalInfo.value !== target || target.latitude !== previous[0] || target.longitude !== previous[1]) {
             fail('Los datos cambiaron mientras se obtenía la ubicación. Pulsa de nuevo para actualizarla.');
             return;
@@ -1027,62 +1028,57 @@ createApp({
       } catch (_) { fail('No se pudo solicitar la ubicación. Puedes escribir las coordenadas o usar el mapa.'); }
     };
 
+    // El mapa usa los permisos de datos generales, independientes de la vista abierta.
+    const locationReadonly = computed(() => cloudMode.value && cloudReadonly.value);
+    const syncMapPosition = () => {
+      const {latitude: lat, longitude: lng} = generalInfo.value;
+      if (!mapInstance) return;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        if (!markerInstance) {
+          markerInstance = L.marker([lat, lng], {draggable: !locationReadonly.value}).addTo(mapInstance);
+          markerInstance.on('dragend', () => {
+            if (locationReadonly.value) { syncMapPosition(); return; }
+            const pos = markerInstance.getLatLng();
+            generalInfo.value.latitude = Number(pos.lat.toFixed(6));
+            generalInfo.value.longitude = Number(pos.lng.toFixed(6));
+          });
+        }
+        markerInstance.setLatLng([lat, lng]);
+        markerInstance.dragging?.[locationReadonly.value ? 'disable' : 'enable']();
+        mapInstance.setView([lat, lng], mapInstance.getZoom());
+      } else if (markerInstance) { markerInstance.remove(); markerInstance = null; }
+    };
+    watch(locationReadonly, () => syncMapPosition(), {flush: 'sync'});
     const initMap = () => {
       if (!window.L) return;
-
       nextTick(() => {
-        const mapDom = document.getElementById('map-container');
-        if (!mapDom) return;
-
-        if (mapInstance) {
-          mapInstance.invalidateSize();
-          return;
-        }
-
-        const latInit = generalInfo.value.latitude ?? -12.1485;
-        const lngInit = generalInfo.value.longitude ?? -76.9841;
-
-        mapInstance = L.map('map-container').setView([latInit, lngInit], 14);
-
+        if (!document.getElementById('map-container')) return;
+        if (mapInstance) { mapInstance.invalidateSize(); syncMapPosition(); return; }
+        mapInstance = L.map('map-container').setView([generalInfo.value.latitude ?? -12.1485, generalInfo.value.longitude ?? -76.9841], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors'
         }).addTo(mapInstance);
-
-        const createMarker = (lat, lng) => {
-          markerInstance = L.marker([lat, lng], { draggable: true }).addTo(mapInstance);
-          markerInstance.on('dragend', () => { const pos = markerInstance.getLatLng(); updateCoordinates(pos.lat, pos.lng); });
-        };
-        if (Number.isFinite(generalInfo.value.latitude) && Number.isFinite(generalInfo.value.longitude)) createMarker(latInit, lngInit);
-
-        const updateCoordinates = (lat, lng) => {
-          generalInfo.value.latitude = parseFloat(lat.toFixed(6));
-          generalInfo.value.longitude = parseFloat(lng.toFixed(6));
-        };
-
-        mapInstance.on('click', (e) => {
-          if (markerInstance) markerInstance.setLatLng(e.latlng);
-          else createMarker(e.latlng.lat, e.latlng.lng);
-          updateCoordinates(e.latlng.lat, e.latlng.lng);
+        syncMapPosition();
+        mapInstance.on('click', e => {
+          if (locationReadonly.value) return;
+          generalInfo.value.latitude = Number(e.latlng.lat.toFixed(6));
+          generalInfo.value.longitude = Number(e.latlng.lng.toFixed(6));
+          syncMapPosition();
         });
       });
     };
 
     const onCoordinatesInput = () => {
+      if (locationReadonly.value) { syncMapPosition(); return; }
       const lat = generalInfo.value.latitude;
       const lng = generalInfo.value.longitude;
       if (lat !== null && lat !== '' && (!Number.isFinite(lat) || lat < -90 || lat > 90) || lng !== null && lng !== '' && (!Number.isFinite(lng) || lng < -180 || lng > 180)) {
         if (!Number.isFinite(lat) || lat < -90 || lat > 90) generalInfo.value.latitude = null;
         if (!Number.isFinite(lng) || lng < -180 || lng > 180) generalInfo.value.longitude = null;
+        syncMapPosition();
         triggerToast('Latitud: −90 a 90. Longitud: −180 a 180.', 'error'); return;
       }
-      if (Number.isFinite(lat) && Number.isFinite(lng) && mapInstance) {
-        if (markerInstance) markerInstance.setLatLng([lat, lng]);
-        else {
-          markerInstance = L.marker([lat, lng], { draggable: true }).addTo(mapInstance);
-          markerInstance.on('dragend', () => { const pos = markerInstance.getLatLng(); generalInfo.value.latitude = Number(pos.lat.toFixed(6)); generalInfo.value.longitude = Number(pos.lng.toFixed(6)); });
-        }
-        mapInstance.setView([lat, lng], mapInstance.getZoom());
-      } else if (markerInstance) { markerInstance.remove(); markerInstance = null; }
+      syncMapPosition();
     };
     const handlePhotoKeys = event => {
       if (event.key === 'Escape') { event.preventDefault(); closePhotoModal(); }
@@ -1102,6 +1098,7 @@ createApp({
       window.addEventListener('afterprint', () => { reportPreview.value = false; });
       try {
         if (window.WashCloud && (await window.WashCloud.ready).enabled) {
+          cloudReadonly.value = true;
           cloudMode.value = true;
           await window.WashCloud.connect({
             get: snapshot,

@@ -119,3 +119,12 @@ test('evaluador solo consulta su directorio; coordinador y administrador conserv
  app.data.team_members[0].role='coordinator';await app.state.refresh();assert.equal(app.state.evaluatorOnly.value,false);
  app.data.team_members[0].role='evaluator';app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];await app.state.refresh();assert.equal(app.state.evaluatorOnly.value,false);
 });
+
+
+test('confirmación cambia a reenvío tras éxito y vuelve al estado inicial para otro correo',async()=>{
+ const app=portal();await app.start();app.state.email.value='qa@example.invalid';await app.tick();app.state.confirmationNeeded.value=true;await app.state.sendConfirmation();assert.equal(app.state.confirmationSent.value,true);assert.equal(app.commands.filter(c=>c.op==='send_confirmation').length,1);
+ app.state.busy.value=true;await app.state.sendConfirmation();assert.equal(app.commands.filter(c=>c.op==='send_confirmation').length,1);app.state.busy.value=false;
+ app.state.email.value='other@example.invalid';await app.tick();assert.equal(app.state.confirmationSent.value,false);assert.equal(app.state.confirmationNeeded.value,false);
+ app.state.showNewPassword.value=true;app.state.showConfirmPassword.value=true;app.state.cancelPasswordChange();assert.equal(app.state.showNewPassword.value,false);assert.equal(app.state.showConfirmPassword.value,false);
+ const html=fs.readFileSync('plataforma.html','utf8');assert.ok(!html.includes('>Actualizar</button>'));assert.ok(html.includes('Reenviar confirmación de correo'));
+});

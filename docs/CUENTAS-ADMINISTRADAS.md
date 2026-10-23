@@ -142,3 +142,11 @@ Para una cuenta que solo participa como evaluador, Establecimientos y equipos mu
 La exportación multiusuario reutiliza la plantilla del reporte consolidado de index.html y sus estilos de impresión: datos generales, situación, riesgo, plan, monitoreo, resumen y radar. El HTML se construye con el snapshot autorizado y se convierte a PDF mediante Chromium; no usa el generador de PDF antiguo. Las coordenadas se conservan sin solicitar mapas externos al generar el archivo en servidor.
 
 PDF y JSON usan el nombre original, por ejemplo PER-Hospital_dos_mayo.pdf y PER-Hospital_dos_mayo.json, también al imprimir. Drive usa esos nombres visibles; distingue las exportaciones por su identificador interno, de modo que conservar el nombre no sobrescribe mediciones o exportaciones anteriores. Un reintento del mismo trabajo conserva su correspondencia.
+
+### Reenvío, visibilidad de claves y varios equipos
+
+Enviar confirmación de correo queda deshabilitado mientras se procesa el envío. Después de una respuesta exitosa cambia a Reenviar confirmación de correo; si cambia el usuario o correo del formulario, vuelve al estado inicial. La plataforma se actualiza automáticamente y ya no muestra el botón Actualizar.
+
+La contraseña personal nueva y su confirmación tienen botones independientes para mostrar y ocultar el contenido, tanto en el cambio obligatorio de clave temporal como en la ventana de Mi cuenta. Al cancelar, abrir de nuevo o guardar, ambos campos vuelven a ocultarse.
+
+Una cuenta puede pertenecer a varios equipos. El administrador entra a Usuarios y permisos, completa el nombre y el mismo correo de la cuenta existente, elige Evaluador o Coordinador y el equipo adicional, y pulsa Crear cuenta / asignar acceso. La cuenta conserva identidad, usuario y contraseña; se añade la pertenencia al nuevo equipo. Los roles se definen por equipo. Retirar un acceso de un equipo no elimina los otros. No se necesitan cambios de esquema para esta función.

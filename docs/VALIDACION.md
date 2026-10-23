@@ -234,3 +234,9 @@ corrección adicional.
 - 164 pruebas aprobadas y build correcto. Pruebas del reporte verifican seis pasos, tablas, radar, nombres y escape de HTML; cliente comprueba descarga de ambos archivos mediante WashChrome y mismo nombre. Drive conserva nombres y restringe búsquedas al identificador de exportación para no sobrescribir otro trabajo.
 - PDF de QA generado con Google Chrome real (productor Skia/PDF m155), 10 páginas con datos ficticios. Renderizado con Poppler; revisión visual de datos generales, plan, monitoreo y radar. Coordenadas de snapshot conservadas; no se solicitan mapas externos al exportar en servidor.
 - Navegador con evaluador ficticio: la organización muestra solo el directorio con equipo, integrantes, roles y establecimiento. Confirmación de correo centrada, diferencia entre centros de botón y formulario igual a 0 px. Consola sin errores. No se enviaron correos ni se exportaron datos reales durante estas pruebas.
+
+## Reenvío, claves visibles y pertenencia múltiple — 23 de octubre de 2026
+
+- 166 pruebas aprobadas y build correcto. Confirmación cambia de estado solo tras éxito, evita envíos mientras busy y reinicia el estado al cambiar el correo. Mostrar y ocultar son controles independientes; al cerrar la ventana se ocultan y limpian los campos.
+- Prueba del handler y SQL reales: administrador asigna el mismo correo a dos equipos, conserva identidad, usuario y contraseña, no crea otra cuenta y puede retirar un equipo sin perder el otro. Función existente, sin migración ni cambios de producción en cuentas reales.
+- Navegador QA: envío simulado cambia a Reenviar; botón Actualizar ausente; los dos campos de la ventana alternan text/password, con etiquetas accesibles y aria-pressed. Cancelación sin enviar credenciales, consola sin errores. Ningún correo real fue enviado ni contraseña cambiada durante la revisión visual.

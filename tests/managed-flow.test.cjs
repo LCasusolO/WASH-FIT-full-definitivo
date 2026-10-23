@@ -136,3 +136,17 @@ test('una cuenta activa cambia su contraseña personal conservando identidad y r
  assert.equal((await r.call({action:'login',login:'propietario',password:'Fixture-password-123'})).status,401);
  const login=await r.call({action:'login',login:'propietario',password:'Otra-personal-QA-789!'});assert.equal(login.status,200);assert.equal(login.body.session.user.id,r.owner.id);
 });
+
+
+test('administrador añade un evaluador a dos equipos reutilizando correo, identidad y contraseña',async t=>{
+ const r=await createRuntime();t.after(()=>r.close());const admin=await r.insert('multi-admin@example.invalid','Fixture-admin-123',undefined,true);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=$1",[admin.id]);});await r.service('set_role',r.owner.id,{user_id:admin.id,scope:'country',country_id:r.country.id,role:'admin'});
+ const token=(await r.signIn({email:admin.email,password:'Fixture-admin-123'})).data.session.access_token;
+ const team=async name=>(await r.queryAs(token,"select wash_command('team',$1,$2) as result",[JSON.stringify({country_id:r.country.id,name}),crypto.randomUUID()])).rows[0].result;
+ const a=await team('Equipo A'),b=await team('Equipo B');
+ const req={action:'create',name:'Evaluador compartido',email:'shared-evaluator@example.invalid',scope:'team',role:'evaluator',country_id:r.country.id,team_id:a.id,request_id:crypto.randomUUID()};
+ const first=await r.call(req,token);assert.equal(first.status,200);const id=[...r.people.values()].find(p=>p.email===req.email).id,originalPassword=r.passwords.get(id);
+ const second=await r.call({...req,team_id:b.id,request_id:crypto.randomUUID()},token);assert.equal(second.status,200);assert.equal(second.body.reused,true);assert.equal(second.body.temporary_password,null);assert.equal(second.body.username,first.body.username);assert.equal(r.passwords.get(id),originalPassword);
+ const memberships=(await r.queryAs(token,'select * from wash_team_members where user_id=$1',[id])).rows;assert.deepEqual(memberships.map(m=>m.team_id).sort(),[a.id,b.id].sort());assert.equal([...r.people.values()].filter(p=>p.email===req.email).length,1);
+ await r.service('set_role',admin.id,{user_id:id,scope:'team',team_id:a.id,role:'remove'});const remaining=(await r.queryAs(token,'select * from wash_team_members where user_id=$1',[id])).rows;assert.equal(remaining.length,1);assert.equal(remaining[0].team_id,b.id);
+});

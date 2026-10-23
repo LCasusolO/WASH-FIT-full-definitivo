@@ -11,6 +11,7 @@ test('nombres automáticos y códigos por establecimiento, sin saltos por reinte
  async function validate(ev){
   await command('save_record',{facility_id:ev.facility_id,evaluation_id:ev.id,kind:'general',record_key:'identification',data:{facilityName:'Centro códigos'}});
   await command('save_record',{facility_id:ev.facility_id,evaluation_id:ev.id,kind:'indicator',record_key:'A_1a',data:{score:2}});
+  await r.queued(()=>require('./support/complete-fixture.cjs').fill(r.db,ev.id));
   const review=await command('evaluation_status',{evaluation_id:ev.id,status:'review',version:ev.version});return command('evaluation_status',{evaluation_id:ev.id,status:'validated',version:review.version});
  }
  const base={facility_id:facility.id,team_id:team.id};const first=await command('evaluation',{...base,kind:'initial',name:'Nombre manual ignorado'});assert.equal(first.name,'Evaluación inicial');await validate(first);

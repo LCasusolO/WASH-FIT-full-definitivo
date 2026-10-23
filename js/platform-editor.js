@@ -38,14 +38,15 @@
     inFlight=true;
     try{
       const remote=await readRemote();
-      const merged=M.merge(base,logical(hooks.get()),remote.logical);
-      rows=remote.rows;base=remote.logical;conflicts=M.retainConflicts(conflicts,merged,remote.logical);
+      const merged=M.merge(base,logical(hooks.get()),remote.logical,{lastWriteIndicators:!readOnly});
+      rows=remote.rows;base=remote.logical;conflicts=M.retainConflicts(conflicts.filter(c=>readOnly||c.local.kind!=='indicator'),merged,remote.logical);
       protectReadonlyChanges(merged.records,remote.logical);
       hooks.conflicts(conflicts);await apply(merged.records);await persist();
       if(!conflicts.length&&M.changed(base,logical(hooks.get())).length)hooks.status('pending','Cambios locales pendientes de sincronizar.');
     }catch(e){if(e.message==='ACCESS_REVOKED')location.replace('/plataforma.html');else hooks.status('pending','No se pudo actualizar. Se conserva el trabajo local.');}
     finally{inFlight=false;}
   }
+  async function synchronize(){await refresh();if(navigator.onLine&&!inFlight&&!conflicts.length&&M.changed(base,logical(hooks.get())).length)await save();}
   async function connect(callbacks){
     await ready;if(!P.enabled)return false;
     if(!evaluationId){location.replace('/plataforma.html');return true;}
@@ -54,7 +55,7 @@
     const cached=await store.read('sync');
     try{
       const remote=await readRemote();rows=remote.rows;
-      if(cached){const merged=M.merge(cached.base,logical(cached.local),remote.logical);base=remote.logical;conflicts=M.retainConflicts(cached.conflicts||[],merged,remote.logical);protectReadonlyChanges(merged.records,remote.logical);pending=cached.pending;currentOperation=cached.currentOperation;await apply(merged.records);}
+      if(cached){const merged=M.merge(cached.base,logical(cached.local),remote.logical,{lastWriteIndicators:!readOnly});base=remote.logical;conflicts=M.retainConflicts((cached.conflicts||[]).filter(c=>readOnly||c.local.kind!=='indicator'),merged,remote.logical);protectReadonlyChanges(merged.records,remote.logical);pending=cached.pending;currentOperation=cached.currentOperation;await apply(merged.records);}
       else {base=remote.logical;await apply(base);}
     }catch(e){
       if(e.message==='ACCESS_REVOKED'||navigator.onLine||!cached)throw e;
@@ -69,9 +70,9 @@
       }
     }
     const [position]=await P.rows('user_state',{evaluation_id:evaluationId}).catch(()=>[]);if(position?.data)hooks.position(position.data);
-    channel=P.client.channel('wash-evaluation-'+evaluationId).on('postgres_changes',{event:'*',schema:'public',table:'wash_records',filter:'evaluation_id=eq.'+evaluationId},()=>{clearTimeout(timer);timer=setTimeout(refresh,700);}).subscribe();
+    channel=P.client.channel('wash-evaluation-'+evaluationId).on('postgres_changes',{event:'*',schema:'public',table:'wash_records',filter:'facility_id=eq.'+evaluation.facility_id},()=>{clearTimeout(timer);timer=setTimeout(synchronize,300);}).on('postgres_changes',{event:'UPDATE',schema:'public',table:'wash_evaluations',filter:'id=eq.'+evaluationId},synchronize).on('postgres_changes',{event:'*',schema:'public',table:'wash_participants',filter:'evaluation_id=eq.'+evaluationId},synchronize).subscribe();
     const {data:{subscription}}=P.client.auth.onAuthStateChange((event,s)=>{if(event==='SIGNED_OUT'||!s){hooks.readonly(true);hooks.clear();location.replace('/plataforma.html');}});
-    setInterval(()=>{refresh();if(navigator.onLine&&!inFlight&&!conflicts.length&&M.changed(base,logical(hooks.get())).length)save().catch(()=>{});},15000);
+    setInterval(synchronize,5000);
     addEventListener('online',()=>refresh().then(()=>save()));
     addEventListener('beforeunload',e=>{if(pending||M.changed(base,logical(hooks.get())).length){e.preventDefault();e.returnValue='';}});
     await persist();return true;

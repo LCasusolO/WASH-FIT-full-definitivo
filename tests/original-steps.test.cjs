@@ -18,10 +18,12 @@ test('plan y revisión posteriores a validar: datos reales de SQL, snapshot inta
  const f=await command('facility',{country_id:r.country.id,name:'Centro'}),team=await command('team',{country_id:r.country.id,name:'Equipo'});await command('assign',{facility_id:f.id,team_id:team.id});await r.service('set_role',r.owner.id,{user_id:admin.id,scope:'team',team_id:team.id,role:'coordinator'});
  const ev=await command('evaluation',{facility_id:f.id,team_id:team.id,name:'Inicial',kind:'initial'});
  await command('save_record',{facility_id:f.id,evaluation_id:ev.id,kind:'general',record_key:'identification',data:{facilityName:'Centro'}});await command('save_record',{facility_id:f.id,evaluation_id:ev.id,kind:'indicator',record_key:'A_1a',data:{score:0}});
+ await r.queued(()=>require('./support/complete-fixture.cjs').fill(r.db,ev.id));
  const review=await command('evaluation_status',{evaluation_id:ev.id,status:'review',version:ev.version});await command('evaluation_status',{evaluation_id:ev.id,status:'validated',version:review.version});
  const before=(await r.queryAs(session,"select data from wash_snapshots where evaluation_id=$1 and purpose='validation'",[ev.id])).rows[0].data;
  const original={generalInfo:{facilityName:'Centro'},indicators:[{id:'A_1a',score:0,action:'Reparar suministro',responsible:'Equipo',trackingStatus:'En Progreso',history:[{recordedAt:'2026-10-23T10:00:00Z',indicatorChange:'mejorado',responsible:'Equipo',correctiveMeasures:'Nueva medida',monitoringComments:'Avance observado'}]}]};
- for(const row of M.editorRecords(original,[],{teamId:team.id}).filter(r=>['action','monitor'].includes(r.kind)))await command('save_record',{...row,facility_id:f.id,evaluation_id:ev.id});
+ const baseline=(await r.queryAs(session,'select * from wash_records where facility_id=$1',[f.id])).rows;
+ for(const row of M.editorRecords(original,baseline,{teamId:team.id}).filter(r=>['action','monitor'].includes(r.kind))){const previous=baseline.find(r=>r.kind===row.kind&&r.record_key===row.record_key);await command('save_record',{...row,...(previous?{id:previous.id,version:previous.version}:{}),facility_id:f.id,evaluation_id:ev.id});}
  await assert.rejects(command('save_record',{facility_id:f.id,evaluation_id:ev.id,kind:'indicator',record_key:'A_2',data:{score:2}}),/FORBIDDEN/);
  const stored=(await r.queryAs(session,'select * from wash_records where facility_id=$1',[f.id])).rows,loaded=M.dataset(stored,[{id:'A_1a'}],{},stored.filter(x=>x.kind==='action'));
  assert.equal(loaded.indicators[0].score,0);assert.equal(loaded.indicators[0].action,'Reparar suministro');assert.equal(loaded.indicators[0].history.length,1);

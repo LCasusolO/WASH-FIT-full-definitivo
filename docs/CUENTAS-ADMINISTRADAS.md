@@ -139,7 +139,7 @@ Al final de la organización, Integrantes de los equipos muestra equipo, integra
 
 Para una cuenta que solo participa como evaluador, Establecimientos y equipos muestra únicamente el directorio de sus equipos, integrantes, roles y establecimientos. La gestión de evaluaciones y participantes queda disponible en esta sección para los roles que la necesitan. En el ingreso, Enviar confirmación de correo queda centrado.
 
-La exportación multiusuario reutiliza la plantilla del reporte consolidado de index.html y sus estilos de impresión: datos generales, situación, riesgo, plan, monitoreo, resumen y radar. El HTML se construye con el snapshot autorizado y se convierte a PDF mediante Chromium; no usa el generador de PDF antiguo. Las coordenadas se conservan sin solicitar mapas externos al generar el archivo en servidor.
+La exportación multiusuario reutiliza la plantilla del reporte consolidado de index.html y sus estilos de impresión: datos generales, situación, riesgo, plan, monitoreo, resumen y radar. El HTML se construye con el snapshot autorizado y se convierte a PDF mediante Chromium; no usa el generador de PDF antiguo. El PDF incorpora una imagen del mapa con marcador, coordenadas y atribución; espera a que cargue antes de imprimir y avisa si no puede obtenerla.
 
 PDF y JSON usan el nombre original, por ejemplo PER-Hospital_dos_mayo.pdf y PER-Hospital_dos_mayo.json, también al imprimir. Drive usa esos nombres visibles; distingue las exportaciones por su identificador interno, de modo que conservar el nombre no sobrescribe mediciones o exportaciones anteriores. Un reintento del mismo trabajo conserva su correspondencia.
 
@@ -154,3 +154,11 @@ Una cuenta puede pertenecer a varios equipos. El administrador entra a Usuarios 
 ### Un único botón por participante
 
 En Participantes y acceso, cada persona activa muestra Retirar de esta evaluación. Si está retirada, el mismo botón pasa a Agregar a la evaluación. Se eliminaron los botones generales Asignar / actualizar. Agregar requiere que la persona siga perteneciendo al equipo responsable; los participantes de equipos anteriores permanecen como historial. Las mediciones validadas y los permisos de consulta mantienen sus restricciones.
+
+### Comprobación de los cinco pasos y colaboración
+
+En Evaluaciones se ve el avance por establecimiento, los cinco pasos y los pendientes con enlaces Corregir al campo correspondiente. Comprobar y completar evaluación vuelve a consultar el servidor: si faltan datos, los muestra; si está completa, conserva la versión histórica y cierra la medición. Pueden hacerlo el administrador autorizado o el coordinador participante. No exige una revisión técnica individual del administrador.
+
+La comprobación incluye identificación y ubicación, respuestas o justificaciones de los indicadores aplicables, problema/riesgos/gravedad/probabilidad de las brechas, acciones/recursos/responsable/plazo/presupuesto (0 si no requiere gasto), y fecha prevista de monitoreo. Los resultados futuros del monitoreo no bloquean el cierre. El plan y el monitoreo continúan en el establecimiento.
+
+Los cambios en indicadores se sincronizan automáticamente. Si dos personas modifican el mismo indicador, prevalece el último guardado aceptado por el servidor; editar indicadores distintos conserva ambos cambios. Los reintentos de un guardado no restauran versiones antiguas. Se mantienen las comprobaciones de permisos y las protecciones de concurrencia de datos generales, plan y monitoreo. Sin conexión se conserva el borrador; al reconectar vuelve a sincronizarse.

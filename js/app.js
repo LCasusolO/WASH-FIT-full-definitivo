@@ -757,6 +757,14 @@ createApp({
     const driveCurrent = computed(() => lastArchive.value?.fingerprint === archiveFingerprint(snapshot()));
     const driveLabel = computed(() => archiveBusy.value || archiveFailed.value ? archiveStatus.value : !lastArchive.value ? 'sin copia confirmada en este navegador.' : driveCurrent.value ? 'JSON y PDF confirmados.' : 'hay cambios sin archivar.');
     const archiveTime = computed(() => lastArchive.value ? new Date(lastArchive.value.savedAt).toLocaleString('es') : '');
+    async function openCompletionTarget(){
+      const query=new URLSearchParams(location.search),view=query.get('view');if(!['general','assessment','step3','step4','step5'].includes(view))return;
+      activeView.value=view;if(modulesList.some(m=>m.id===query.get('module')))activeModuleTab.value=query.get('module');await nextTick();
+      const id=query.get('indicator'),field=query.get('field');let target;
+      if(view==='assessment'&&id)target=field==='sanitationSystem'?document.querySelector('[data-completion-field="sanitationSystem"]'):document.getElementById('assessment-notes-'+id);
+      else {const area=id?[...document.querySelectorAll('[data-completion-indicator]')].find(el=>el.dataset.completionIndicator===id&&el.getClientRects().length):document;target=[...(area?.querySelectorAll('[data-completion-field]')||[])].find(el=>el.dataset.completionField===field&&el.getClientRects().length)||area?.querySelector?.('input,textarea,select');}
+      target?.scrollIntoView({block:'center'});target?.focus({preventScroll:true});
+    }
     onMounted(async () => {try { if (window.WashCloud && (await window.WashCloud.ready).enabled) return; lastArchive.value = await store.read('lastArchive'); } catch (_) {} });
     let archiveJob = null;
     const createArchiveJob = async (dataset, html) => {
@@ -1114,7 +1122,7 @@ createApp({
             position: value => { if (['instructions','general','assessment','step3','step4','step5','dashboard'].includes(value.view)){activeView.value = value.view;} if (modulesList.some(m => m.id === value.module)) activeModuleTab.value = value.module; },
             clear: () => { generalInfo.value = WashCore.defaults(); indicators.value = []; }
           });
-          if (window.WashCloud.active) { await window.WashCloud.save(); if (activeView.value === 'general') initMap(); }
+          if (window.WashCloud.active) { await window.WashCloud.save();await openCompletionTarget(); if (activeView.value === 'general') initMap(); }
           return;
         }
         const draft = await store.read();

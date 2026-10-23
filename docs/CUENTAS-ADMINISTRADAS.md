@@ -164,3 +164,9 @@ La comprobación incluye identificación, ubicación y población atendida total
 Los cambios en indicadores se sincronizan automáticamente. Si dos personas modifican el mismo indicador, prevalece el último guardado aceptado por el servidor; editar indicadores distintos conserva ambos cambios. Los reintentos de un guardado no restauran versiones antiguas. Se mantienen las comprobaciones de permisos y las protecciones de concurrencia de datos generales, plan y monitoreo. Sin conexión se conserva el borrador; al reconectar vuelve a sincronizarse.
 
 El avance de cada paso se presenta como porcentaje; el 100 % se reserva para pasos completos. Ver campos pendientes abre los enlaces de corrección. En indicadores sin calificación, cualquier comentario no vacío permite completar la respuesta, igual en el navegador y en el servidor; no se exige una explicación adicional al texto «No aplica».
+
+### Consulta y cachés anteriores del plan
+
+Al consultar una evaluación sin permiso para editar una sección, sus datos se toman automáticamente de la nube. Los borradores locales anteriores de esa sección se conservan aparte en el almacenamiento del navegador y no se envían al servidor ni exigen resolver un conflicto. Esto también limpia conflictos pendientes de una caché antigua en modo de consulta.
+
+Al reabrir una evaluación, el borrador se reconstruye con las filas de su propia caché. Un plan creado después por otra persona no genera un conflicto artificial con campos vacíos. Los conflictos vacíos anteriores se descartan cuando no contienen una edición real; los cambios reales concurrentes de un plan editable siguen protegidos. La edición del plan y monitoreo autorizada por pertenencia al equipo continúa disponible aunque la medición esté en solo lectura.

@@ -216,3 +216,9 @@ corrección adicional.
 - Nueva migración genera Reevaluación 01/02 por establecimiento, continúa numeración Reeval anterior, conserva reintentos y bloqueo transaccional y no trunca 1000/1001. Las mediciones históricas no se renombran.
 - Migración aplicada y comprobada en Supabase: formato legible, mínimo dos dígitos, compatibilidad anterior y bloqueo por establecimiento; ejecución anónima deshabilitada. Asesores sin avisos nuevos.
 - Navegador QA: ventana en escritorio y 390 px, Escape y consola sin errores; selección Coordinador → Evaluador, navegación de integrantes con inicio a 24 px y foco correcto; creación de Reevaluación 01. No se modificaron contraseñas ni asignaciones reales. Vista del navegador restaurada.
+
+## Inicio directo y gestión en organización — 23 de octubre de 2026
+
+- 158 pruebas aprobadas; build correcto. Inicio directo sin nombre manual ni formulario intermedio; consulta reciente evita duplicar mediciones abiertas. Casos de varios equipos, referencia validada más reciente, contexto de fila y denegación a evaluador/otro país.
+- Organización cambia de nombre por rol. Países y administradores incluye total y lista de establecimientos. Transferencia y participantes se trasladan a la tabla de organización; validaciones históricas y permisos existentes se conservan.
+- Navegador con SQL real y cuentas ficticias: asignación en organización, inicio directo hasta index.html, única acción Continuar para la medición activa, retiro/restauración de evaluador y transferencia al equipo asignado desde la nueva ubicación. Propietario ve total y listado; evaluador ve participantes sin botones administrativos. Consola sin errores. Vista móvil 390 px sin desbordamiento de página (documento 375 px); vista restaurada. No se modificaron cuentas ni evaluaciones reales.

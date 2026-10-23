@@ -1,14 +1,14 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto');
 function portal(clipboard){
  const data={countries:[{id:'a',name:'A'},{id:'b',name:'B'}],owners:[{user_id:'owner'}],facilities:[{id:'fa',country_id:'a'},{id:'fb',country_id:'b'}],teams:[{id:'ta',country_id:'a'}],snapshots:[]};
- let state,mounted,commands=[],focusEvents=[];
- const P={ready:Promise.resolve({enabled:true}),session:async()=>({user:{id:'owner'}}),pendingExport:async()=>null,accountStatus:async()=>({ready:true,status:'active',session_valid:true,has_access:true,can_manage:false}),accountAction:async(action,request)=>{commands.push({op:action,data:request});if(action==='set_role'){data.team_members=(data.team_members||[]).filter(m=>m.user_id!==request.user_id||m.team_id!==request.team_id);if(request.role!=='remove')data.team_members.push({user_id:request.user_id,team_id:request.team_id,role:request.role});}return {session:{access_token:'fixture-token',refresh_token:'fixture-refresh'},message:'Contraseña actualizada.'};},rows:async(t,f)=>structuredClone((data[t]||[]).filter(r=>!f||r.facility_id===f.facility_id)),command:async(op,d)=>{commands.push({op,data:d});if(op==='country'){const c={...d,id:'new'};data.countries.push(c);return c;}return{};},exportFiles:async(e,f)=>commands.push({op:'export',evaluation:e,facility:f}),client:{auth:{setSession:async session=>{commands.push({op:'set_session',data:session});return{error:null}},onAuthStateChange:()=>({data:{subscription:{}}}),resetPasswordForEmail:async()=>{commands.push({op:'recover'});return{};}},channel:()=>({on(){return this},subscribe(){return this}})}};
- const context=vm.createContext({console,navigator:{clipboard},URLSearchParams,location:{search:'',hash:'',origin:'https://example.invalid',pathname:'/plataforma.html'},history:{replaceState(){}},sessionStorage:{getItem(){return null},removeItem(){}},indexedDB:{},WashStorage:{createStore:()=>({read:async()=>null,write:async()=>{}})},WashPlatform:P,WashPlatformModel:{clone:structuredClone,accountUsername:require('../js/platform-model.js').accountUsername},INDICATORS_DATA:[{id:'A_1'}],WashCore:{},crypto,setInterval(){},setTimeout,clearTimeout});
+ let state,mounted,components,commands=[],focusEvents=[],navigation=[];
+ const P={ready:Promise.resolve({enabled:true}),session:async()=>({user:{id:'owner'}}),pendingExport:async()=>null,accountStatus:async()=>({ready:true,status:'active',session_valid:true,has_access:true,can_manage:false}),accountAction:async(action,request)=>{commands.push({op:action,data:request});if(action==='set_role'){data.team_members=(data.team_members||[]).filter(m=>m.user_id!==request.user_id||m.team_id!==request.team_id);if(request.role!=='remove')data.team_members.push({user_id:request.user_id,team_id:request.team_id,role:request.role});}return {session:{access_token:'fixture-token',refresh_token:'fixture-refresh'},message:'Contraseña actualizada.'};},rows:async(t,f)=>structuredClone((data[t]||[]).filter(r=>!f||r.facility_id===f.facility_id)),command:async(op,d,operation)=>{commands.push({op,data:d,operation});if(op==='evaluation'){const e={...d,id:'created-evaluation',status:'draft',created_at:'2026-10-23'};(data.evaluations ||= []).push(e);return e;}if(op==='country'){const c={...d,id:'new'};data.countries.push(c);return c;}return{};},exportFiles:async(e,f)=>commands.push({op:'export',evaluation:e,facility:f}),client:{auth:{setSession:async session=>{commands.push({op:'set_session',data:session});return{error:null}},onAuthStateChange:()=>({data:{subscription:{}}}),resetPasswordForEmail:async()=>{commands.push({op:'recover'});return{};}},channel:()=>({on(){return this},subscribe(){return this}})}};
+ const context=vm.createContext({console,navigator:{clipboard},URLSearchParams,location:{search:'',hash:'',origin:'https://example.invalid',pathname:'/plataforma.html',assign:url=>navigation.push(url)},history:{replaceState(){}},sessionStorage:{getItem(){return null},removeItem(){}},indexedDB:{},WashStorage:{createStore:()=>({read:async()=>null,write:async()=>{}})},WashPlatform:P,WashPlatformModel:{clone:structuredClone,accountUsername:require('../js/platform-model.js').accountUsername},INDICATORS_DATA:[{id:'A_1'}],WashCore:{},crypto,setInterval(){},setTimeout,clearTimeout});
  vm.runInContext(fs.readFileSync('vendor/vue.global.js','utf8'),context);
  context.document={getElementById(id){return{focus(){focusEvents.push('focus:'+id)},scrollIntoView(){focusEvents.push('scroll:'+id)}}}};
- context.Vue={...context.Vue,createApp:c=>{state=c.setup();return{mount(){}}},onMounted:fn=>mounted=fn};
+ context.Vue={...context.Vue,createApp:c=>{components=c.components;state=c.setup();return{mount(){}}},onMounted:fn=>mounted=fn};
  vm.runInContext(fs.readFileSync('js/platform-portal.js','utf8'),context);
- return{get state(){return state},start:()=>mounted(),tick:()=>context.Vue.nextTick(),commands,data,focusEvents};
+ return{get state(){return state},start:()=>mounted(),tick:()=>context.Vue.nextTick(),commands,data,focusEvents,navigation,get components(){return components}};
 }
 test('portal selecciona el país recién creado y confirma la operación',async()=>{
  const app=portal();await app.start();assert.equal(app.state.countryId.value,'a');
@@ -51,17 +51,35 @@ test('permisos de una fila se calculan por su país y no por el país selecciona
  app.state.accountForm.value={...app.state.accountForm.value,role:'evaluator',country_id:'a',team_id:'ta'};await app.tick();assert.equal(app.state.accountScopeReady.value,true);
 });
 
-test('administrador ve establecimientos sin evaluar y asigna el equipo a la fila elegida',async()=>{
- const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];app.data.facilities.push({id:'fa2',country_id:'a',name:'Segundo centro'});app.data.evaluations=[{id:'e',facility_id:'fa',status:'validated',created_at:'2026-10-22'}];await app.start();
- assert.equal(app.state.adminFacilities.value.length,2);assert.equal(app.state.facilityStatus('fa'),'Evaluada');assert.equal(app.state.facilityStatus('fa2'),'Falta evaluar');
- app.state.rowTeams.value.fa2='ta';await app.state.assignAt(app.data.facilities.find(f=>f.id==='fa2'));assert.equal(app.commands.at(-1).data.facility_id,'fa2');assert.equal(app.commands.at(-1).data.team_id,'ta');
- app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.state.refresh();app.state.facilityId.value='fa2';await app.tick();await app.state.startEvaluation('fa');assert.equal(app.state.facilityId.value,'fa');assert.equal(app.state.previousId.value,'e');assert.equal(app.state.evaluationTeam.value,'ta');
- app.data.evaluations.push({id:'open',facility_id:'fa',status:'review',created_at:'2026-10-23'});await app.state.refresh();assert.equal(app.state.facilityStatus('fa'),'En revisión');
+test('inicio directo usa el equipo y establecimiento de la fila y omite el nombre manual',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.start();
+ await app.state.startEvaluation('fa');const command=app.commands.find(c=>c.op==='evaluation');assert.equal(command.data.kind,'initial');assert.equal(command.data.team_id,'ta');assert.equal(command.data.facility_id,'fa');assert.equal(Object.hasOwn(command.data,'name'),false);assert.equal(app.navigation[0],'/index.html?evaluation=created-evaluation');
+ await app.state.startEvaluation('fa');assert.equal(app.commands.filter(c=>c.op==='evaluation').length,1);assert.equal(app.navigation.length,2);
 });
 
-test('crear evaluación no requiere ni envía un nombre manual',async()=>{
- const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.start();await app.state.startEvaluation('fa');await app.state.createEvaluation();
- const command=app.commands.find(c=>c.op==='evaluation');assert.ok(command);assert.equal(command.data.kind,'initial');assert.equal(Object.hasOwn(command.data,'name'),false);assert.equal(app.state.error.value,'');
+test('inicio consulta estado reciente y continúa una evaluación existente sin crear otra',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];await app.start();app.data.evaluations=[{id:'fresh',facility_id:'fa',status:'review',created_at:'2026-10-23'}];
+ await app.state.startEvaluation('fa');assert.equal(app.commands.length,0);assert.equal(app.navigation[0],'/index.html?evaluation=fresh');
+});
+
+test('varios equipos requieren elección asignada y la reevaluación referencia la última validada',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];app.data.teams.push({id:'ta2',country_id:'a'});app.data.assignments=[{team_id:'ta',facility_id:'fa'},{team_id:'ta2',facility_id:'fa'}];app.data.evaluations=[{id:'old',facility_id:'fa',status:'validated',created_at:'2026-10-21'},{id:'latest',facility_id:'fa',status:'validated',created_at:'2026-10-22'}];await app.start();
+ await app.state.startEvaluation('fa');assert.equal(app.commands.length,0);assert.equal(app.navigation.length,0);assert.match(app.state.error.value,/Seleccione/);
+ app.state.evaluationChoices.value.fa='foreign';await app.state.startEvaluation('fa');assert.equal(app.commands.length,0);
+ app.state.evaluationChoices.value.fa='ta2';await app.state.startEvaluation('fa');const c=app.commands[0];assert.equal(c.data.kind,'reassessment');assert.equal(c.data.previous_id,'latest');assert.equal(c.data.team_id,'ta2');assert.ok(c.operation);
+});
+
+test('evaluador y administrador de otro país no pueden iniciar evaluaciones',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.start();await app.state.startEvaluation('fb');assert.equal(app.commands.length,0);assert.equal(app.navigation.length,0);
+ app.data.country_members=[];app.data.team_members=[{team_id:'ta',user_id:'owner',role:'evaluator'}];await app.state.refresh();await app.state.startEvaluation('fa');assert.equal(app.commands.length,0);
+ app.data.team_members[0].role='coordinator';await app.state.refresh();await app.state.startEvaluation('fa');assert.equal(app.commands[0].data.team_id,'ta');
+});
+
+test('organización usa nombres por rol y enumera establecimientos por país',async()=>{
+ const app=portal();await app.start();assert.equal(app.state.organizationName.value,'País y establecimientos');assert.equal(app.state.facilitiesInCountry('a').length,1);assert.equal(app.state.tabs.find(t=>t.id==='organization').name,'País y establecimientos');
+ app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];await app.state.refresh();assert.equal(app.state.organizationName.value,'Establecimientos y equipos');assert.equal(app.state.organizationFacilities.value.length,1);
+ const {compile}=require('@vue/compiler-dom');const component=app.components.EvaluationAccess;new Function('Vue',compile(component.template).code);assert.ok(component.template.includes("evaluation.status!=='validated'"));
+ const html=fs.readFileSync('plataforma.html','utf8'),evaluations=html.split("view==='evaluations'")[1].split("view==='history'")[0];assert.ok(!evaluations.includes('Asignar equipo evaluador'));assert.ok(!evaluations.includes('<evaluation-access'));assert.ok(!html.includes('Crear evaluación inicial'));
 });
 
 test('administrador cambia su participación por equipo sin cruzar países ni admitir roles retirados',async()=>{

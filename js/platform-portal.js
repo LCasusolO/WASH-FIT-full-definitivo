@@ -2,7 +2,8 @@
 (function(){
   'use strict';
   const {createApp,ref,computed,onMounted,watch,nextTick}=Vue,P=WashPlatform,M=WashPlatformModel;
-  createApp({setup(){
+  const EvaluationAccess={props:['evaluation','people','teamMembers','assignedTeams','selectedTeam','canTransfer','canCoordinate','busy','roleLabel'],emits:['transfer','participant','update-team'],template:`<div class="evaluation-access"><details v-if="canTransfer"><summary>Transferir equipo responsable</summary><label>Nuevo equipo<select :value="selectedTeam || ''" @change="$emit('update-team',$event.target.value)"><option value="">Seleccione</option><option v-for="t in assignedTeams" :value="t.id">{{t.name}}</option></select></label><button @click="$emit('transfer',evaluation)" :disabled="busy || !selectedTeam">Transferir acceso al equipo</button></details><details><summary>Participantes y acceso</summary><ul><li v-for="p in people" :key="p.user_id">{{p.name}} — {{roleLabel(p.role)}} — {{p.active?'activo':'retirado'}} <button v-if="canCoordinate && p.active && evaluation.status!=='validated'" @click="$emit('participant',evaluation,p,true)" :disabled="busy">Retirar de esta evaluación</button></li></ul><p v-if="!people.length">Todavía no hay participantes.</p><template v-if="canCoordinate && evaluation.status!=='validated'"><button v-for="m in teamMembers" :key="m.user_id" @click="$emit('participant',evaluation,m,false)" :disabled="busy">Asignar / actualizar {{m.name}}</button></template><small v-if="evaluation.status==='validated'">Los participantes de la medición validada se conservan como parte de su historial.</small></details></div>`};
+  createApp({components:{EvaluationAccess},setup(){
     const showPassword=ref(false),showRecoveryHelp=ref(false),copiedCredentials=ref(false),iconCache=new Map();
     const iconSvg=name=>{if(!name||!window.lucide?.icons?.[name])return '';if(!iconCache.has(name))iconCache.set(name,window.lucide.createElement(window.lucide.icons[name],{'width':20,'height':20,'stroke-width':1.8,'aria-hidden':'true','focusable':'false'}).outerHTML);return iconCache.get(name);};
     const initials=name=>String(name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
@@ -20,7 +21,7 @@
     const pendingExport=ref(false),actionDraft=ref(null),monitorDraft=ref(null),conflict=ref(null),evidence=ref([]);
     const owner=computed(()=>owners.value.some(o=>o.user_id===user.value?.id));
     const admin=computed(()=>owner.value||countryMembers.value.some(m=>m.country_id===countryId.value&&m.user_id===user.value?.id&&m.role==='admin'));
-    const showNewEvaluation=ref(false);
+    const evaluationChoices=ref({}),evaluationStarts=new Map();
     const nationalAdmin=computed(()=>!owner.value&&countryMembers.value.some(m=>m.user_id===user.value?.id&&m.role==='admin'));
     const managedCountries=computed(()=>countries.value.filter(c=>!owner.value&&countryMembers.value.some(m=>m.country_id===c.id&&m.user_id===user.value?.id&&m.role==='admin')));
     const adminForCountry=id=>owner.value||countryMembers.value.some(m=>m.country_id===id&&m.user_id===user.value?.id&&m.role==='admin');
@@ -34,14 +35,33 @@
     const activeEvaluations=computed(()=>evaluations.value.filter(e=>['draft','editing','review'].includes(e.status)));
     const myTeamMembers=computed(()=>members.value.filter(m=>members.value.some(own=>own.user_id===user.value?.id&&own.team_id===m.team_id)));
     const teamFacilities=id=>assignments.value.filter(a=>a.team_id===id).map(a=>facilityNameFor(a.facility_id)).join(', ')||'Sin establecimiento asignado';
-    const rowTeams=ref({});
+    const facilitiesInCountry=id=>facilities.value.filter(f=>f.country_id===id);
+    const organizationName=computed(()=>owner.value?'País y establecimientos':'Establecimientos y equipos');
+    const organizationFacilities=computed(()=>nationalAdmin.value?countryFacilities.value:facilities.value);
+    const selectedStartFacility=computed(()=>evaluationFacilities.value.some(f=>f.id===facilityId.value)?facilityId.value:evaluationFacilities.value[0]?.id||'');
+    const creationTeamsFor=id=>teamsForFacility(id).filter(t=>adminForCountry(facilityCountry(id))||members.value.some(m=>m.team_id===t.id&&m.user_id===user.value?.id&&m.role==='coordinator'));
+    const chosenEvaluationTeam=id=>{const available=creationTeamsFor(id);return available.length===1?available[0].id:available.some(t=>t.id===evaluationChoices.value[id])?evaluationChoices.value[id]:'';};
     const adminFacilities=computed(()=>facilities.value.filter(f=>managedCountries.value.some(c=>c.id===f.country_id)));
     const evaluationsAt=id=>allEvaluations.value.filter(e=>e.facility_id===id);
     const activeAt=id=>evaluationsAt(id).find(e=>['draft','editing','review'].includes(e.status));
     const latestValidatedAt=id=>evaluationsAt(id).find(e=>e.status==='validated');
     const facilityStatus=id=>activeAt(id)?statusLabel(activeAt(id).status):latestValidatedAt(id)?'Evaluada':'Falta evaluar';
-    const assignAt=f=>run(async()=>{const t=teams.value.find(t=>t.id===rowTeams.value[f.id]);if(!nationalAdmin.value||!managedCountries.value.some(c=>c.id===f.country_id)||!t||t.country_id!==f.country_id)throw Error('FORBIDDEN');await P.command('assign',{facility_id:f.id,team_id:t.id});message.value='Equipo asignado a '+f.name+'.';});
-    const startEvaluation=async id=>{const requested=typeof id==='string'?id:'';if(requested){if(!canCreateAt(requested))return;facilityId.value=requested;}else if(!evaluationFacilities.value.some(f=>f.id===facilityId.value))facilityId.value=evaluationFacilities.value[0]?.id||'';showNewEvaluation.value=true;await nextTick();evaluationTeam.value=facilityTeams.value[0]?.id||'';previousId.value=latestValidatedAt(facilityId.value)?.id||'';focusPanel('evaluation-create');};
+    const startEvaluation=async id=>{
+      if(busy.value)return;
+      const target=typeof id==='string'?id:selectedStartFacility.value;let destination='';
+      await run(async()=>{
+        if(!canCreateAt(target))throw Error('FORBIDDEN');
+        const existing=(await P.rows('evaluations',{facility_id:target})).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+        const active=existing.find(e=>['draft','editing','review'].includes(e.status));
+        if(active){destination=active.id;return;}
+        const assignedTeam=chosenEvaluationTeam(target);if(!assignedTeam)throw Error('Seleccione el equipo asignado que realizará la evaluación.');
+        const previous=existing.find(e=>e.status==='validated');
+        const payload={facility_id:target,team_id:assignedTeam,kind:existing.length?'reassessment':'initial',previous_id:previous?.id||null};
+        const key=JSON.stringify(payload);if(!evaluationStarts.has(key))evaluationStarts.set(key,crypto.randomUUID());
+        const created=await P.command('evaluation',payload,evaluationStarts.get(key));destination=created.id;
+      });
+      if(destination)location.assign('/index.html?evaluation='+encodeURIComponent(destination));
+    };
     const countryFacilities=computed(()=>facilities.value.filter(f=>f.country_id===countryId.value));
     const countryTeams=computed(()=>teams.value.filter(t=>t.country_id===countryId.value));
     const facilityTeams=computed(()=>teamsForFacility(facilityId.value));
@@ -153,7 +173,6 @@
     const transferEvaluation=e=>run(async()=>{if(!confirm('Se transferirá el acceso al equipo seleccionado. Se conservarán la autoría y las versiones históricas. ¿Continuar?'))return;await P.command('transfer_evaluation',{evaluation_id:e.id,team_id:transferTeams.value[e.id],version:e.version});});
     const participant=(e,m,remove)=>run(()=>P.command('participants',{evaluation_id:e.id,user_id:m.user_id,remove}));
     async function makeEvaluation(id){if(!canCreateAt(facilityId.value))throw Error('FORBIDDEN');return P.command('evaluation',{...(id?{id}:{}),facility_id:facilityId.value,team_id:evaluationTeam.value,kind:facilityEvaluations.value.length?'reassessment':'initial',previous_id:previousId.value||null},id||crypto.randomUUID());}
-    const createEvaluation=()=>run(async()=>{const created=await makeEvaluation();showNewEvaluation.value=false;message.value=(created.name||'Evaluación')+' creada. Puede abrirla en la lista.';});
     const evaluationStatus=(e,status)=>run(async()=>{if(status==='validated'&&!confirm('Se conservará una versión de la medición y del plan a esta fecha. El monitoreo continuará disponible. ¿Validar?'))return;const reason=e.status==='validated'&&status==='editing'?prompt('Motivo de la corrección (al menos 10 caracteres). Se conservará la versión validada anterior.'):undefined;if(e.status==='validated'&&!reason)return;await P.command('evaluation_status',{evaluation_id:e.id,version:e.version,status,...(reason?{reason}:{})});});
     function newAction(){actionDraft.value={facility_id:facilityId.value,kind:'action',record_key:crypto.randomUUID(),data:{indicator_id:catalog[0].id,action:'',resources:'',responsible:'',targetDate:'',cost:null,trackingStatus:'No Iniciado',change_reason:'Acción inicial',monitor_id:''}};focusPanel('action-form');}
     function editAction(a){actionDraft.value=M.clone(a);actionDraft.value.data.change_reason='';focusPanel('action-form');}
@@ -226,6 +245,6 @@
         setInterval(()=>{if(user.value&&!busy.value)load().catch(e=>error.value=explain(e));},15000);
       }catch(e){error.value=explain(e);}finally{busy.value=false;}
     });
-    return {passwordDialog,passwordError,manageTeamMembers,myParticipation,setMyParticipation,openPasswordChange,cancelPasswordChange,confirmPassword,passwordChangeOpen,rowTeams,adminFacilities,evaluationsAt,activeAt,latestValidatedAt,facilityStatus,assignAt,showNewEvaluation,nationalAdmin,managedCountries,adminForCountry,facilityNameFor,countryNameFor,facilityCountry,teamsForFacility,canCreateAt,evaluationFacilities,allEvaluations,activeEvaluations,myTeamMembers,teamFacilities,startEvaluation,evaluations,showPassword,showRecoveryHelp,copiedCredentials,iconSvg,initials,roleClass,tabCount,copyCredentials,showDeletedAccounts,deleteAccount,profileForm,editAccountProfile,saveAccountProfile,suggestAccountUsername,profile,accountUsers,accountEvents,accountSearch,confirmationNeeded,credentials,accountForm,roleForm,filteredAccounts,accountRoles,accountTeams,accountScopeReady,sendConfirmation,createAccount,resetAccount,setAccountState,editAccountRole,saveAccountRole,removeAccountRole,operationLabel,actorLabel,canEditMonitor,canValidateMonitor,accountRole,configured,busy,error,message,user,email,password,newPassword,recovering,countries,countryId,facilities,countryFacilities,facilityId,teams,countryTeams,teamId,members,selectedTeamMembers,owner,admin,coordinator,canEditFacility,canManageTeam,facilityTeams,view,tabs:[{id:'evaluations',name:'Evaluaciones'},{id:'organization',name:'País y equipos'},{id:'users',name:'Usuarios y permisos'},{id:'history',name:'Historial y comparativo'}],countryForm,countryMembers,facilityName,teamName,evaluationTeam,previousId,transferTeams,transferEvaluation,pendingExport,retryExport,facilityEvaluations,participants,actions,monitors,catalog,actionDraft,monitorDraft,conflict,evidence,facilityEvents,snapshots,comparison,compareBefore,compareAfter,compare,login,recover,changePassword,logout,refresh,createCountry,createFacility,createTeam,assignTeam,participant,createEvaluation,evaluationStatus,newAction,editAction,saveAction,newMonitor,editMonitor,saveMonitor,monitorPhotos,monitorStatus,viewEvidence,exportReport,importFile,importLegacyDraft,roleLabel,statusLabel,teamLabel,indicatorLabel,formatDate,canCoordinateEvaluation};
+    return {passwordDialog,passwordError,manageTeamMembers,myParticipation,setMyParticipation,openPasswordChange,cancelPasswordChange,confirmPassword,passwordChangeOpen,evaluationChoices,facilitiesInCountry,organizationName,organizationFacilities,selectedStartFacility,creationTeamsFor,chosenEvaluationTeam,adminFacilities,evaluationsAt,activeAt,latestValidatedAt,facilityStatus,nationalAdmin,managedCountries,adminForCountry,facilityNameFor,countryNameFor,facilityCountry,teamsForFacility,canCreateAt,evaluationFacilities,allEvaluations,activeEvaluations,myTeamMembers,teamFacilities,startEvaluation,evaluations,showPassword,showRecoveryHelp,copiedCredentials,iconSvg,initials,roleClass,tabCount,copyCredentials,showDeletedAccounts,deleteAccount,profileForm,editAccountProfile,saveAccountProfile,suggestAccountUsername,profile,accountUsers,accountEvents,accountSearch,confirmationNeeded,credentials,accountForm,roleForm,filteredAccounts,accountRoles,accountTeams,accountScopeReady,sendConfirmation,createAccount,resetAccount,setAccountState,editAccountRole,saveAccountRole,removeAccountRole,operationLabel,actorLabel,canEditMonitor,canValidateMonitor,accountRole,configured,busy,error,message,user,email,password,newPassword,recovering,countries,countryId,facilities,countryFacilities,facilityId,teams,countryTeams,teamId,members,selectedTeamMembers,owner,admin,coordinator,canEditFacility,canManageTeam,facilityTeams,view,tabs:[{id:'evaluations',name:'Evaluaciones'},{id:'organization',get name(){return organizationName.value;}},{id:'users',name:'Usuarios y permisos'},{id:'history',name:'Historial y comparativo'}],countryForm,countryMembers,facilityName,teamName,evaluationTeam,previousId,transferTeams,transferEvaluation,pendingExport,retryExport,facilityEvaluations,participants,actions,monitors,catalog,actionDraft,monitorDraft,conflict,evidence,facilityEvents,snapshots,comparison,compareBefore,compareAfter,compare,login,recover,changePassword,logout,refresh,createCountry,createFacility,createTeam,assignTeam,participant,evaluationStatus,newAction,editAction,saveAction,newMonitor,editMonitor,saveMonitor,monitorPhotos,monitorStatus,viewEvidence,exportReport,importFile,importLegacyDraft,roleLabel,statusLabel,teamLabel,indicatorLabel,formatDate,canCoordinateEvaluation};
   }}).mount('#platform');
 })();

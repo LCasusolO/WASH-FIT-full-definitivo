@@ -150,3 +150,7 @@ Enviar confirmación de correo queda deshabilitado mientras se procesa el envío
 La contraseña personal nueva y su confirmación tienen botones independientes para mostrar y ocultar el contenido, tanto en el cambio obligatorio de clave temporal como en la ventana de Mi cuenta. Al cancelar, abrir de nuevo o guardar, ambos campos vuelven a ocultarse.
 
 Una cuenta puede pertenecer a varios equipos. El administrador entra a Usuarios y permisos, completa el nombre y el mismo correo de la cuenta existente, elige Evaluador o Coordinador y el equipo adicional, y pulsa Crear cuenta / asignar acceso. La cuenta conserva identidad, usuario y contraseña; se añade la pertenencia al nuevo equipo. Los roles se definen por equipo. Retirar un acceso de un equipo no elimina los otros. No se necesitan cambios de esquema para esta función.
+
+### Un único botón por participante
+
+En Participantes y acceso, cada persona activa muestra Retirar de esta evaluación. Si está retirada, el mismo botón pasa a Agregar a la evaluación. Se eliminaron los botones generales Asignar / actualizar. Agregar requiere que la persona siga perteneciendo al equipo responsable; los participantes de equipos anteriores permanecen como historial. Las mediciones validadas y los permisos de consulta mantienen sus restricciones.

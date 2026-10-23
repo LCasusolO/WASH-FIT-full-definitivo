@@ -67,6 +67,12 @@ test('cuentas administradas: autoridad, sesiones, altas y cambios de permisos',a
   await db.exec('reset role');const profile=(await db.query('select * from wash_accounts where user_id=$1',[id])).rows[0];assert.equal(profile.username,'nuevo-peru');assert.equal(profile.must_change_password,true);
   await assert.rejects(db.query('insert into auth.users(id,email) values($1,$2)',[crypto.randomUUID(),'public@example.invalid']),/REGISTRATION_CLOSED/);
  });
+ await t.test('solo el propietario renombra usuarios sin cambiar su identidad ni asignaciones',async()=>{
+  await assert.rejects(service('rename','admin',{user_id:users.editor,username:'nuevo-editor',name:'Editor'}),/FORBIDDEN/);
+  await service('rename','owner',{user_id:users.editor,username:'nuevo-editor',name:'Editor actualizado'});
+  const found=await service('lookup',null,{login:'nuevo-editor'});assert.equal(found.id,users.editor);
+  const members=(await as('owner','select user_id from wash_team_members where team_id=$1',[team.id])).rows;assert.ok(members.some(m=>m.user_id===users.editor));
+ });
  await t.test('degradar coordinador revoca la reapertura de mediciones validadas y conserva el snapshot histórico',async()=>{
   await command('coordinator','save_record',{evaluation_id:evaluation.id,kind:'general',record_key:'general',data:{facilityName:'Centro'}});
   const review=await command('coordinator','evaluation_status',{evaluation_id:evaluation.id,version:1,status:'review'});

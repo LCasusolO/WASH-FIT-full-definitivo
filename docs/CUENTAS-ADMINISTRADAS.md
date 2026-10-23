@@ -35,6 +35,8 @@ En cada cuenta aparecen sus asignaciones por país y equipo. **Cambiar rol** act
 
 No se permite retirar al último administrador nacional o coordinador necesario. La suspensión global está reservada al propietario y protege las cuentas propietarias y al último responsable activo.
 
+El propietario también puede editar el nombre completo y el usuario de una cuenta, incluidas las cuentas migradas, sin cambiar su correo, contraseña, identidad ni historial.
+
 ### Contraseñas, suspensión y sesiones
 
 Las contraseñas temporales se muestran en la respuesta de creación o restablecimiento. No se guardan en tablas de WASH FIT, auditorías, archivos ni almacenamiento del navegador. Las contraseñas personales solo las procesa Supabase Auth.

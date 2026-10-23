@@ -57,11 +57,13 @@ Restablecer una contraseña obliga a cambiarla y bloquea las sesiones anteriores
 
 Un administrador nacional solo puede restablecer cuentas de integrantes cuyo alcance esté íntegramente bajo su administración y que no sean propietarios ni administradores nacionales. Las cuentas compartidas fuera de su ámbito requieren al propietario.
 
-El propietario dispone de **Eliminar cuenta** para administradores, coordinadores y evaluadores. Retira todas sus asignaciones, desactiva sus participaciones vigentes e invalida sus sesiones. Puede hacerlo incluso si era el último administrador o coordinador: el propietario conserva el control para designar al reemplazo. No puede eliminar su propia cuenta ni otra cuenta propietaria.
+**Eliminar cuenta y liberar correo** bloquea las sesiones y retira las asignaciones. El correo y nombre de usuario quedan disponibles para una nueva alta con identidad y contraseña nuevas, confirmación de correo y cambio obligatorio de contraseña. La nueva cuenta recibe únicamente los accesos asignados en esa alta; no hereda la identidad ni la autoría anterior. Si se le asigna expresamente el mismo equipo, podrá consultar sus evaluaciones compartidas según su nuevo rol.
 
-La cuenta desaparece del directorio habitual. **Ver cuentas eliminadas** permite **Restaurar cuenta sin permisos**. Después de restaurar, generar otra contraseña temporal y asignar expresamente los accesos necesarios. La restauración no devuelve las sesiones ni permisos anteriores.
+El propietario puede eliminar cuentas no propietarias. El administrador nacional puede eliminar coordinadores y evaluadores únicamente cuando todos sus accesos pertenecen a países que administra. No puede eliminar a otro administrador, a una cuenta propietaria ni su propia cuenta. Las cuentas compartidas fuera de su ámbito requieren administración global.
 
-La eliminación es recuperable; conserva la identidad referenciada por evaluaciones, autores y auditorías. No borra las evaluaciones ni sus versiones validadas.
+La identidad retirada permanece bloqueada para conservar autores, auditorías y mediciones. No se restaura. En **Ver cuentas eliminadas**, el estado **Correo y usuario liberados** confirma el cierre. Si el proceso fue interrumpido o la cuenta se eliminó con el mecanismo antiguo, use **Finalizar eliminación y liberar correo**. El reintento actúa sobre el identificador antiguo y no afecta a otra cuenta creada con el mismo correo.
+
+La cuenta desaparece del directorio habitual. La eliminación conserva las evaluaciones y sus versiones validadas.
 
 ## Infraestructura
 

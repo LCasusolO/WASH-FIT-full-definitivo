@@ -93,7 +93,7 @@ test('cuentas administradas: autoridad, sesiones, altas y cambios de permisos',a
 
  await t.test('eliminar coordinador conserva snapshot y autores, retira membresías y desactiva participantes',async()=>{
   const before=(await as('owner',"select data from wash_snapshots where evaluation_id=$1 and purpose='validation'",[evaluation.id])).rows[0].data;
-  await assert.rejects(service('delete','admin',{user_id:users.coordinator}),/FORBIDDEN/);
+  await assert.rejects(service('delete','foreign',{user_id:users.coordinator}),/FORBIDDEN/);
   await service('delete','owner',{user_id:users.coordinator});
   assert.equal((await as('owner','select * from wash_team_members where user_id=$1',[users.coordinator])).rows.length,0);
   const participants=(await as('owner','select * from wash_participants where user_id=$1',[users.coordinator])).rows;assert.ok(participants.length);assert.ok(participants.every(p=>!p.active));

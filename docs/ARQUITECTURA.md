@@ -101,3 +101,9 @@ El portal utiliza los recursos OPS existentes y estilos propios en `css/platform
 El portal cuenta países, establecimientos, equipos y evaluaciones activas sobre las filas autorizadas por RLS. La tabla general de evaluaciones resuelve permisos, equipos disponibles y exportación con el establecimiento de cada fila, sin depender del contexto del historial ni del formulario de alta. El selector de establecimiento del historial es local a esa sección.
 
 `portal_role_creation` restringe las altas globales a países y administradores. Los administradores nacionales crean establecimientos, equipos y cuentas de sus integrantes; coordinadores/evaluadores consultan la tabla de su equipo. Se conservan las cuentas y asignaciones previas. Las funciones internas anteriores quedan sin permisos de ejecución directa para los roles del cliente y servicio; las envolturas conservan las comprobaciones anteriores y añaden las restricciones de creación.
+
+### Eliminación con reutilización de identidad de acceso
+
+`account_retirements`, en el esquema privado sin acceso directo del cliente, conserva el ámbito autorizado y el progreso de una eliminación. El RPC bloquea la cuenta y retira permisos antes de llamar a Auth Admin. La Edge Function sustituye el correo por un identificador interno reservado, rota la contraseña y bloquea Auth. Solo después de confirmar ese cambio se libera el nombre de usuario. Se conserva el UUID anterior para no romper autores, snapshots ni auditoría.
+
+El RPC calcula `can_delete` usando todas las asignaciones del destinatario, incluidas las que el directorio del administrador no muestra. Conserva también el ámbito y la condición previa de administrador para autorizar reintentos sin ampliar permisos. Una liberación incompleta es reintentable por el mismo ámbito vigente o la administración global. Reutilizar el correo crea otro UUID y vuelve a exigir confirmación y cambio de contraseña. La cuenta retirada no admite restauración.

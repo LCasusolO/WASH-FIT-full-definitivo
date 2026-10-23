@@ -30,29 +30,72 @@ test('flujo completo: alta, confirmación, cambio obligatorio, directorio y recu
  const reset=await r.call({action:'reset_password',user_id:id},owner);assert.equal(reset.status,200);assert.ok(reset.body.temporary_password);assert.equal((await r.call({action:'list'},active)).status,403,'restablecer invalida la sesión activa previa');
 });
 
-test('eliminación exclusiva del propietario: revoca acceso incluso al último administrador y permite restaurar sin permisos',async t=>{
+test('eliminar libera correo y usuario y la nueva cuenta tiene identidad y contraseña independientes',async t=>{
  const r=await createRuntime();t.after(()=>r.close());
  const owner=(await r.signIn({email:'owner@example.invalid',password:'Fixture-password-123'})).data.session.access_token;
- const created=await r.call({action:'create',username:'admin-delete',name:'Administrador',email:'delete@example.invalid',scope:'country',country_id:r.country.id,role:'admin',request_id:crypto.randomUUID()},owner);
- assert.equal(created.status,200);const id=[...r.people.values()].find(p=>p.email==='delete@example.invalid').id;
+ const req={action:'create',name:'Administrador',email:'delete@example.invalid',scope:'country',country_id:r.country.id,role:'admin',request_id:crypto.randomUUID()};
+ const created=await r.call(req,owner);assert.equal(created.status,200);const id=[...r.people.values()].find(p=>p.email===req.email).id;
  await r.confirm(id);const initial=await r.call({action:'login',login:created.body.username,password:created.body.temporary_password});
  const changed=await r.call({action:'complete_password',new_password:'Personal-delete-password-123!'},initial.body.session.access_token);const active=changed.body.session.access_token;
- assert.equal((await r.call({action:'delete',user_id:r.owner.id},active)).status,403,'un administrador no elimina cuentas');
+ assert.equal((await r.call({action:'delete',user_id:r.owner.id},active)).status,403);
  assert.equal((await r.call({action:'delete',user_id:r.owner.id},owner)).body.code,'CANNOT_DELETE_SELF');
- const deleted=await r.call({action:'delete',user_id:id},owner);assert.equal(deleted.status,200,'el propietario puede eliminar al último administrador');
- assert.equal((await r.call({action:'delete',user_id:id},owner)).status,200,'reintento idempotente');
- assert.equal((await r.call({action:'list'},active)).status,403,'JWT anterior bloqueado inmediatamente');
- assert.equal((await r.queryAs(active,'select * from wash_countries')).rows.length,0,'RLS bloquea acceso directo');
- assert.equal((await r.call({action:'login',login:created.body.username,password:'Personal-delete-password-123!'})).status,401);
- const beforeRecovery=r.people.size;assert.equal((await r.call({action:'recover',login:created.body.username})).status,200);assert.equal(r.people.size,beforeRecovery);
- for(const action of ['reactivate','set_role','reset_password','rename'])assert.equal((await r.call({action,user_id:id,username:'renamed',name:'X',scope:'country',country_id:r.country.id,role:'admin'},owner)).body.code,'ACCOUNT_DELETED');
- const again=await r.call({action:'create',username:'recreate',name:'X',email:'delete@example.invalid',scope:'country',country_id:r.country.id,role:'admin',request_id:crypto.randomUUID()},owner);assert.equal(again.body.code,'ACCOUNT_DELETED');
- const directory=await r.call({action:'list'},owner);assert.equal(directory.body.users.find(p=>p.user_id===id).status,'deleted');assert.equal(directory.body.users.find(p=>p.user_id===id).countries.length,0);
- assert.equal((await r.call({action:'restore',user_id:id},owner)).status,200);
- assert.equal((await r.call({action:'list'},active)).status,403,'restauración no rehabilita JWT anterior');
- const restored=(await r.call({action:'list'},owner)).body.users.find(p=>p.user_id===id);assert.equal(restored.status,'active');assert.equal(restored.must_change_password,true);assert.deepEqual(restored.countries,[]);
- const audit=await r.call({action:'audit'},owner);assert.equal(audit.body.events.filter(e=>e.operation==='delete').length,1);assert.ok(audit.body.events.some(e=>e.operation==='restore'));
+ assert.equal((await r.call({action:'delete',user_id:id},owner)).status,200);assert.equal((await r.call({action:'delete',user_id:id},owner)).status,200,'reintento idempotente');
+ assert.equal((await r.call({action:'list'},active)).status,403);assert.equal((await r.queryAs(active,'select * from wash_countries')).rows.length,0);
+ assert.equal((await r.call({action:'login',login:req.email,password:'Personal-delete-password-123!'})).status,401);
+ assert.equal((await r.call({action:'restore',user_id:id},owner)).body.code,'ACCOUNT_RETIRED');
+ const again=await r.call({...req,request_id:crypto.randomUUID()},owner);assert.equal(again.status,200);assert.equal(again.body.username,created.body.username);assert.notEqual(again.body.temporary_password,created.body.temporary_password);
+ const fresh=[...r.people.values()].find(p=>p.email===req.email);assert.notEqual(fresh.id,id);assert.equal((await r.user(fresh.id)).email_confirmed_at,null);
+ const directory=(await r.call({action:'list'},owner)).body.users,old=directory.find(p=>p.user_id===id);assert.equal(old.identity_released,true);assert.equal(old.email,req.email);assert.equal(old.status,'deleted');assert.deepEqual(old.countries,[]);
+ assert.equal((await r.call({action:'list'},active)).status,403,'la cuenta nueva no revalida el JWT anterior');
+ assert.equal((await r.call({action:'login',login:req.email,password:'Personal-delete-password-123!'})).status,401,'contraseña antigua no funciona para la identidad nueva');
+ assert.equal((await r.call({action:'delete',user_id:id},owner)).status,200,'repetir borrado antiguo no afecta la cuenta nueva');assert.equal((await r.user(fresh.id)).email,req.email);
+ const audit=(await r.call({action:'audit'},owner)).body.events;assert.equal(audit.filter(e=>e.operation==='delete').length,1);assert.equal(audit.filter(e=>e.operation==='delete_complete').length,1);
 });
+
+async function deleteFixture(t){
+ const r=await createRuntime();t.after(()=>r.close());const owner=(await r.signIn({email:'owner@example.invalid',password:'Fixture-password-123'})).data.session.access_token;
+ const admin=await r.insert('national@example.invalid','Fixture-national-123',undefined,true);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=$1",[admin.id]);});
+ await r.service('set_role',r.owner.id,{user_id:admin.id,scope:'country',country_id:r.country.id,role:'admin'});
+ const token=(await r.signIn({email:admin.email,password:'Fixture-national-123'})).data.session.access_token;
+ const team=await r.queued(async()=>{await r.db.exec('reset role');return(await r.db.query("insert into wash_teams(country_id,name) values($1,'Equipo de prueba') returning id",[r.country.id])).rows[0].id;});
+ const req={action:'create',name:'Integrante',email:'member-delete@example.invalid',scope:'team',country_id:r.country.id,team_id:team,role:'coordinator',request_id:crypto.randomUUID()};
+ const created=await r.call(req,token);assert.equal(created.status,200);const id=[...r.people.values()].find(p=>p.email===req.email).id;
+ return {r,owner,admin,token,team,req,created,id};
+}
+test('administrador elimina integrantes propios, pero no administradores, propietarios ni cuentas compartidas fuera de su país',async t=>{
+ const {r,owner,admin,token,team,id}=await deleteFixture(t);
+ assert.equal((await r.call({action:'delete',user_id:admin.id},token)).body.code,'CANNOT_DELETE_SELF');assert.equal((await r.call({action:'delete',user_id:r.owner.id},token)).status,403);
+ const other=await r.insert('other-admin@example.invalid','Fixture-other-123',undefined,true);await r.service('set_role',r.owner.id,{user_id:other.id,scope:'country',country_id:r.country.id,role:'admin'});
+ assert.equal((await r.call({action:'delete',user_id:other.id},token)).status,403);
+ const foreign=await r.queued(async()=>{await r.db.exec('reset role');const c=(await r.db.query("insert into wash_countries(code,name) values('BOL','Otro país') returning id")).rows[0].id;return(await r.db.query("insert into wash_teams(country_id,name) values($1,'Otro equipo') returning id",[c])).rows[0].id;});
+ await r.service('set_role',r.owner.id,{user_id:id,scope:'team',team_id:foreign,role:'evaluator'});
+ assert.equal((await r.call({action:'list'},token)).body.users.find(u=>u.user_id===id).can_delete,false);assert.equal((await r.call({action:'delete',user_id:id},token)).status,403);
+ await r.service('set_role',r.owner.id,{user_id:id,scope:'team',team_id:foreign,role:'remove'});
+ assert.equal((await r.call({action:'delete',user_id:id},token)).status,200,'puede retirar incluso al último coordinador propio');
+ assert.equal((await r.call({action:'list'},token)).body.users.find(u=>u.user_id===id).identity_released,true);
+});
+test('interrupción de Auth deja acceso bloqueado y permite reintento del administrador sin perder el alcance original',async t=>{
+ const {r,token,id,req}=await deleteFixture(t);r.failNextAuthUpdate();
+ assert.equal((await r.call({action:'delete',user_id:id},token)).status,503);
+ const pending=(await r.call({action:'list'},token)).body.users.find(u=>u.user_id===id);assert.equal(pending.status,'deleted');assert.equal(pending.can_delete,true);assert.equal(pending.identity_released,false);
+ assert.equal((await r.call({...req,request_id:crypto.randomUUID()},token)).body.code,'ACCOUNT_DELETED','no duplica mientras Auth retiene el correo');
+ assert.equal((await r.call({action:'delete',user_id:id},token)).status,200);assert.equal((await r.call({...req,request_id:crypto.randomUUID()},token)).status,200);
+});
+test('reintento tras liberar el correo solo finaliza la identidad antigua y no toca una cuenta nueva con el mismo correo',async t=>{
+ const {r,token,id,req}=await deleteFixture(t);r.failNextService('delete_complete');
+ assert.equal((await r.call({action:'delete',user_id:id},token)).status,503);
+ const fresh=await r.call({...req,request_id:crypto.randomUUID()},token);assert.equal(fresh.status,200);const freshId=[...r.people.values()].find(p=>p.email===req.email).id;assert.notEqual(freshId,id);
+ assert.equal((await r.call({action:'delete',user_id:id},token)).status,200);assert.equal((await r.user(freshId)).email,req.email);assert.equal(r.people.get(freshId).banned,undefined);assert.equal(r.passwords.get(freshId),fresh.body.temporary_password);
+});
+
+test('cuentas eliminadas con el mecanismo anterior también liberan el correo al finalizar su eliminación',async t=>{
+ const {r,owner,id,req}=await deleteFixture(t);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("select wash_private.account_service_before_reusable_delete('delete',$1,$2)",[r.owner.id,JSON.stringify({user_id:id})]);});
+ assert.equal((await r.call({action:'delete',user_id:id},owner)).status,200);
+ const fresh=await r.call({action:'create',name:'Administrador nuevo',email:req.email,scope:'country',country_id:r.country.id,role:'admin',request_id:crypto.randomUUID()},owner);assert.equal(fresh.status,200);assert.notEqual([...r.people.values()].find(p=>p.email===req.email).id,id);
+});
+
 test('validación de metadatos al finalizar la transacción: rechaza inserción sin autorización y revierte el perfil',async t=>{
  const r=await createRuntime();t.after(()=>r.close());const id=crypto.randomUUID();
  await assert.rejects(r.insert('public@example.invalid','Not-used-123!',{}),/REGISTRATION_CLOSED/);

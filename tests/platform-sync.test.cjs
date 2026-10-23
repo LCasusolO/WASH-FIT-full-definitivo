@@ -5,11 +5,12 @@ const catalog=vm.runInNewContext(fs.readFileSync('js/data/indicators.js','utf8')
 function setup(){
   const evaluationId=crypto.randomUUID(),facilityId=crypto.randomUUID(),userId=crypto.randomUUID();
   const database=[{id:crypto.randomUUID(),facility_id:facilityId,evaluation_id:evaluationId,kind:'general',record_key:'general',version:1,data:{...Core.defaults(),facilityName:'Ficticio',countryCode:'PER'}}];
+  let editable=true;
   let current=Core.normalizeDataset(Model.dataset(database,catalog,Core.defaults()),catalog),conflicts=[],lost=false,writes=0;
   const operations=new Map(),navigator={onLine:true};
   const platform={ready:Promise.resolve({enabled:true}),enabled:true,requireSession:async()=>({user:{id:userId}}),session:async()=>({user:{id:userId}}),hydratePhotos:async rows=>rows,uploadPhotos:async data=>data,
     client:{channel:()=>({on(){return this;},subscribe(){return this;}}),auth:{onAuthStateChange:()=>({data:{subscription:{}}})}},
-    rows:async table=>{if(!navigator.onLine)throw Error('offline');return table==='evaluations'?[{id:evaluationId,facility_id:facilityId,status:'editing'}]:table==='records'?Core.clone(database):table==='participants'?[{user_id:userId,active:true,role:'evaluator'}]:table==='facilities'?[{id:facilityId,country_id:'country'}]:[];},
+    rows:async table=>{if(!navigator.onLine)throw Error('offline');return table==='evaluations'?[{id:evaluationId,facility_id:facilityId,status:'editing'}]:table==='records'?Core.clone(database):table==='participants'?(editable?[{user_id:userId,active:true,role:'evaluator'}]:[]):table==='facilities'?[{id:facilityId,country_id:'country'}]:[];},
     command:async(op,data,operation)=>{
       if(operations.has(operation))return Core.clone(operations.get(operation));
       if(!navigator.onLine)throw Error('offline');if(op!=='save_record')return {};
@@ -24,7 +25,7 @@ function setup(){
   const context=vm.createContext({window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,crypto,setInterval(){},setTimeout(){},clearTimeout(){},addEventListener(){}});
   vm.runInContext(fs.readFileSync('js/platform-editor.js','utf8'),context);
   const hooks={get:()=>Core.clone(current),apply:async data=>{current=Core.clone(data);},readonly(){},status(){},conflicts:data=>{conflicts=data;},position(){}};
-  return {cloud:root.WashCloud,hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
+  return {setEditable(value){editable=value;},cloud:root.WashCloud,hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
 }
 test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar el cambio',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();
@@ -55,4 +56,14 @@ test('la caché offline conserva solo lectura y no concede permisos por ausencia
   // Los detalles del establecimiento no están disponibles sin red en este adaptador.
   await assert.rejects(app.cloud.connect(app.hooks),/offline/);assert.equal(readonly,true);
  }
+});
+
+test('un administrador resuelve cambios antiguos de ubicación usando la nube sin guardar ni conservar una petición obsoleta',async()=>{
+ const app=setup();await app.cloud.connect(app.hooks);app.navigator.onLine=false;app.current.generalInfo.latitude=-12;app.current.generalInfo.longitude=-77;await app.cloud.save();
+ const cached=await app.store.read('sync');cached.pending={kind:'general',record_key:'location',data:{latitude:-12,longitude:-77}};cached.currentOperation=crypto.randomUUID();await app.store.write('sync',cached);
+ app.navigator.onLine=true;app.setEditable(false);await app.cloud.connect(app.hooks);
+ assert.equal(app.conflicts.length,1);assert.equal(app.conflicts[0].key,'general:location');
+ await assert.rejects(app.cloud.resolve('general:location','local'),/No tiene permiso/);assert.equal(app.conflicts.length,1);assert.equal(app.writes,0);
+ await app.cloud.resolve('general:location','remote');assert.equal(app.current.generalInfo.latitude,null);assert.equal(app.conflicts.length,0);assert.equal(app.writes,0);
+ assert.equal((await app.store.read('sync')).pending,null);await app.cloud.connect(app.hooks);assert.equal(app.conflicts.length,0);
 });

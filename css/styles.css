@@ -258,3 +258,5 @@ button, [role=button], summary { cursor: pointer; }
 .cloud-versions textarea{width:100%;min-height:140px;border:1px solid #aab8c3;font:12px monospace;padding:8px}
 
 .cloud-sync-conflicts{padding:1rem}
+
+.cloud-conflict h2{font-weight:700;color:#812932;margin-bottom:.5rem}.cloud-conflict>p{font-size:.875rem;margin:.5rem 0}.cloud-versions{margin-top:1rem}.cloud-versions label{font-size:.8rem;font-weight:600}.cloud-versions textarea{margin-top:.5rem;background:white;border-radius:4px;color:#33485f}.cloud-conflict-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}.cloud-conflict-actions button{padding:.65rem .9rem;border:1px solid #31558c;background:white;color:#23487d;font-size:.8rem;font-weight:700;border-radius:5px}.cloud-conflict-actions button:first-child{background:#31558c;color:white}.cloud-conflict-actions button:focus-visible{outline:3px solid #ff671f;outline-offset:3px}

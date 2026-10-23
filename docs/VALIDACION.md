@@ -190,3 +190,11 @@ corrección adicional.
 - SQL comprueba que el administrador sin participación no guarda datos generales; al asignarse coordinador de un equipo propio puede guardar y conserva su rol nacional. No puede asignarse a equipos ajenos; un evaluador no puede concederse coordinación.
 - Tabla de equipos permite autoasignación administrativa por país; ninguna cuenta real se reasignó durante las pruebas.
 - Navegador QA con datos ficticios: mapa bloqueado, autoasignación, coordenadas editables y guardado. Caché en solo lectura y caché antigua sin permisos comprobadas con pruebas de sincronización.
+
+## Mi cuenta y recuperación de conflictos antiguos — 23 de octubre de 2026
+
+- 152 pruebas aprobadas; build correcto.
+- Cuenta propia muestra solo sus países y equipos, incluidos roles simultáneos. No se muestra usuario/correo bajo el título ni el texto superior de gestión.
+- Evaluación conserva estado de guardado y cumplimiento; se retiran los dos botones de borradores antiguos. Privacidad desaparece al contraer el menú.
+- Regresión de sincronización: cambios locales de ubicación sin permiso se detectan al cargar, aun si la nube no cambió; guardar local se rechaza, aceptar nube resuelve sin escrituras y limpia la petición pendiente del mismo campo. No reaparece al reabrir.
+- Navegador QA con administrador ficticio: desplegable Mi cuenta, cierre con Escape, encabezado limpio y menú contraído sin privacidad. No se borraron datos ni se resolvieron conflictos de cuentas reales.

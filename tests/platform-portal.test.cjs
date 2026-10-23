@@ -1,9 +1,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto');
-function portal(){
+function portal(clipboard){
  const data={countries:[{id:'a',name:'A'},{id:'b',name:'B'}],owners:[{user_id:'owner'}],facilities:[{id:'fa',country_id:'a'},{id:'fb',country_id:'b'}],teams:[{id:'ta',country_id:'a'}],snapshots:[]};
  let state,mounted,commands=[];
  const P={ready:Promise.resolve({enabled:true}),session:async()=>({user:{id:'owner'}}),pendingExport:async()=>null,accountStatus:async()=>({ready:true,status:'active',session_valid:true,has_access:true,can_manage:false}),accountAction:async(action)=>{commands.push({op:action});return {message:'Si la cuenta existe, recibirá un enlace para recuperar el acceso.'};},rows:async(t,f)=>structuredClone((data[t]||[]).filter(r=>!f||r.facility_id===f.facility_id)),command:async(op,d)=>{commands.push({op,data:d});if(op==='country'){const c={...d,id:'new'};data.countries.push(c);return c;}return{};},client:{auth:{onAuthStateChange:()=>({data:{subscription:{}}}),resetPasswordForEmail:async()=>{commands.push({op:'recover'});return{};}},channel:()=>({on(){return this},subscribe(){return this}})}};
- const context=vm.createContext({console,URLSearchParams,location:{search:'',hash:'',origin:'https://example.invalid',pathname:'/plataforma.html'},history:{replaceState(){}},sessionStorage:{getItem(){return null},removeItem(){}},indexedDB:{},WashStorage:{createStore:()=>({read:async()=>null,write:async()=>{}})},WashPlatform:P,WashPlatformModel:{clone:structuredClone},INDICATORS_DATA:[{id:'A_1'}],WashCore:{},crypto,setInterval(){},setTimeout,clearTimeout});
+ const context=vm.createContext({console,navigator:{clipboard},URLSearchParams,location:{search:'',hash:'',origin:'https://example.invalid',pathname:'/plataforma.html'},history:{replaceState(){}},sessionStorage:{getItem(){return null},removeItem(){}},indexedDB:{},WashStorage:{createStore:()=>({read:async()=>null,write:async()=>{}})},WashPlatform:P,WashPlatformModel:{clone:structuredClone},INDICATORS_DATA:[{id:'A_1'}],WashCore:{},crypto,setInterval(){},setTimeout,clearTimeout});
  vm.runInContext(fs.readFileSync('vendor/vue.global.js','utf8'),context);
  context.document={getElementById(){return{focus(){}}}};
  context.Vue={...context.Vue,createApp:c=>{state=c.setup();return{mount(){}}},onMounted:fn=>mounted=fn};
@@ -30,4 +30,10 @@ test('un coordinador no recibe controles de edición o validación de otro equip
  const app=portal();await app.start();app.data.team_members=[{team_id:'ta',user_id:'owner',role:'coordinator'}];await app.state.refresh();
  assert.equal(app.state.canEditMonitor({data:{team_id:'ta'}}),true);assert.equal(app.state.canValidateMonitor({data:{team_id:'ta'}}),true);
  assert.equal(app.state.canEditMonitor({data:{team_id:'otro'}}),false);assert.equal(app.state.canValidateMonitor({data:{team_id:'otro'}}),false);
+});
+
+test('copiar credenciales utiliza la contraseña temporal real y conserva la tarjeta si el navegador bloquea la copia',async()=>{
+ let copied='';const app=portal({writeText:async text=>{copied=text;}});app.state.credentials.value={username:'admin-qa',temporary_password:'Temporal-QA-123!'};await app.state.copyCredentials();assert.match(copied,/Usuario: admin-qa/);assert.match(copied,/Contraseña temporal: Temporal-QA-123!/);assert.match(copied,/https:\/\/example.invalid\/plataforma.html/);assert.equal(app.state.copiedCredentials.value,true);
+ app.state.credentials.value=null;await app.tick();assert.equal(app.state.copiedCredentials.value,false);
+ const blocked=portal({writeText:async()=>{throw Error('NotAllowedError');}});blocked.state.credentials.value={username:'admin-qa',temporary_password:'Temporal-QA-123!'};await blocked.state.copyCredentials();assert.match(blocked.state.error.value,/No se pudieron copiar/);assert.equal(blocked.state.credentials.value.temporary_password,'Temporal-QA-123!');
 });

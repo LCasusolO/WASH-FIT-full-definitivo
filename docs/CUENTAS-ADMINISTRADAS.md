@@ -117,7 +117,7 @@ Si el navegador conserva coordenadas u otros datos distintos de la nube, el avis
 
 La pantalla de acceso presenta únicamente el formulario de ingreso, recuperación y ayuda, sin el panel descriptivo de pasos. Desde **Mi cuenta → Cambiar contraseña** se abre una ventana emergente con nueva contraseña y confirmación (12 a 128 caracteres). La plataforma conserva su posición detrás de la ventana; cancelar o Escape la cierran sin enviar datos. Cancelar limpia ambos campos sin enviar nada. Se reutiliza el servicio de cambio personal existente: conserva identidad y permisos y renueva la sesión. El cambio obligatorio de una contraseña temporal continúa siendo obligatorio y no ofrece cancelación.
 
-En la evaluación, el estado de consulta muestra **Solo lectura**. Los errores y conflictos de sincronización siguen mostrando sus avisos. El cumplimiento y el estado se distribuyen sin comprimir las etiquetas en móvil y escritorio.
+En la evaluación, el estado de consulta muestra **Solo lectura**. Los errores de conexión conservan el borrador y muestran el estado pendiente de sincronizar. El cumplimiento y el estado se distribuyen sin comprimir las etiquetas en móvil y escritorio.
 
 ### Administración y navegación de integrantes
 
@@ -161,7 +161,7 @@ En Evaluaciones se ve el avance por establecimiento, los cinco pasos y los pendi
 
 La comprobación incluye identificación, ubicación y población atendida total (un entero no negativo obligatorio), respuestas o justificaciones de los indicadores aplicables, problema/riesgos/gravedad/probabilidad de las brechas, acciones/recursos/responsable/plazo/presupuesto (0 si no requiere gasto), y fecha prevista de monitoreo. Los resultados futuros del monitoreo no bloquean el cierre. El plan y el monitoreo continúan en el establecimiento.
 
-Los cambios en indicadores se sincronizan automáticamente. Si dos personas modifican el mismo indicador, prevalece el último guardado aceptado por el servidor; editar indicadores distintos conserva ambos cambios. Los reintentos de un guardado no restauran versiones antiguas. La misma regla del último guardado se aplica a datos generales, plan y monitoreo, con comprobación de permisos y estados. Sin conexión se conserva el borrador; al reconectar vuelve a sincronizarse.
+Los cambios en indicadores se sincronizan automáticamente. Si dos personas modifican campos distintos del mismo indicador, se conservan ambos cambios. Si modifican el mismo campo, prevalece el último guardado aceptado por el servidor. Los reintentos de un guardado no restauran versiones antiguas. La misma combinación por campo se aplica a datos generales, plan y monitoreo, con comprobación de permisos y estados. Sin conexión se conserva el borrador; al reconectar vuelve a sincronizarse.
 
 El avance de cada paso se presenta como porcentaje; el 100 % se reserva para pasos completos. Ver campos pendientes abre los enlaces de corrección. En indicadores sin calificación, cualquier comentario no vacío permite completar la respuesta, igual en el navegador y en el servidor; no se exige una explicación adicional al texto «No aplica».
 
@@ -169,10 +169,14 @@ El avance de cada paso se presenta como porcentaje; el 100 % se reserva para pas
 
 Al consultar una evaluación sin permiso para editar una sección, sus datos se toman automáticamente de la nube. Los borradores locales anteriores de esa sección se conservan aparte en el almacenamiento del navegador y no se envían al servidor ni exigen resolver un conflicto. Esto también limpia conflictos pendientes de una caché antigua en modo de consulta.
 
-Al reabrir una evaluación, el borrador se reconstruye con las filas de su propia caché. Un plan creado después por otra persona no genera un conflicto artificial con campos vacíos. Los conflictos vacíos anteriores se descartan cuando no contienen una edición real; los cambios reales concurrentes de un plan editable se sincronizan con la regla del último guardado aceptado por el servidor. La edición del plan y monitoreo autorizada por pertenencia al equipo continúa disponible aunque la medición esté en solo lectura.
+Al reabrir una evaluación, el borrador se reconstruye con las filas de su propia caché. Un plan creado después por otra persona no genera un conflicto artificial con campos vacíos. Los conflictos vacíos anteriores se descartan cuando no contienen una edición real; los cambios reales concurrentes de un plan editable se sincronizan por campo, conservando los campos modificados por otras personas. La edición del plan y monitoreo autorizada por pertenencia al equipo continúa disponible aunque la medición esté en solo lectura.
 
 ### Sincronización automática de los cinco pasos
 
-Coordinadores y evaluadores no resuelven avisos de versiones locales frente a la nube. Datos generales, indicadores, acciones del plan y borradores de monitoreo usan el último guardado aceptado por el servidor para el mismo registro; los registros distintos conservan sus cambios independientes. Las diferencias antiguas pendientes se incorporan automáticamente al reconectar si siguen siendo editables. Los usuarios en consulta reciben la nube sin publicar borradores.
+Coordinadores y evaluadores no resuelven avisos de versiones locales frente a la nube. Datos generales, indicadores, acciones del plan y borradores de monitoreo se combinan por campo: se envían únicamente los campos modificados respecto al borrador base. Los objetos internos, como los campos de monitoreo, se combinan también por campo. Las listas (fotos, integrantes e historial) son un campo completo. Para el mismo campo prevalece el último guardado aceptado por el servidor; campos distintos conservan ambos cambios, incluso si otro usuario guarda entre el refresco y el envío. Las diferencias antiguas pendientes se incorporan automáticamente al reconectar si siguen siendo editables. Los usuarios en consulta reciben la nube sin publicar borradores.
 
 Los reintentos conservan su identificador de operación: si un guardado ya fue aceptado, confirmarlo otra vez no sobrescribe un guardado posterior ni descarta una edición nueva pendiente del usuario. Los permisos de edición y los registros de monitoreo en revisión o validados conservan sus bloqueos; la sincronización no modifica copias históricas.
+
+Al reconectar una evaluación abierta, primero se confirma cualquier envío pendiente usando su identificador original y después se incorporan los campos remotos. Así, los datos recibidos nunca se vuelven a enviar como una edición propia. Vaciar texto, asignar cero o null y eliminar un campo son modificaciones explícitas; no se ignoran. Los formularios de acción y monitoreo de la plataforma guardan también únicamente sus campos modificados.
+
+Los envíos pendientes de versiones anteriores se convierten a cambios por campo usando su base local. Si el servidor ya había aceptado la operación antigua, devuelve su confirmación original y conserva los guardados posteriores.

@@ -24,6 +24,7 @@ test('coordinador y evaluador guardan datos generales, plan y monitoreo: último
   assert.deepEqual((await r.queryAs(coordinator,'select data from wash_records where id=$1',[last.id])).rows[0].data,lastData,'un reintento no revierte el último guardado');
   await assert.rejects(command('save_record',{...request,data:lastData},evaluator,operation),/OPERATION_REUSED/);
   await assert.rejects(command('save_record',{id:last.id,version:1,data:lastData},owner),/FORBIDDEN/);
+  await assert.rejects(command('save_record',{id:last.id,version:1,data:lastData,field_changes:[{path:['summary'],value:'Sin permiso'}]},owner),/FORBIDDEN/);
   assert.equal((await r.queryAs(coordinator,'select count(*)::int as n from wash_records where facility_id=$1 and kind=$2 and record_key=$3',[facility.id,kind,record_key])).rows[0].n,1);
   const otherKey=kind==='general'?'population':record_key+':otro';const independent=await command('save_record',{...request,record_key:otherKey,data:kind==='general'?{populationServed:200}:data});
   await command('save_record',{id:last.id,version:1,data:lastData},evaluator);assert.deepEqual((await r.queryAs(coordinator,'select data from wash_records where id=$1',[independent.id])).rows[0].data,independent.data);
@@ -31,6 +32,47 @@ test('coordinador y evaluador guardan datos generales, plan y monitoreo: último
  }
  const review=await command('monitor_status',{id:monitor.id,version:monitor.version,status:'review'},evaluator);const validated=await command('monitor_status',{id:monitor.id,version:review.version,status:'validated'});
  await assert.rejects(command('save_record',{id:monitor.id,version:1,data:monitor.data},evaluator),/RECORD_LOCKED/);
+ await assert.rejects(command('save_record',{id:monitor.id,version:1,data:monitor.data,field_changes:[{path:['editor_fields','nextReviewDate'],value:'2028-01-01'}]},evaluator),/RECORD_LOCKED/);
  assert.equal((await r.queryAs(coordinator,'select version from wash_records where id=$1',[monitor.id])).rows[0].version,validated.version);
  assert.equal((await r.queryAs(coordinator,"select count(*)::int as n from wash_snapshots where record_id=$1 and purpose='monitor_validation'",[monitor.id])).rows[0].n,1);
+});
+const Model=require('../js/platform-model');
+test('guardado por campo con dos identidades: reconexión, carreras, vacíos, anidados y reintentos',async t=>{
+ const r=await createRuntime();t.after(()=>r.close());
+ const user=await r.insert('field-coordinator@example.invalid','Fixture-sync-123',undefined,true),other=await r.insert('field-evaluator@example.invalid','Fixture-sync-123',undefined,true);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=any($1::uuid[])",[[user.id,other.id]]);});
+ await r.service('set_role',r.owner.id,{user_id:user.id,scope:'country',country_id:r.country.id,role:'admin'});
+ const coordinator=(await r.signIn({email:user.email,password:'Fixture-sync-123'})).data.session.access_token;
+ const command=async(data,who=coordinator,id=crypto.randomUUID())=>(await r.queryAs(who,'select wash_command($1,$2,$3) as data',['save_record',JSON.stringify(data),id])).rows[0].data;
+ const create=async(op,data)=>(await r.queryAs(coordinator,'select wash_command($1,$2,$3) as data',[op,JSON.stringify(data),crypto.randomUUID()])).rows[0].data;
+ const facility=await create('facility',{country_id:r.country.id,name:'Centro campos'}),team=await create('team',{country_id:r.country.id,name:'Equipo campos'});await create('assign',{facility_id:facility.id,team_id:team.id});
+ for(const [person,role]of [[user,'coordinator'],[other,'evaluator']])await r.service('set_role',r.owner.id,{user_id:person.id,scope:'team',team_id:team.id,role});
+ const evaluator=(await r.signIn({email:other.email,password:'Fixture-sync-123'})).data.session.access_token,ev=await create('evaluation',{facility_id:facility.id,team_id:team.id,kind:'initial'});
+ for(const kind of ['general','indicator','action','monitor']){
+  const data=kind==='general'?{facilityName:'Centro campos',city:'Lima',populationServed:100}:kind==='indicator'?{id:'A_1a',score:0,notes:'Base'}:kind==='action'?{indicator_id:'A_1a',action:'Base',cost:10,resources:'Agua',change_reason:'Trabajo'}:{team_id:team.id,editor_indicator_id:'A_1a',title:'Base',editor_fields:{monitoringComments:'Base',nextReviewDate:'2026-12-31',indicatorChange:'sin_cambios'}};
+  const request={facility_id:facility.id,evaluation_id:ev.id,kind,record_key:kind==='general'?'identification':kind==='indicator'?'A_1a':kind==='monitor'?'editor:'+team.id+':A_1a:initial':'fields-'+kind,data};
+  const first=await command(request);
+  const mine=structuredClone(data),theirs=structuredClone(data);
+  if(kind==='general'){mine.city='Cusco';theirs.populationServed=500;}else if(kind==='indicator'){mine.notes='Nota sin conexión';theirs.score=2;}else if(kind==='action'){mine.action='Acción sin conexión';theirs.cost=99;}else{mine.editor_fields.monitoringComments='Observación sin conexión';theirs.editor_fields.nextReviewDate='2027-01-01';}
+  const save=(next,who=coordinator,op=crypto.randomUUID())=>command({...request,id:first.id,version:1,data:next,field_changes:Model.fieldChanges(data,next)},who,op);
+  await save(theirs,evaluator);const op=crypto.randomUUID(),last=await save(mine,coordinator,op);
+  const expected=Model.applyFields(theirs,Model.fieldChanges(data,mine));assert.deepEqual(last.data,expected,kind+': conserva el campo del otro usuario aunque la versión base sea antigua');
+  const next=structuredClone(expected);if(kind==='monitor')next.editor_fields.monitoringComments='Último';else next[kind==='general'?'city':kind==='indicator'?'notes':'action']='Último';
+  const newest=await command({...request,id:first.id,version:1,data:next,field_changes:Model.fieldChanges(expected,next)},evaluator);
+  assert.deepEqual(newest.data,next,kind+': último campo guardado gana');
+  assert.equal((await save(mine,coordinator,op)).version,last.version);
+  assert.deepEqual((await r.queryAs(coordinator,'select data from wash_records where id=$1',[first.id])).rows[0].data,next,'reintento antiguo no pisa el nuevo campo');
+  await assert.rejects(save(theirs,coordinator,op),/OPERATION_REUSED/);
+  const clear=structuredClone(next);if(kind==='monitor'){clear.editor_fields.monitoringComments='';delete clear.editor_fields.indicatorChange;}else if(kind==='general')clear.city='';else if(kind==='indicator'){clear.score=null;clear.notes='';}else clear.cost=0;
+  assert.deepEqual((await command({...request,id:first.id,version:1,data:clear,field_changes:Model.fieldChanges(next,clear)})).data,clear,'respeta vacío, cero, null y eliminación explícita');
+  await assert.rejects(command({...request,id:first.id,field_changes:[{path:['__proto__','x'],value:1}]}),/INVALID_FIELD_PATH/);
+ }
+ const source={facility_id:facility.id,evaluation_id:ev.id,kind:'general',record_key:'population',data:{city:'Base',populationServed:100}};
+ const a=await command({...source,data:{...source.data,city:'Cusco'},field_changes:[{path:['city'],value:'Cusco'}]});
+ const b=await command({...source,data:{...source.data,populationServed:200},field_changes:[{path:['populationServed'],value:200}]},evaluator);
+ assert.equal(a.id,b.id);assert.deepEqual(b.data,{city:'Cusco',populationServed:200},'primera creación simultánea combina ambos campos');
+ const oldOp=crypto.randomUUID(),oldRequest={id:b.id,version:b.version,data:{city:'Arequipa',populationServed:200}};const oldSaved=await command(oldRequest,coordinator,oldOp);
+ const later=await command({id:b.id,version:1,data:{...oldSaved.data,populationServed:900},field_changes:[{path:['populationServed'],value:900}]},evaluator);
+ assert.equal((await command({...oldRequest,field_changes:[{path:['city'],value:'Arequipa'}]},coordinator,oldOp)).version,oldSaved.version);
+ assert.deepEqual((await r.queryAs(coordinator,'select data from wash_records where id=$1',[b.id])).rows[0].data,later.data,'actualizar un reintento legado no repite el guardado ni borra campos posteriores');
 });

@@ -10,6 +10,30 @@
   const generalGroups={location:['latitude','longitude'],population:['populationServed','ageGroups'],team:['team'],photos:['photos'],summary:['summary']};
   const clone=value=>JSON.parse(JSON.stringify(value));
   const stable=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+  // Only fields edited against the local baseline are sent. Arrays are a form field.
+  function fieldChanges(before={},after={},path=[]){
+    const changes=[];
+    for(const key of new Set([...Object.keys(before),...Object.keys(after)])){
+      if(['__proto__','prototype','constructor'].includes(key))continue;
+      const next=[...path,key];
+      if(!Object.hasOwn(after,key))changes.push({path:next,remove:true});
+      else if(object(after[key])&&(object(before[key])||!Object.hasOwn(before,key)))changes.push(...fieldChanges(before[key]||{},after[key],next));
+      else if(stable(before[key])!==stable(after[key]))changes.push({path:next,value:clone(after[key])});
+    }
+    return changes;
+  }
+  function applyFields(data={},changes=[]){
+    const result=clone(data);
+    for(const change of changes){
+      if(!change.path?.length||change.path.some(k=>['__proto__','prototype','constructor'].includes(k)))throw Error('INVALID_FIELD_PATH');
+      let target=result;
+      for(const key of change.path.slice(0,-1)){if(!object(target[key]))target[key]={};target=target[key];}
+      const key=change.path.at(-1);
+      if(change.remove)delete target[key];else target[key]=clone(change.value);
+    }
+    return result;
+  }
   function split(dataset) {
     const groups={identification:{}};
     for(const [key,value] of Object.entries(dataset.generalInfo)){const group=Object.entries(generalGroups).find(([,keys])=>keys.includes(key))?.[0]||'identification';(groups[group]||={})[key]=clone(value);}
@@ -34,12 +58,12 @@
     for(const ind of data.indicators){
       const action=ordered.filter(r=>r.kind==='action'&&r.data.indicator_id===ind.id).at(-1);
       const fields=Object.fromEntries(planFields.filter(k=>Object.hasOwn(ind,k)).map(k=>[k,clone(ind[k])]));
-      if(action||planFields.some(k=>k==='trackingStatus'?fields[k]&&fields[k]!=='No Iniciado':k==='cost'?fields[k]!=null&&fields[k]!=='':k==='responsibleId'?false:!!fields[k]))result.push({kind:'action',record_key:action?.record_key||'editor:'+ind.id,data:{...clone(action?.data||{}),indicator_id:ind.id,...fields}});
+      if(context.includeEmpty||action||planFields.some(k=>k==='trackingStatus'?fields[k]&&fields[k]!=='No Iniciado':k==='cost'?fields[k]!=null&&fields[k]!=='':k==='responsibleId'?false:!!fields[k]))result.push({kind:'action',record_key:action?.record_key||'editor:'+ind.id,data:{...clone(action?.data||{}),indicator_id:ind.id,...fields}});
       if(!context.teamId){for(const row of ordered.filter(r=>r.kind==='monitor'&&r.data.editor_indicator_id===ind.id))result.push({kind:row.kind,record_key:row.record_key,data:clone(row.data)});continue;}
       const monitors=ordered.filter(r=>r.kind==='monitor'&&r.data.editor_indicator_id===ind.id&&r.data.team_id===context.teamId);
       const draft=monitors.filter(r=>r.status!=='validated').at(-1),locked=monitors.filter(r=>r.status==='validated').at(-1);
       const monitorFields=Object.fromEntries(monitoringFields.filter(k=>Object.hasOwn(ind,k)).map(k=>[k,clone(ind[k])]));
-      if(context.teamId&&(draft||ind.history?.length||monitoringFields.some(k=>k!=='history'&&k!=='indicatorChange'&&!!monitorFields[k]))){
+      if(context.teamId&&(context.includeEmpty||draft||ind.history?.length||monitoringFields.some(k=>k!=='history'&&k!=='indicatorChange'&&!!monitorFields[k]))){
         const last=ind.history?.at(-1)||{};
         result.push({kind:'monitor',record_key:draft?.record_key||'editor:'+context.teamId+':'+ind.id+':'+(locked?.id||'initial'),data:{...clone(draft?.data||{}),team_id:context.teamId,editor_indicator_id:ind.id,editor_fields:monitorFields,date:String(last.recordedAt||draft?.data.date||'').slice(0,10),title:'Revisión de '+ind.id,participants:last.responsible||ind.responsible||'',responsible:last.responsible||ind.responsible||'',findings:last.monitoringComments||monitorFields.monitoringComments||'',correctiveMeasures:last.correctiveMeasures||monitorFields.correctiveMeasures||'',nextReviewDate:last.nextReviewDate||monitorFields.nextReviewDate||'',items:[{indicator_id:ind.id,change:last.indicatorChange||'sin_cambios',notes:last.revisionNotes||''}]}});
       }
@@ -52,6 +76,7 @@
     for(const r of remote){const key=r.kind+':'+r.record_key;const before=b.get(key);const mine=l.get(key);
       if(!mine||stable(mine.data)===stable(before?.data)||stable(mine.data)===stable(r.data))result.push(r);
       else if(stable(r.data)===stable(before?.data))result.push({...r,data:mine.data});
+      else if(options.fieldMergeKinds?.includes(r.kind))result.push({...r,data:applyFields(r.data,fieldChanges(before?.data||{},mine.data))});
       else if((options.lastWriteIndicators&&r.kind==='indicator')||options.lastWriteKinds?.includes(r.kind))result.push({...r,data:mine.data});
       else {result.push({...r,data:mine.data});conflicts.push({key,base:before,local:mine,remote:r});}
     }
@@ -67,5 +92,5 @@
     }
     return [...result.values()];
   }
-  return {editorRecords,accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone};
+  return {editorRecords,accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone,fieldChanges,applyFields};
 });

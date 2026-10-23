@@ -14,9 +14,9 @@ function setup(){
     command:async(op,data,operation)=>{
       if(operations.has(operation))return Core.clone(operations.get(operation));
       if(!navigator.onLine)throw Error('offline');if(op!=='save_record')return {};
-      const row=database.find(r=>r.id===data.id);
-      if(row&&row.version!==data.version)throw Object.assign(Error('VERSION_CONFLICT'),{code:'40001'});
-      const result={...Core.clone(data),id:row?.id||crypto.randomUUID(),version:(row?.version||0)+1};
+      const row=database.find(r=>r.id===data.id||!data.id&&r.kind===data.kind&&r.record_key===data.record_key);
+      if(row&&!data.field_changes&&row.version!==data.version)throw Object.assign(Error('VERSION_CONFLICT'),{code:'40001'});
+      const result={...Core.clone(data),data:data.field_changes?Model.applyFields(row?.data||data.data,data.field_changes):Core.clone(data.data),id:row?.id||crypto.randomUUID(),version:(row?.version||0)+1};
       if(row)database[database.indexOf(row)]=result;else database.push(result);operations.set(operation,result);writes++;
       if(lost){lost=false;throw Error('La respuesta se perdió después del commit');}return Core.clone(result);
     }
@@ -118,4 +118,46 @@ test('un commit con respuesta perdida no vuelve a escribir encima de un guardado
 test('resolver un reintento conserva la edición nueva realizada mientras faltaba la confirmación',async()=>{
  const app=setup();await app.cloud.connect(app.hooks);app.current.generalInfo.summary='Commit A';app.loseResponse();await app.cloud.save();app.current.generalInfo.summary='Edición C aún no enviada';app.database.find(r=>r.record_key==='summary').data.summary='Commit B posterior';
  await app.cloud.refresh();assert.equal(app.current.generalInfo.summary,'Edición C aún no enviada');assert.equal(await app.cloud.save(),true);assert.equal(app.database.find(r=>r.record_key==='summary').data.summary,'Edición C aún no enviada');assert.equal(app.conflicts.length,0);
+});
+
+test('reconexión combina campos del mismo indicador, plan y monitoreo sin reenviar campos ajenos',async()=>{
+ const app=setup();addPlan(app);await app.cloud.connect(app.hooks);app.current.indicators[0].score=0;await app.cloud.save();
+ app.navigator.onLine=false;app.current.indicators[0].notes='Nota offline';app.current.indicators[0].action='Acción offline';await app.cloud.save();
+ const indicator=app.database.find(r=>r.kind==='indicator'),action=app.database.find(r=>r.kind==='action');indicator.data.score=2;indicator.version++;action.data.cost=999;action.version++;
+ app.navigator.onLine=true;await app.cloud.refresh();assert.equal(app.current.indicators[0].score,2);assert.equal(app.current.indicators[0].cost,999);assert.equal(app.current.indicators[0].notes,'Nota offline');
+ // Otra carrera después del refresco y antes del guardado tampoco pierde campos.
+ indicator.data.score=1;indicator.version++;action.data.cost=1000;action.version++;
+ assert.equal(await app.cloud.save(),true);assert.equal(app.database.find(r=>r.kind==='indicator').data.score,1);assert.equal(app.database.find(r=>r.kind==='action').data.cost,1000);await app.cloud.refresh();assert.equal(app.current.indicators[0].cost,1000);
+});
+
+test('reabrir con envío pendiente confirma antes de combinar campos remotos y conserva nuevas ediciones',async()=>{
+ const app=setup();addPlan(app);await app.cloud.connect(app.hooks);app.current.indicators[0].action='Acción A';app.loseResponse();await app.cloud.save();
+ let row=app.database.find(r=>r.kind==='action');row.data.cost=800;row.version++;await app.cloud.connect(app.hooks);assert.equal(app.current.indicators[0].cost,800);assert.match(app.current.indicators[0].action,/Acción A/);
+ row=app.database.find(r=>r.kind==='action');row.data.cost=900;row.version++;const writes=app.writes;await app.cloud.save();assert.equal(app.writes,writes,'ningún campo recibido se vuelve a publicar como una edición propia');await app.cloud.refresh();assert.equal(app.current.indicators[0].cost,900);
+});
+
+test('objetos anidados se combinan por campo y no contaminan prototipos',()=>{
+ const before={editor_fields:{monitoringComments:'Antes',nextReviewDate:'2026-12-31'},cost:12},mine={editor_fields:{monitoringComments:'',nextReviewDate:'2026-12-31'},cost:0},remote={editor_fields:{monitoringComments:'Antes',nextReviewDate:'2027-01-01'},cost:12};
+ const merged=Model.merge([{kind:'monitor',record_key:'m',data:before}],[{kind:'monitor',record_key:'m',data:mine}],[{kind:'monitor',record_key:'m',data:remote}],{fieldMergeKinds:['monitor']});
+ assert.deepEqual(merged.records[0].data,{editor_fields:{monitoringComments:'',nextReviewDate:'2027-01-01'},cost:0});assert.equal(merged.conflicts.length,0);
+ assert.throws(()=>Model.applyFields({},[{path:['__proto__','polluted'],value:true}]),/INVALID_FIELD_PATH/);assert.equal({}.polluted,undefined);
+});
+
+test('primer plan y monitoreo simultáneos no publican valores vacíos como cambios propios',async()=>{
+ for(const legacyCache of [false,true]){
+  const app=setup();await app.cloud.connect(app.hooks);
+  if(legacyCache){const cached=await app.store.read('sync');cached.base=cached.base.filter(r=>!['action','monitor'].includes(r.kind));await app.store.write('sync',cached);await app.cloud.connect(app.hooks);}
+  assert.equal(await app.cloud.save(),true);assert.equal(app.writes,0,'las bases vacías no crean registros sin edición');
+  app.navigator.onLine=false;app.current.indicators[0].action='Mi acción';app.current.indicators[0].correctiveMeasures='Mi medida';await app.cloud.save();
+  const general=app.database[0];app.database.push({id:crypto.randomUUID(),facility_id:general.facility_id,evaluation_id:general.evaluation_id,kind:'action',record_key:'editor:A_1a',version:1,data:{indicator_id:'A_1a',action:'',resources:'Recursos del otro usuario',cost:80}});
+  app.database.push({id:crypto.randomUUID(),facility_id:general.facility_id,evaluation_id:general.evaluation_id,kind:'monitor',record_key:'editor:'+app.teamId+':A_1a:initial',status:'draft',version:1,data:{team_id:app.teamId,editor_indicator_id:'A_1a',editor_fields:{monitoringComments:'Comentario del otro usuario',nextReviewDate:'2027-01-01'}}});
+  app.navigator.onLine=true;assert.equal(await app.cloud.save(),true,'carrera sin refresco previo');await app.cloud.refresh();
+  assert.match(app.current.indicators[0].action,/Mi acción/);assert.match(app.current.indicators[0].resources,/Recursos del otro usuario/);assert.equal(app.current.indicators[0].cost,80);assert.match(app.current.indicators[0].correctiveMeasures,/Mi medida/);assert.match(app.current.indicators[0].monitoringComments,/Comentario del otro usuario/);assert.equal(app.current.indicators[0].nextReviewDate,'2027-01-01');assert.equal(app.database.filter(r=>r.kind==='monitor').length,1);
+ }
+});
+
+test('un envío pendiente legado se convierte a campos y no borra el costo remoto al reabrir',async()=>{
+ const app=setup();addPlan(app);await app.cloud.connect(app.hooks);const cached=await app.store.read('sync'),record=cached.base.find(r=>r.kind==='action'&&r.record_key==='editor:A_1a'),stored=app.database.find(r=>r.kind==='action');
+ cached.local.indicators[0].action='Acción pendiente de la versión anterior';cached.pendingLocal={...record,data:{...record.data,action:'Acción pendiente de la versión anterior'}};cached.pending={id:stored.id,version:stored.version,facility_id:stored.facility_id,evaluation_id:stored.evaluation_id,kind:record.kind,record_key:record.record_key,data:cached.pendingLocal.data};cached.currentOperation=crypto.randomUUID();await app.store.write('sync',cached);
+ stored.data.cost=1200;stored.version++;await app.cloud.connect(app.hooks);assert.match(app.current.indicators[0].action,/Acción pendiente de la versión anterior/);assert.equal(app.current.indicators[0].cost,1200);assert.equal(app.database.find(r=>r.kind==='action').data.cost,1200);assert.equal((await app.store.read('sync')).pending,null);
 });

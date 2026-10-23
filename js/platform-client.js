@@ -10,13 +10,26 @@
     if(!response.ok)throw Error(config.error||'No se pudo cargar la configuración.');
     localStorage.setItem('wash-public-config',JSON.stringify(config));
     }
-    if(config.enabled)client=window.WashSupabase.createClient(config.url,config.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    if(config.enabled)client=window.WashSupabase.createClient(config.url,config.key,{auth:{persistSession:true,autoRefreshToken:navigator.onLine!==false,detectSessionInUrl:true}});
+    if(config.enabled){
+      client.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT')localStorage.removeItem('wash-offline-user');else if(session?.user?.id)localStorage.setItem('wash-offline-user',JSON.stringify({id:session.user.id}));});
+      addEventListener('offline',()=>client.auth.stopAutoRefresh());addEventListener('online',()=>client.auth.startAutoRefresh());
+    }
     if(config.enabled&&'serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(()=>{});
     return config;
   })();
   ready.catch(()=>{});
-  async function session(){await ready;if(!client)return null;const {data,error}=await client.auth.getSession();if(error)throw error;return data.session;}
-  async function requireSession(){const s=await session();if(!s)throw Error('Inicie sesión en el espacio de trabajo.');return s;}
+  async function session(){
+    await ready;if(!client)return null;
+    // Identidad local solo para abrir el borrador; no es una sesión de servidor.
+    if(navigator.onLine===false){const user=JSON.parse(localStorage.getItem('wash-offline-user')||'null');return user?.id?{user,offline:true}:null;}
+    const {data,error}=await client.auth.getSession();if(error)throw error;
+    if(data.session?.user?.id)localStorage.setItem('wash-offline-user',JSON.stringify({id:data.session.user.id}));
+    return data.session;
+  }
+  async function offlineEvaluations(){const s=await session();if(!s)return [];const list=await root.WashStorage.createStore(indexedDB,'user:'+s.user.id).read('offlineEvaluations');return Object.values(list||{}).sort((a,b)=>String(b.savedAt).localeCompare(String(a.savedAt)));}
+  async function rememberOfflineEvaluation(userId,item){await root.WashStorage.createStore(indexedDB,'user:'+userId).update('offlineEvaluations',list=>({...list,[item.id]:item}));}
+  async function requireSession(){const s=await session();if(s?.offline)throw Error('Sin conexión: se conserva el borrador en este dispositivo.');if(!s)throw Error('Inicie sesión en el espacio de trabajo.');return s;}
   async function command(command,data,operation=crypto.randomUUID()){
     await requireSession();const {data:result,error}=await client.rpc('wash_command',{p_command:command,p_data:data,p_operation:operation});
     if(error){const err=Error(error.message==='VERSION_CONFLICT'?'Otra persona modificó este registro. Revise ambas versiones.':error.message);err.code=error.code;err.details=error.details;throw err;}return result;
@@ -94,5 +107,5 @@
     try{const result=await root.WashArchive.save(pending.job,progress,request);await command('export_complete',{id:pending.job.exportId,files:result.files});await store.write('pendingExport',null);return result;}
     catch(error){await store.write('pendingExport',pending);throw error;}
   }
-  root.WashPlatform={checks,accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
+  root.WashPlatform={offlineEvaluations,rememberOfflineEvaluation,checks,accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
 })(window);

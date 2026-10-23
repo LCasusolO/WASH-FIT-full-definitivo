@@ -48,7 +48,14 @@
       const db = await open();
       return new Promise((resolve,reject) => {const tx=db.transaction('drafts','readwrite');tx.objectStore('drafts').put(value,scoped(key));tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error);});
     }
-    return { read, save, write };
+    async function update(key,change){
+      const db=await open();
+      return new Promise((resolve,reject)=>{const tx=db.transaction('drafts','readwrite'),store=tx.objectStore('drafts'),request=store.get(scoped(key));
+        request.onsuccess=()=>{try{store.put(change(request.result||{}),scoped(key));}catch(e){tx.abort();reject(e);}};
+        tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error||new Error('No se pudo actualizar el borrador.'));
+      });
+    }
+    return { read, save, write, update };
   }
   return { createStore };
 });

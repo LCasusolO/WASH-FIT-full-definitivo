@@ -88,3 +88,9 @@ Las pruebas de cuentas utilizan el mismo SQL y handler de producción con Postgr
 La migración se aplicó al proyecto WASH FIT Definitivo y la Edge Function quedó activa. Se conservaron las dos cuentas existentes y el propietario activo. Se verificó por HTTP que el registro público devuelve `Signups not allowed for this instance`, que listar cuentas sin sesión devuelve 401 y que un usuario inexistente no puede ingresar. El RPC administrativo no es ejecutable por `anon` ni `authenticated`.
 
 Los asesores no indican errores de RLS ni funciones administrativas públicas. Supabase advierte que la protección contra contraseñas filtradas está desactivada; el panel la ofrece en planes Pro o superiores. Se mantuvo el plan actual. Los avisos informativos de catálogo privado e índices sin uso corresponden a la configuración existente y a tablas nuevas.
+
+### Establecimientos y evaluaciones del administrador
+
+En **Evaluaciones**, el administrador ve una fila por establecimiento de los países que administra, aunque todavía no tenga mediciones. El estado distingue falta de evaluación, una medición abierta o un establecimiento evaluado. Desde esa fila puede asignar un equipo, continuar la medición abierta, iniciar la primera o reevaluar tras validar la anterior. Cada evaluación conserva sus opciones de exportación, estados, participantes y transferencia de equipo. El alta identifica el establecimiento como texto fijo; no requiere filtros de país ni establecimiento.
+
+En **Usuarios y permisos**, los formularios y el directorio aparecen antes del **Historial de administración**, que queda al final tanto para el administrador como para la administración global.

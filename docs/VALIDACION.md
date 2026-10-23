@@ -164,3 +164,11 @@ corrección adicional.
 - Migración y Edge Function v5 aplicadas. Sondas de autorización y bloqueo de finalización anticipada comprobadas en producción mediante transacción revertida.
 
 - Eliminación de alta interrumpida: cierra la reserva pendiente y permite reutilizar el usuario sin sufijos innecesarios.
+
+## Evaluaciones por establecimiento — 23 de octubre de 2026
+
+- 142 pruebas aprobadas; build correcto.
+- Tabla nacional incluye establecimientos sin evaluación y asignación de equipo por fila, independiente del establecimiento seleccionado para el historial.
+- Reevaluación preselecciona la última medición validada del establecimiento correcto; una medición abierta ofrece continuar en lugar de duplicarla.
+- Navegador QA: creación de establecimiento pendiente, asignación desde su fila e inicio de evaluación con contexto fijo, sin selector de establecimiento.
+- Orden de Usuarios comprobado: formulario, directorio y, al final, Historial de administración. Sin errores de consola.

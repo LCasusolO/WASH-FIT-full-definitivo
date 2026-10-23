@@ -9,7 +9,7 @@ El registro público y las invitaciones de acceso anteriores se sustituyen por c
 La cuenta propietaria existente conserva correo y contraseña y recibe el usuario `propietario`. Puede seguir ingresando con su correo.
 
 1. Abrir `plataforma.html` e ingresar.
-2. Registrar el país en **País y equipos** y entrar a **Usuarios y permisos**.
+2. Registrar el país en **País y establecimientos** y entrar a **Usuarios y permisos**.
 3. Completar nombre completo y correo.
 4. Seleccionar el rol Administrador del país y el país. No requiere un equipo. El usuario se genera automáticamente al final, por ejemplo `admin-peru`.
 5. Crear la cuenta y copiar la contraseña temporal mostrada en pantalla. Comunicar las credenciales personalmente por un medio privado. No se envían contraseñas por correo.
@@ -26,7 +26,7 @@ Para crear integrantes, completar nombre y correo, elegir Coordinador responsabl
 
 ### Vista por rol
 
-El administrador nacional registra establecimientos, crea equipos y los asigna a establecimientos desde **País y equipos**. El coordinador y el evaluador consultan allí únicamente una tabla de integrantes de sus propios equipos.
+El administrador nacional registra establecimientos, crea equipos y los asigna a establecimientos desde **Establecimientos y equipos**. El coordinador y el evaluador consultan allí los establecimientos y los integrantes de sus equipos, con controles de participantes solo si su rol lo permite.
 
 El panel superior muestra total de países, establecimientos, equipos y evaluaciones activas (borrador, elaboración o revisión), limitado a los datos autorizados de cada cuenta. No hay filtros superiores de país/establecimiento. **Evaluaciones** muestra una tabla general con país, establecimiento, nombre, equipo, estado y opciones por fila. **Nueva evaluación** abre el formulario para un establecimiento autorizado; conserva la separación entre medición inicial y reevaluación. El portal ya no ofrece importar evaluaciones. El historial conserva su selector de establecimiento dentro de su propia sección.
 
@@ -91,7 +91,7 @@ Los asesores no indican errores de RLS ni funciones administrativas públicas. S
 
 ### Establecimientos y evaluaciones del administrador
 
-En **Evaluaciones**, el administrador ve una fila por establecimiento de los países que administra, aunque todavía no tenga mediciones. El estado distingue falta de evaluación, una medición abierta o un establecimiento evaluado. Desde esa fila puede asignar un equipo, continuar la medición abierta, iniciar la primera o reevaluar tras validar la anterior. Cada evaluación conserva sus opciones de exportación, estados, participantes y transferencia de equipo. El alta identifica el establecimiento como texto fijo; no requiere filtros de país ni establecimiento.
+En **Evaluaciones**, el administrador ve una fila por establecimiento de los países que administra, aunque todavía no tenga mediciones. El estado distingue falta de evaluación, una medición abierta o un establecimiento evaluado. Desde esa fila puede continuar la medición abierta, iniciar la primera o reevaluar tras validar la anterior. Iniciar crea y abre directamente la medición con el equipo ya asignado; si hay varios equipos asignados, se elige entre ellos en la misma fila. Antes de crear se consulta el estado actual para continuar una evaluación abierta sin duplicarla. La reevaluación usa la última medición validada como referencia y recibe su nombre automático. Exportación y revisión permanecen en Evaluaciones. La asignación de equipos, transferencia y participantes se gestionan en Establecimientos y equipos.
 
 En **Usuarios y permisos**, los formularios y el directorio aparecen antes del **Historial de administración**, que queda al final tanto para el administrador como para la administración global.
 
@@ -101,7 +101,7 @@ El formulario ya no pide nombre ni periodo. La primera medición se crea como **
 
 ### Administrador y coordinador de un equipo
 
-El administrador puede mantener su rol nacional y participar como coordinador de un equipo específico de su país. En **País y equipos → Equipos del país**, elija **Coordinador**, **Evaluador** o **Sin participación** en el selector de la columna Mi participación. Cada equipo conserva una asignación independiente. El servidor impide dejar al equipo sin coordinador. La operación utiliza el servicio administrativo existente, queda auditada y actualiza los participantes de las evaluaciones abiertas del equipo. No reemplaza a los otros coordinadores ni crea una cuenta nueva.
+El administrador puede mantener su rol nacional y participar como coordinador de un equipo específico de su país. En **Establecimientos y equipos → Equipos del país**, elija **Coordinador**, **Evaluador** o **Sin participación** en el selector de la columna Mi participación. Cada equipo conserva una asignación independiente. El servidor impide dejar al equipo sin coordinador. La operación utiliza el servicio administrativo existente, queda auditada y actualiza los participantes de las evaluaciones abiertas del equipo. No reemplaza a los otros coordinadores ni crea una cuenta nueva.
 
 El rol de administrador por sí solo permite consultar el mapa, desplazarse y usar el zoom, pero no modificar la ubicación. Para editar coordenadas, pulsar en el mapa, arrastrar el marcador o usar la geolocalización, la cuenta debe ser participante activo como coordinador o evaluador de esa evaluación y esta debe estar en borrador o edición. Las mediciones en revisión o validadas continúan en solo lectura. La caché offline conserva los permisos previamente comprobados; una caché antigua sin ese dato se abre en solo lectura hasta verificarlos en línea.
 
@@ -121,6 +121,10 @@ En la evaluación, el estado de consulta muestra **Solo lectura**. Los errores y
 
 ### Administración y navegación de integrantes
 
-La sección País y equipos del administrador ya no muestra la tarjeta ni el selector de país administrado; usa automáticamente el país asignado. **Administrar integrantes** abre Usuarios y permisos desde su inicio y deja seleccionado el equipo de la fila para crear o asignar cuentas.
+La sección Establecimientos y equipos del administrador ya no muestra la tarjeta ni el selector de país administrado; usa automáticamente el país asignado. **Administrar integrantes** abre Usuarios y permisos desde su inicio y deja seleccionado el equipo de la fila para crear o asignar cuentas.
 
 El formato nuevo de reevaluación continúa la numeración de nombres anteriores como Reeval-001. Las mediciones históricas y sus snapshots conservan su nombre; los reintentos de operaciones anteriores siguen devolviendo el resultado original.
+
+### Organización por rol
+
+Para la administración global, la sección se llama **País y establecimientos**. Países y administradores incluye el total de establecimientos de cada país y permite desplegar su lista. Para administradores, coordinadores y evaluadores se llama **Establecimientos y equipos**. La tabla reúne equipos asignados, transferencia del equipo responsable y participantes de cada medición. Solo los roles autorizados reciben controles de modificación; las mediciones validadas conservan sus participantes históricos. En Evaluaciones queda un único enlace para continuar cada medición abierta.

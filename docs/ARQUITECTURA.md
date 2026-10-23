@@ -84,7 +84,7 @@ establecer la política de retención y el mantenimiento de respaldos.
 
 ### Navegación y pasos originales
 
-Los pasos 4 y 5 conservan las tablas originales de `index.html`, sin paneles incrustados. La plataforma mantiene Evaluaciones, País y equipos, Usuarios y permisos e Historial. El retorno aparece bajo Exportar e Importar. No hay franja adicional de accesos ni botones de dominios fuera de la navegación original.
+Los pasos 4 y 5 conservan las tablas originales de `index.html`, sin paneles incrustados. La plataforma mantiene Evaluaciones, organización (País y establecimientos para el propietario; Establecimientos y equipos para los demás roles), Usuarios y permisos e Historial. El retorno aparece bajo Exportar e Importar. No hay franja adicional de accesos ni botones de dominios fuera de la navegación original.
 
 `editorRecords` adapta los campos del plan a registros `action` y las revisiones a registros `monitor` con historial por indicador. Las respuestas y puntuaciones permanecen en `general`/`indicator`; el monitoreo no sobrescribe la medición validada. El editor recupera los datos existentes y aplica versiones y conflictos al guardar. El historial se conserva también al consultar sin equipo asignado. El guardado de una revisión utiliza el indicador actual, aunque una sincronización haya reemplazado su objeto mientras el diálogo estaba abierto.
 

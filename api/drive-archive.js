@@ -7,6 +7,14 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
   let cachedToken;
   const call = (url, options) => request(url, {...options, signal: AbortSignal.timeout(20000)});
   const sign = body => crypto.createHmac('sha256', env.GOOGLE_CLIENT_SECRET).update(body).digest('base64url');
+  async function lease(access, exportId, batch, action) {
+    if (!access) return;
+    const response = await call(env.SUPABASE_URL+'/rest/v1/rpc/wash_command', {method:'POST',headers:{...access.headers,'Content-Type':'application/json'},body:JSON.stringify({p_command:'archive_'+action,p_data:{export_id:exportId},p_operation:batch})});
+    const result=await response.json();
+    if (!response.ok) throw Object.assign(Error('No se pudo verificar el acceso al archivado.'),{status:response.status===403?403:503});
+    if (result.busy) throw Object.assign(Error('Otra exportación de este establecimiento está en curso. Reintente en unos instantes.'),{status:409,code:'ARCHIVE_BUSY'});
+    if (!result.ok) throw Object.assign(Error('La sesión de archivado venció. Reintente para actualizar los mismos archivos.'),{status:409,code:'ARCHIVE_SESSION_EXPIRED'});
+  }
   async function token() {
     if (cachedToken?.expires > now()) return cachedToken.value;
     const result = await call('https://oauth2.googleapis.com/token', {method: 'POST', body: new URLSearchParams({client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, refresh_token: env.GOOGLE_REFRESH_TOKEN, grant_type: 'refresh_token'})});
@@ -24,6 +32,7 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
     if (![env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET, env.GOOGLE_REFRESH_TOKEN].every(Boolean)) return res.status(503).json({error: 'El repositorio aún no está activado. Comuníquese con el administrador.'});
     const allowedOrigin = env.WASH_APP_ORIGIN || 'https://wash-fit-full.vercel.app';
     if (req.headers.origin !== allowedOrigin) return res.status(403).json({error: 'Origen no permitido.'});
+    let acquired;
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (!body || JSON.stringify(body).length > 2 * 1024 * 1024) return res.status(400).json({error: 'Solicitud inválida.'});
@@ -40,20 +49,30 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
         if (![body.jsonBytes, body.pdfBytes].every(x => Number.isSafeInteger(x) && x > 0 && x <= MAX_BYTES) || typeof body.facility !== 'string' || body.facility.length > 500) return res.status(400).json({error: 'Nombre o tamaño de archivos inválido (máximo 40 MB por archivo).'});
         const authorization = 'Bearer ' + await token();
         const batch = crypto.randomUUID();
+        await lease(access,exportJob?.id,batch,'acquire');
+        if(access)acquired={access,exportId:exportJob.id,batch};
         const name = Core.fileBaseName({facilityName: body.facility, countryCode: body.countryCode, district: body.location});
         const files = [{kind: 'json', name: name + '.json', mime: 'application/json', bytes: body.jsonBytes}, {kind: 'pdf', name: name + '.pdf', mime: 'application/pdf', bytes: body.pdfBytes}];
         for (const file of files) {
           // Reuse an existing file ID for the same country/facility name.
           const quote = value => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-          const exportScope = exportJob ? " and appProperties has { key='washFitExport' and value='" + quote(exportJob.id) + "' }" : '';
-          const query = new URLSearchParams({q: "'" + quote(folder) + "' in parents and trashed = false and name = '" + quote(file.name) + "' and mimeType = '" + file.mime + "'" + exportScope, fields: 'files(id),incompleteSearch', pageSize: '1', orderBy: 'createdTime', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true'});
-          const listed = await call('https://www.googleapis.com/drive/v3/files?' + query, {headers: {Authorization: authorization}});
-          const matches = await listed.json();
-          if (!listed.ok || !Array.isArray(matches.files) || matches.incompleteSearch) throw new Error('No se pudo comprobar la copia anterior.');
-          file.targetId = matches.files[0]?.id;
+          const scope = exportJob ? "appProperties has { key='washFitFacility' and value='" + quote(exportJob.facility_id) + "' }" : "name = '" + quote(file.name) + "'";
+          const query = new URLSearchParams({q: "'" + quote(folder) + "' in parents and trashed = false and mimeType = '" + file.mime + "' and " + scope, fields: 'files(id),incompleteSearch,nextPageToken', pageSize: '100', orderBy: 'createdTime', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true'});
+          const ids=[];let next;
+          do {
+            if(next)query.set('pageToken',next);
+            const listed = await call('https://www.googleapis.com/drive/v3/files?' + query, {headers: {Authorization: authorization}});
+            const matches = await listed.json();
+            if (!listed.ok || !Array.isArray(matches.files) || matches.incompleteSearch) throw new Error('No se pudo comprobar la copia anterior.');
+            ids.push(...matches.files.map(f=>f.id));next=matches.nextPageToken;
+            if(ids.length>1000)throw Error('Demasiadas copias anteriores.');
+          }while(next);
+          file.targetId = ids[0];
+          file.duplicates=exportJob?ids.slice(1):[];
           const metadata = {name: file.name, mimeType: file.mime, appProperties: {washFitBatch: batch, ...(exportJob ? {washFitExport: exportJob.id, washFitFacility: exportJob.facility_id} : {})}};
           if (!file.targetId) metadata.parents = [folder];
           const endpoint = 'https://www.googleapis.com/upload/drive/v3/files' + (file.targetId ? '/' + encodeURIComponent(file.targetId) : '') + '?uploadType=resumable&supportsAllDrives=true&fields=id';
+          await lease(access,exportJob?.id,batch,'renew');
           const response = await call(endpoint, {method: file.targetId ? 'PATCH' : 'POST', headers: {Authorization: authorization, 'Content-Type': 'application/json', 'X-Upload-Content-Type': file.mime, 'X-Upload-Content-Length': String(file.bytes)}, body: JSON.stringify(metadata)});
           const session = response.headers.get('location');
           if (!response.ok || !session || new URL(session).origin !== 'https://www.googleapis.com') throw new Error('No se pudo iniciar la subida. Revise el acceso del propietario a la carpeta.');
@@ -71,6 +90,7 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
         if (access) {
           if (receipt.userId !== access.user.id) return res.status(403).json({error: 'El comprobante pertenece a otra cuenta.'});
           await exportAccess(access, receipt.exportId);
+          await lease(access,receipt.exportId,receipt.batch,'renew');
         }
         if (receipt.expires < now()) return res.status(400).json({error: 'Comprobante vencido. Vuelva a Exportar.'});
         const authorization = 'Bearer ' + await token();
@@ -103,11 +123,20 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
           const wanted = receipt.files[i];
           if ((wanted.targetId && body.ids[i] !== wanted.targetId) || !response.ok || file.trashed || !file.parents?.includes(folder) || file.appProperties?.washFitBatch !== receipt.batch || file.name !== wanted.name || file.mimeType !== wanted.mime || Number(file.size) !== wanted.bytes) throw new Error('No se pudo confirmar el guardado de ambos archivos en la carpeta.');
         }
+        // Solo después de confirmar la pareja nueva se retiran copias generadas
+        // por la app para el mismo establecimiento; nunca archivos ajenos.
+        for(const wanted of receipt.files)for(const id of wanted.duplicates||[]){
+          await lease(access,receipt.exportId,receipt.batch,'renew');
+          const response=await call('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'?supportsAllDrives=true',{method:'PATCH',headers:{Authorization:authorization,'Content-Type':'application/json'},body:JSON.stringify({trashed:true})});
+          if(!response.ok)throw Error('No se pudieron retirar las copias anteriores.');
+        }
+        await lease(access,receipt.exportId,receipt.batch,'release');
         return res.status(200).json({saved: true, savedAt: new Date(now()).toISOString(), files: receipt.files.map((file, i) => ({id: body.ids[i], name: file.name, url: `https://drive.google.com/file/d/${body.ids[i]}/view`}))});
       }
       return res.status(400).json({error: 'Acción no válida.'});
     } catch (error) {
-      if (error.status) return res.status(error.status).json({error: error.message});
+      if(acquired)try{await lease(acquired.access,acquired.exportId,acquired.batch,'release');}catch{}
+      if (error.status) return res.status(error.status).json({error: error.message,...(error.code?{code:error.code}:{})});
       if (['GOOGLE_AUTH_REQUIRED', 'GOOGLE_AUTH_CONFIGURATION', 'GOOGLE_FOLDER_ACCESS'].includes(error.code)) return res.status(502).json({error: error.message, code: error.code});
       return res.status(502).json({error: 'No se pudo completar el guardado en el repositorio. Revise la conexión y la configuración del repositorio.'});
     }

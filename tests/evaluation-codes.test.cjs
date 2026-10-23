@@ -14,13 +14,13 @@ test('nombres automáticos y códigos por establecimiento, sin saltos por reinte
   const review=await command('evaluation_status',{evaluation_id:ev.id,status:'review',version:ev.version});return command('evaluation_status',{evaluation_id:ev.id,status:'validated',version:review.version});
  }
  const base={facility_id:facility.id,team_id:team.id};const first=await command('evaluation',{...base,kind:'initial',name:'Nombre manual ignorado'});assert.equal(first.name,'Evaluación inicial');await validate(first);
- const operation=crypto.randomUUID(),payload={...base,kind:'reassessment',previous_id:first.id};const one=await command('evaluation',payload,operation);assert.equal(one.name,'Reeval-001');
+ const operation=crypto.randomUUID(),payload={...base,kind:'reassessment',previous_id:first.id};const one=await command('evaluation',payload,operation);assert.equal(one.name,'Reevaluación 01');
  assert.deepEqual(await command('evaluation',payload,operation),one);await assert.rejects(command('evaluation',{...payload,previous_id:crypto.randomUUID()},operation),/OPERATION_REUSED/);
  await assert.rejects(command('evaluation',payload),/ACTIVE_EVALUATION_EXISTS/);await validate(one);
- const two=await command('evaluation',{...payload,previous_id:one.id,name:'Código manual ignorado'});assert.equal(two.name,'Reeval-002');await validate(two);
+ const two=await command('evaluation',{...payload,previous_id:one.id,name:'Código manual ignorado'});assert.equal(two.name,'Reevaluación 02');await validate(two);
  const secondFacility=await command('facility',{country_id:r.country.id,name:'Otro centro'});await command('assign',{facility_id:secondFacility.id,team_id:team.id});
  const initial=await command('evaluation',{facility_id:secondFacility.id,team_id:team.id,kind:'initial'});assert.equal(initial.name,'Evaluación inicial');await validate(initial);
- const independent=await command('evaluation',{facility_id:secondFacility.id,team_id:team.id,kind:'reassessment',previous_id:initial.id});assert.equal(independent.name,'Reeval-001');await validate(independent);
+ const independent=await command('evaluation',{facility_id:secondFacility.id,team_id:team.id,kind:'reassessment',previous_id:initial.id});assert.equal(independent.name,'Reevaluación 01');await validate(independent);
  await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("insert into wash_evaluations(facility_id,team_id,name,kind,previous_id,created_by,status) values($1,$2,'Reeval-999','reassessment',$3,$4,'validated')",[secondFacility.id,team.id,initial.id,actor.id]);});
- const large=await command('evaluation',{facility_id:secondFacility.id,team_id:team.id,kind:'reassessment',previous_id:initial.id});assert.equal(large.name,'Reeval-1000');
+ const large=await command('evaluation',{facility_id:secondFacility.id,team_id:team.id,kind:'reassessment',previous_id:initial.id});assert.equal(large.name,'Reevaluación 1000');await validate(large);const next=await command('evaluation',{facility_id:secondFacility.id,team_id:team.id,kind:'reassessment',previous_id:large.id});assert.equal(next.name,'Reevaluación 1001');
 });

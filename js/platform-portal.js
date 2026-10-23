@@ -9,7 +9,8 @@
     const roleClass=role=>({owner:'role-owner',admin:'role-admin',coordinator:'role-coordinator',evaluator:'role-evaluator'})[role]||'';
     const tabCount=id=>({evaluations:evaluations.value.length,organization:teams.value.length,users:accountUsers.value.filter(a=>a.status!=='deleted').length,history:snapshots.value.length})[id]||0;
     async function copyCredentials(){if(!credentials.value?.temporary_password)return;try{await navigator.clipboard.writeText('Acceso WASH FIT\nUsuario: '+credentials.value.username+'\nContraseña temporal: '+credentials.value.temporary_password+'\nEnlace: '+location.origin+'/plataforma.html');copiedCredentials.value=true;}catch{error.value='No se pudieron copiar las credenciales. Seleccione y copie la contraseña mostrada en pantalla.';await focusFeedback();}}
-    const profileForm=ref(null),showDeletedAccounts=ref(false);
+    const profileForm=ref(null),showDeletedAccounts=ref(false),passwordDialog=ref(null),passwordError=ref('');
+    let passwordReturnFocus=null;
     const profile=ref(null),accountUsers=ref([]),accountEvents=ref([]),accountSearch=ref(''),confirmationNeeded=ref(false),credentials=ref(null);
     const accountForm=ref({username:'',name:'',email:'',scope:'team',role:'evaluator',team_id:'',country_id:'',request_id:crypto.randomUUID()}),roleForm=ref({user_id:'',scope:'team',role:'evaluator',team_id:'',country_id:''});
     const configured=ref(false),busy=ref(true),error=ref(''),message=ref(''),user=ref(null),email=ref(''),password=ref(''),newPassword=ref(''),confirmPassword=ref(''),passwordChangeOpen=ref(false),recovering=ref(false);
@@ -61,7 +62,7 @@
     const explain=e=>translations[e.message]||({'Invalid login credentials':'Correo o contraseña incorrectos.','Email not confirmed':'Confirme su correo antes de ingresar.','Failed to fetch':'No se pudo conectar. Revise su conexión e inténtelo otra vez.'}[e.message])||e.message||'No se pudo completar la operación.';
     const accountRole=computed(()=>owner.value?'Propietario de la plataforma':nationalAdmin.value?'Administrador del país':members.value.some(m=>m.user_id===user.value?.id&&m.role==='coordinator')?'Coordinador responsable':members.value.some(m=>m.user_id===user.value?.id&&m.role==='evaluator')?'Evaluador':'Sin rol asignado');
 
-    async function focusFeedback(){await nextTick();document.getElementById(error.value?'workspace-error':'workspace-message')?.focus();}
+    async function focusFeedback(){if(passwordChangeOpen.value&&error.value){passwordError.value=error.value;await nextTick();document.getElementById('password-dialog-error')?.focus();return;}await nextTick();document.getElementById(error.value?'workspace-error':'workspace-message')?.focus();}
     async function focusPanel(id){await nextTick();const panel=document.getElementById(id);panel?.scrollIntoView?.({block:'start',behavior:'smooth'});panel?.focus();}
     function checkEmail(){if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value))throw Error('Escriba un correo válido para continuar.');}
     async function loadSnapshots(){const selected=facilityId.value;snapshots.value=[];comparison.value=[];compareBefore.value='';compareAfter.value='';if(!selected||!user.value)return;const rows=await P.rows('snapshots',{facility_id:selected,purpose:'validation'},'id,evaluation_id,created_at');if(selected===facilityId.value)snapshots.value=rows;}
@@ -95,8 +96,13 @@
     const login=()=>run(async()=>{confirmationNeeded.value=false;try{const result=await P.accountAction('login',{login:email.value,password:password.value});const {error:e}=await P.client.auth.setSession(result.session);if(e)throw e;password.value='';showPassword.value=false;user.value=(await P.requireSession()).user;}catch(e){confirmationNeeded.value=e.code==='EMAIL_CONFIRMATION_REQUIRED';throw e;}});
     const sendConfirmation=()=>run(async()=>{const result=await P.accountAction('send_confirmation',{login:email.value,password:password.value});message.value=result.message;});
     const recover=()=>run(async()=>{if(!email.value.trim())throw Error('Escriba su usuario o correo para recuperar el acceso.');const result=await P.accountAction('recover',{login:email.value});message.value=result.message;});
-    const cancelPasswordChange=()=>{passwordChangeOpen.value=false;newPassword.value='';confirmPassword.value='';};
-    const openPasswordChange=async event=>{if(!profile.value?.ready||busy.value)return;newPassword.value='';confirmPassword.value='';passwordChangeOpen.value=true;event?.currentTarget?.closest?.('details')?.removeAttribute('open');await focusPanel('password-change-panel');document.getElementById('account-new-password')?.focus();};
+    const cancelPasswordChange=()=>{passwordDialog.value?.close();passwordChangeOpen.value=false;newPassword.value='';confirmPassword.value='';if(error.value===passwordError.value)error.value='';passwordError.value='';passwordReturnFocus?.focus();passwordReturnFocus=null;};
+    const openPasswordChange=async event=>{
+      if(!profile.value?.ready||busy.value)return;
+      newPassword.value='';confirmPassword.value='';passwordError.value='';passwordChangeOpen.value=true;
+      const menu=event?.currentTarget?.closest?.('details');passwordReturnFocus=menu?.querySelector?.('summary')||null;menu?.removeAttribute('open');
+      await nextTick();passwordDialog.value?.showModal();document.getElementById('dialog-new-password')?.focus();
+    };
     const changePassword=()=>run(async()=>{
       if(newPassword.value.length<12||newPassword.value.length>128)throw Error('Use entre 12 y 128 caracteres para la nueva contraseña.');
       if(newPassword.value!==confirmPassword.value)throw Error('Las contraseñas no coinciden. Revise ambos campos.');
@@ -115,13 +121,22 @@
     const editAccountProfile=a=>{profileForm.value={user_id:a.user_id,username:a.username,name:a.full_name};focusPanel('profile-form');};
     const saveAccountProfile=()=>run(async()=>{const result=await P.accountAction('rename',M.clone(profileForm.value));profileForm.value=null;message.value=result.message;});
     const editAccountRole=(a,scope,membership)=>{roleForm.value={user_id:a.user_id,scope,role:membership?.role||'evaluator',team_id:membership?.team_id||'',country_id:membership?.country_id||countryId.value};focusPanel('role-form');};
-    const coordinatesTeam = id => members.value.some(m=>m.user_id===user.value?.id&&m.team_id===id&&m.role==='coordinator');
-    const joinAsCoordinator = t => run(async()=>{
-      if(!nationalAdmin.value || !managedCountries.value.some(c=>c.id===t.country_id) || !teams.value.some(team=>team.id===t.id&&team.country_id===t.country_id))throw Error('FORBIDDEN');
-      if(coordinatesTeam(t.id))return;
-      await P.accountAction('set_role',{user_id:user.value.id,scope:'team',team_id:t.id,role:'coordinator'});
-      message.value='Ahora es coordinador de '+t.name+'. Conserva su rol de administrador del país.';
-    });
+    const myParticipation = id => members.value.find(m=>m.user_id===user.value?.id&&m.team_id===id)?.role||'';
+    const setMyParticipation = async (t,event) => {
+      const control=event.target,role=control.value;
+      await run(async()=>{
+        if(!nationalAdmin.value||!managedCountries.value.some(c=>c.id===t.country_id)||!teams.value.some(team=>team.id===t.id&&team.country_id===t.country_id)||!['','coordinator','evaluator'].includes(role))throw Error('FORBIDDEN');
+        if(myParticipation(t.id)===role)return;
+        await P.accountAction('set_role',{user_id:user.value.id,scope:'team',team_id:t.id,role:role||'remove'});
+        message.value=(role?'Su participación en '+t.name+' es '+roleLabel(role)+'.':'Se retiró su participación en '+t.name+'.')+' Conserva su rol de administrador del país.';
+      });
+      control.value=myParticipation(t.id);
+    };
+    const manageTeamMembers=async t=>{
+      if(!nationalAdmin.value||!managedCountries.value.some(c=>c.id===t.country_id))return;
+      message.value='';error.value='';view.value='users';accountForm.value.country_id=t.country_id;await nextTick();accountForm.value.team_id=t.id;
+      await focusPanel('users-section');
+    };
     const saveAccountRole=()=>run(async()=>{const result=await P.accountAction('set_role',M.clone(roleForm.value));roleForm.value.user_id='';message.value=result.message;});
     const removeAccountRole=(a,scope,membership)=>run(async()=>{if(!confirm('Se retirará este acceso a '+a.username+'. Su autoría histórica se conserva. ¿Continuar?'))return;const result=await P.accountAction('set_role',{user_id:a.user_id,scope,role:'remove',country_id:membership.country_id,team_id:membership.team_id});message.value=result.message;});
     watch(credentials,()=>{copiedCredentials.value=false;});
@@ -211,6 +226,6 @@
         setInterval(()=>{if(user.value&&!busy.value)load().catch(e=>error.value=explain(e));},15000);
       }catch(e){error.value=explain(e);}finally{busy.value=false;}
     });
-    return {openPasswordChange,cancelPasswordChange,confirmPassword,passwordChangeOpen,coordinatesTeam,joinAsCoordinator,rowTeams,adminFacilities,evaluationsAt,activeAt,latestValidatedAt,facilityStatus,assignAt,showNewEvaluation,nationalAdmin,managedCountries,adminForCountry,facilityNameFor,countryNameFor,facilityCountry,teamsForFacility,canCreateAt,evaluationFacilities,allEvaluations,activeEvaluations,myTeamMembers,teamFacilities,startEvaluation,evaluations,showPassword,showRecoveryHelp,copiedCredentials,iconSvg,initials,roleClass,tabCount,copyCredentials,showDeletedAccounts,deleteAccount,profileForm,editAccountProfile,saveAccountProfile,suggestAccountUsername,profile,accountUsers,accountEvents,accountSearch,confirmationNeeded,credentials,accountForm,roleForm,filteredAccounts,accountRoles,accountTeams,accountScopeReady,sendConfirmation,createAccount,resetAccount,setAccountState,editAccountRole,saveAccountRole,removeAccountRole,operationLabel,actorLabel,canEditMonitor,canValidateMonitor,accountRole,configured,busy,error,message,user,email,password,newPassword,recovering,countries,countryId,facilities,countryFacilities,facilityId,teams,countryTeams,teamId,members,selectedTeamMembers,owner,admin,coordinator,canEditFacility,canManageTeam,facilityTeams,view,tabs:[{id:'evaluations',name:'Evaluaciones'},{id:'organization',name:'País y equipos'},{id:'users',name:'Usuarios y permisos'},{id:'history',name:'Historial y comparativo'}],countryForm,countryMembers,facilityName,teamName,evaluationTeam,previousId,transferTeams,transferEvaluation,pendingExport,retryExport,facilityEvaluations,participants,actions,monitors,catalog,actionDraft,monitorDraft,conflict,evidence,facilityEvents,snapshots,comparison,compareBefore,compareAfter,compare,login,recover,changePassword,logout,refresh,createCountry,createFacility,createTeam,assignTeam,participant,createEvaluation,evaluationStatus,newAction,editAction,saveAction,newMonitor,editMonitor,saveMonitor,monitorPhotos,monitorStatus,viewEvidence,exportReport,importFile,importLegacyDraft,roleLabel,statusLabel,teamLabel,indicatorLabel,formatDate,canCoordinateEvaluation};
+    return {passwordDialog,passwordError,manageTeamMembers,myParticipation,setMyParticipation,openPasswordChange,cancelPasswordChange,confirmPassword,passwordChangeOpen,rowTeams,adminFacilities,evaluationsAt,activeAt,latestValidatedAt,facilityStatus,assignAt,showNewEvaluation,nationalAdmin,managedCountries,adminForCountry,facilityNameFor,countryNameFor,facilityCountry,teamsForFacility,canCreateAt,evaluationFacilities,allEvaluations,activeEvaluations,myTeamMembers,teamFacilities,startEvaluation,evaluations,showPassword,showRecoveryHelp,copiedCredentials,iconSvg,initials,roleClass,tabCount,copyCredentials,showDeletedAccounts,deleteAccount,profileForm,editAccountProfile,saveAccountProfile,suggestAccountUsername,profile,accountUsers,accountEvents,accountSearch,confirmationNeeded,credentials,accountForm,roleForm,filteredAccounts,accountRoles,accountTeams,accountScopeReady,sendConfirmation,createAccount,resetAccount,setAccountState,editAccountRole,saveAccountRole,removeAccountRole,operationLabel,actorLabel,canEditMonitor,canValidateMonitor,accountRole,configured,busy,error,message,user,email,password,newPassword,recovering,countries,countryId,facilities,countryFacilities,facilityId,teams,countryTeams,teamId,members,selectedTeamMembers,owner,admin,coordinator,canEditFacility,canManageTeam,facilityTeams,view,tabs:[{id:'evaluations',name:'Evaluaciones'},{id:'organization',name:'País y equipos'},{id:'users',name:'Usuarios y permisos'},{id:'history',name:'Historial y comparativo'}],countryForm,countryMembers,facilityName,teamName,evaluationTeam,previousId,transferTeams,transferEvaluation,pendingExport,retryExport,facilityEvaluations,participants,actions,monitors,catalog,actionDraft,monitorDraft,conflict,evidence,facilityEvents,snapshots,comparison,compareBefore,compareAfter,compare,login,recover,changePassword,logout,refresh,createCountry,createFacility,createTeam,assignTeam,participant,createEvaluation,evaluationStatus,newAction,editAction,saveAction,newMonitor,editMonitor,saveMonitor,monitorPhotos,monitorStatus,viewEvidence,exportReport,importFile,importLegacyDraft,roleLabel,statusLabel,teamLabel,indicatorLabel,formatDate,canCoordinateEvaluation};
   }}).mount('#platform');
 })();

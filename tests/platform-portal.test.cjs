@@ -1,14 +1,14 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto');
 function portal(clipboard){
  const data={countries:[{id:'a',name:'A'},{id:'b',name:'B'}],owners:[{user_id:'owner'}],facilities:[{id:'fa',country_id:'a'},{id:'fb',country_id:'b'}],teams:[{id:'ta',country_id:'a'}],snapshots:[]};
- let state,mounted,commands=[];
- const P={ready:Promise.resolve({enabled:true}),session:async()=>({user:{id:'owner'}}),pendingExport:async()=>null,accountStatus:async()=>({ready:true,status:'active',session_valid:true,has_access:true,can_manage:false}),accountAction:async(action,data)=>{commands.push({op:action,data});return {session:{access_token:'fixture-token',refresh_token:'fixture-refresh'},message:'Contraseña actualizada.'};},rows:async(t,f)=>structuredClone((data[t]||[]).filter(r=>!f||r.facility_id===f.facility_id)),command:async(op,d)=>{commands.push({op,data:d});if(op==='country'){const c={...d,id:'new'};data.countries.push(c);return c;}return{};},exportFiles:async(e,f)=>commands.push({op:'export',evaluation:e,facility:f}),client:{auth:{setSession:async session=>{commands.push({op:'set_session',data:session});return{error:null}},onAuthStateChange:()=>({data:{subscription:{}}}),resetPasswordForEmail:async()=>{commands.push({op:'recover'});return{};}},channel:()=>({on(){return this},subscribe(){return this}})}};
+ let state,mounted,commands=[],focusEvents=[];
+ const P={ready:Promise.resolve({enabled:true}),session:async()=>({user:{id:'owner'}}),pendingExport:async()=>null,accountStatus:async()=>({ready:true,status:'active',session_valid:true,has_access:true,can_manage:false}),accountAction:async(action,request)=>{commands.push({op:action,data:request});if(action==='set_role'){data.team_members=(data.team_members||[]).filter(m=>m.user_id!==request.user_id||m.team_id!==request.team_id);if(request.role!=='remove')data.team_members.push({user_id:request.user_id,team_id:request.team_id,role:request.role});}return {session:{access_token:'fixture-token',refresh_token:'fixture-refresh'},message:'Contraseña actualizada.'};},rows:async(t,f)=>structuredClone((data[t]||[]).filter(r=>!f||r.facility_id===f.facility_id)),command:async(op,d)=>{commands.push({op,data:d});if(op==='country'){const c={...d,id:'new'};data.countries.push(c);return c;}return{};},exportFiles:async(e,f)=>commands.push({op:'export',evaluation:e,facility:f}),client:{auth:{setSession:async session=>{commands.push({op:'set_session',data:session});return{error:null}},onAuthStateChange:()=>({data:{subscription:{}}}),resetPasswordForEmail:async()=>{commands.push({op:'recover'});return{};}},channel:()=>({on(){return this},subscribe(){return this}})}};
  const context=vm.createContext({console,navigator:{clipboard},URLSearchParams,location:{search:'',hash:'',origin:'https://example.invalid',pathname:'/plataforma.html'},history:{replaceState(){}},sessionStorage:{getItem(){return null},removeItem(){}},indexedDB:{},WashStorage:{createStore:()=>({read:async()=>null,write:async()=>{}})},WashPlatform:P,WashPlatformModel:{clone:structuredClone,accountUsername:require('../js/platform-model.js').accountUsername},INDICATORS_DATA:[{id:'A_1'}],WashCore:{},crypto,setInterval(){},setTimeout,clearTimeout});
  vm.runInContext(fs.readFileSync('vendor/vue.global.js','utf8'),context);
- context.document={getElementById(){return{focus(){}}}};
+ context.document={getElementById(id){return{focus(){focusEvents.push('focus:'+id)},scrollIntoView(){focusEvents.push('scroll:'+id)}}}};
  context.Vue={...context.Vue,createApp:c=>{state=c.setup();return{mount(){}}},onMounted:fn=>mounted=fn};
  vm.runInContext(fs.readFileSync('js/platform-portal.js','utf8'),context);
- return{get state(){return state},start:()=>mounted(),tick:()=>context.Vue.nextTick(),commands,data};
+ return{get state(){return state},start:()=>mounted(),tick:()=>context.Vue.nextTick(),commands,data,focusEvents};
 }
 test('portal selecciona el país recién creado y confirma la operación',async()=>{
  const app=portal();await app.start();assert.equal(app.state.countryId.value,'a');
@@ -64,18 +64,24 @@ test('crear evaluación no requiere ni envía un nombre manual',async()=>{
  const command=app.commands.find(c=>c.op==='evaluation');assert.ok(command);assert.equal(command.data.kind,'initial');assert.equal(Object.hasOwn(command.data,'name'),false);assert.equal(app.state.error.value,'');
 });
 
-test('administrador se asigna coordinador solo en equipos del país que administra',async()=>{
- const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];await app.start();
- await app.state.joinAsCoordinator({id:'ta',country_id:'a',name:'Equipo A'});
- const call=app.commands.find(c=>c.op==='set_role');assert.deepEqual(JSON.parse(JSON.stringify(call.data)),{user_id:'owner',scope:'team',team_id:'ta',role:'coordinator'});assert.match(app.state.message.value,/Conserva su rol/);
- const before=app.commands.length;await app.state.joinAsCoordinator({id:'foreign',country_id:'b'});assert.equal(app.commands.length,before);assert.match(app.state.error.value,/permiso/);
- app.data.country_members=[];await app.state.refresh();await app.state.joinAsCoordinator({id:'ta',country_id:'a'});assert.equal(app.commands.length,before);
+test('administrador cambia su participación por equipo sin cruzar países ni admitir roles retirados',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];await app.start();const team={id:'ta',country_id:'a',name:'Equipo A'},control={value:'coordinator'};
+ await app.state.setMyParticipation(team,{target:control});assert.equal(app.state.myParticipation('ta'),'coordinator');assert.equal(control.value,'coordinator');assert.match(app.state.message.value,/Conserva su rol/);
+ control.value='evaluator';await app.state.setMyParticipation(team,{target:control});assert.equal(app.state.myParticipation('ta'),'evaluator');
+ control.value='';await app.state.setMyParticipation(team,{target:control});assert.equal(app.commands.at(-1).data.role,'remove');assert.equal(app.state.myParticipation('ta'),'');
+ const before=app.commands.length;await app.state.setMyParticipation({id:'foreign',country_id:'b'},{target:{value:'coordinator'}});assert.equal(app.commands.length,before);assert.match(app.state.error.value,/permiso/);
+ control.value='reader';await app.state.setMyParticipation(team,{target:control});assert.equal(app.commands.length,before);assert.equal(control.value,'');
+ app.data.country_members=[];await app.state.refresh();await app.state.setMyParticipation(team,{target:{value:'coordinator'}});assert.equal(app.commands.length,before);
+});
+test('Administrar integrantes abre Usuarios desde su inicio y preselecciona el equipo',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];await app.start();app.state.view.value='organization';
+ await app.state.manageTeamMembers({id:'ta',country_id:'a'});assert.equal(app.state.view.value,'users');assert.equal(app.state.accountForm.value.team_id,'ta');assert.ok(app.focusEvents.includes('scroll:users-section'));assert.ok(app.focusEvents.includes('focus:users-section'));
 });
 
 test('cambiar contraseña desde Mi cuenta valida confirmación, renueva sesión y limpia el formulario',async()=>{
- const app=portal();await app.start();let closed=false;
- await app.state.openPasswordChange({currentTarget:{closest:()=>({removeAttribute(){closed=true}})}});assert.equal(closed,true);assert.equal(app.state.passwordChangeOpen.value,true);
- app.state.newPassword.value='Nueva-prueba-456!';app.state.confirmPassword.value='Distinta-prueba-123!';await app.state.changePassword();assert.match(app.state.error.value,/no coinciden/);assert.equal(app.commands.length,0);
+ const app=portal();await app.start();let closed=false,modalOpened=0,modalClosed=0;app.state.passwordDialog.value={showModal(){modalOpened++},close(){modalClosed++}};
+ await app.state.openPasswordChange({currentTarget:{closest:()=>({removeAttribute(){closed=true}})}});assert.equal(closed,true);assert.equal(app.state.passwordChangeOpen.value,true);assert.equal(modalOpened,1);assert.ok(!app.focusEvents.includes('scroll:password-change-panel'));
+ app.state.newPassword.value='Nueva-prueba-456!';app.state.confirmPassword.value='Distinta-prueba-123!';await app.state.changePassword();assert.match(app.state.passwordError.value,/no coinciden/);assert.equal(app.commands.length,0);
  app.state.confirmPassword.value=app.state.newPassword.value;await app.state.changePassword();const call=app.commands.find(c=>c.op==='complete_password');assert.equal(call.data.new_password,'Nueva-prueba-456!');assert.ok(app.commands.some(c=>c.op==='set_session'));assert.equal(app.state.passwordChangeOpen.value,false);assert.equal(app.state.newPassword.value,'');assert.equal(app.state.confirmPassword.value,'');
- await app.state.openPasswordChange();app.state.newPassword.value='No-enviar-123!';app.state.cancelPasswordChange();assert.equal(app.state.newPassword.value,'');assert.equal(app.state.passwordChangeOpen.value,false);assert.equal(app.commands.filter(c=>c.op==='complete_password').length,1);
+ await app.state.openPasswordChange();app.state.newPassword.value='No-enviar-123!';app.state.cancelPasswordChange();assert.equal(app.state.newPassword.value,'');assert.equal(app.state.passwordChangeOpen.value,false);assert.equal(app.commands.filter(c=>c.op==='complete_password').length,1);assert.equal(modalClosed,2);
 });

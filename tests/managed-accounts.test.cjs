@@ -37,14 +37,15 @@ test('cuentas administradas: autoridad, sesiones, altas y cambios de permisos',a
  await t.test('directorio limitado al ámbito del administrador y credenciales compartidas protegidas',async()=>{
   const list=await service('list','admin');assert.ok(list.some(u=>u.user_id===users.editor));assert.ok(!list.some(u=>u.user_id===users.foreign));
   await assert.rejects(service('reset_begin','admin',{user_id:owner}),/FORBIDDEN/);
-  await service('set_role','owner',{user_id:users.editor,scope:'team',team_id:foreignTeam.id,role:'reader'});
+  await service('set_role','owner',{user_id:users.editor,scope:'team',team_id:foreignTeam.id,role:'evaluator'});
   await assert.rejects(service('reset_begin','admin',{user_id:users.editor}),/SHARED_ACCOUNT_OWNER_REQUIRED/);
   await service('set_role','owner',{user_id:users.editor,scope:'team',team_id:foreignTeam.id,role:'remove'});
  });
  await t.test('cambios de rol actualizan evaluaciones abiertas y protegen al último coordinador',async()=>{
-  await service('set_role','admin',{user_id:users.editor,scope:'team',team_id:team.id,role:'reader'});
-  const p=(await as('coordinator','select * from wash_participants where user_id=$1',[users.editor])).rows[0];assert.equal(p.role,'reader');
-  await assert.rejects(command('editor','save_record',{evaluation_id:evaluation.id,kind:'indicator',record_key:'A_1a',data:{score:1}}),/FORBIDDEN/);
+  await service('set_role','admin',{user_id:users.editor,scope:'team',team_id:team.id,role:'coordinator'});
+  await service('set_role','admin',{user_id:users.editor,scope:'team',team_id:team.id,role:'evaluator'});
+  const p=(await as('coordinator','select * from wash_participants where user_id=$1',[users.editor])).rows[0];assert.equal(p.role,'evaluator');
+  await assert.rejects(command('editor','evaluation_status',{evaluation_id:evaluation.id,version:1,status:'review'}),/FORBIDDEN/);
   await assert.rejects(service('set_role','admin',{user_id:users.coordinator,scope:'team',team_id:team.id,role:'remove'}),/LAST_COORDINATOR/);
   await assert.rejects(service('set_role','owner',{user_id:users.admin,scope:'country',country_id:country.id,role:'remove'}),/LAST_COUNTRY_ADMIN/);
  });
@@ -63,8 +64,8 @@ test('cuentas administradas: autoridad, sesiones, altas y cambios de permisos',a
   const reserved=await service('reserve','admin',request);assert.equal(reserved.complete,false);
   await db.exec('reset role');const id=crypto.randomUUID();await db.query('insert into auth.users values($1,$2,null,$3)',[id,request.email,JSON.stringify({wash_managed:true,account_operation:request.request_id})]);
   await service('provision','admin',{request_id:request.request_id,user_id:id});assert.equal((await service('reserve','admin',request)).complete,true);
-  await assert.rejects(service('reserve','admin',{...request,role:'reader'}),/OPERATION_REUSED/);
-  await db.exec('reset role');const profile=(await db.query('select * from wash_accounts where user_id=$1',[id])).rows[0];assert.equal(profile.username,'nuevo-peru');assert.equal(profile.must_change_password,true);
+  await assert.rejects(service('reserve','admin',{...request,name:'Otro nombre'}),/OPERATION_REUSED/);
+  await db.exec('reset role');const profile=(await db.query('select * from wash_accounts where user_id=$1',[id])).rows[0];assert.equal(profile.username,'evaluador-nuevo');assert.equal(profile.must_change_password,true);
   await assert.rejects(db.query('insert into auth.users(id,email) values($1,$2)',[crypto.randomUUID(),'public@example.invalid']),/REGISTRATION_CLOSED/);
  });
  await t.test('solo el propietario renombra usuarios sin cambiar su identidad ni asignaciones',async()=>{
@@ -78,7 +79,7 @@ test('cuentas administradas: autoridad, sesiones, altas y cambios de permisos',a
   const review=await command('coordinator','evaluation_status',{evaluation_id:evaluation.id,version:1,status:'review'});
   const validated=await command('coordinator','evaluation_status',{evaluation_id:evaluation.id,version:review.version,status:'validated'});
   await service('set_role','admin',{user_id:users.second,scope:'team',team_id:team.id,role:'coordinator'});
-  await service('set_role','admin',{user_id:users.coordinator,scope:'team',team_id:team.id,role:'reader'});
+  await service('set_role','admin',{user_id:users.coordinator,scope:'team',team_id:team.id,role:'evaluator'});
   await assert.rejects(command('coordinator','evaluation_status',{evaluation_id:evaluation.id,version:validated.version,status:'editing',reason:'Intento tras degradación'}),/FORBIDDEN/);
   const snapshot=(await as('owner',"select data from wash_snapshots where evaluation_id=$1 and purpose='validation'",[evaluation.id])).rows[0].data;
   assert.equal(snapshot.participants.find(p=>p.user_id===users.coordinator).role,'coordinator');

@@ -10,15 +10,17 @@ La cuenta propietaria existente conserva correo y contraseña y recibe el usuari
 
 1. Abrir `plataforma.html` e ingresar.
 2. Seleccionar país y entrar a **Usuarios y permisos**.
-3. Completar nombre, correo y usuario; el botón **Generar usuario** propone uno editable.
-4. Seleccionar ámbito País y rol Administrador del país.
+3. Completar nombre completo y correo.
+4. Seleccionar el rol Administrador del país y el país. No requiere un equipo. El usuario se genera automáticamente al final, por ejemplo `admin-peru`.
 5. Crear la cuenta y copiar la contraseña temporal mostrada en pantalla. Comunicar las credenciales personalmente por un medio privado. No se envían contraseñas por correo.
 
-Para crear integrantes directamente, seleccionar el ámbito Equipo y su rol.
+Para crear integrantes, completar nombre y correo, elegir Coordinador responsable o Evaluador, seleccionar país y equipo, y revisar el usuario generado al final. Ejemplos: `coordinador-maria-nunez` y `evaluador-luis-casusol`. Si hay coincidencias, el servidor añade un número (`-2`, `-3`, etc.). El nombre de usuario no se escribe manualmente en el alta. Las cuentas existentes conservan su usuario al recibir otro acceso.
+
+El rol Lector se retiró de formularios y operaciones administrativas. Las asignaciones antiguas de lectura se revocan sin transformarlas en permisos de edición. Los registros históricos se conservan.
 
 ### Administrador nacional
 
-Puede registrar coordinadores, evaluadores y lectores para los equipos de sus países. No puede nombrar administradores nacionales ni modificar accesos de otros países. El directorio solo muestra las personas y asignaciones de su ámbito.
+Puede registrar coordinadores y evaluadores para los equipos de sus países. No puede nombrar administradores nacionales ni modificar accesos de otros países. El directorio solo muestra las personas y asignaciones de su ámbito.
 
 ### Primer ingreso
 
@@ -47,7 +49,7 @@ Restablecer una contraseña obliga a cambiarla y bloquea las sesiones anteriores
 
 Un administrador nacional solo puede restablecer cuentas de integrantes cuyo alcance esté íntegramente bajo su administración y que no sean propietarios ni administradores nacionales. Las cuentas compartidas fuera de su ámbito requieren al propietario.
 
-El propietario dispone de **Eliminar cuenta** para administradores, coordinadores, evaluadores y lectores. Retira todas sus asignaciones, desactiva sus participaciones vigentes e invalida sus sesiones. Puede hacerlo incluso si era el último administrador o coordinador: el propietario conserva el control para designar al reemplazo. No puede eliminar su propia cuenta ni otra cuenta propietaria.
+El propietario dispone de **Eliminar cuenta** para administradores, coordinadores y evaluadores. Retira todas sus asignaciones, desactiva sus participaciones vigentes e invalida sus sesiones. Puede hacerlo incluso si era el último administrador o coordinador: el propietario conserva el control para designar al reemplazo. No puede eliminar su propia cuenta ni otra cuenta propietaria.
 
 La cuenta desaparece del directorio habitual. **Ver cuentas eliminadas** permite **Restaurar cuenta sin permisos**. Después de restaurar, generar otra contraseña temporal y asignar expresamente los accesos necesarios. La restauración no devuelve las sesiones ni permisos anteriores.
 
@@ -55,7 +57,7 @@ La eliminación es recuperable; conserva la identidad referenciada por evaluacio
 
 ## Infraestructura
 
-- Migraciones: `supabase/migrations/20261022235838_managed_accounts.sql` y `supabase/migrations/20261023010837_managed_account_lifecycle.sql`.
+- Migraciones: `supabase/migrations/20261022235838_managed_accounts.sql`, `supabase/migrations/20261023010837_managed_account_lifecycle.sql` y `supabase/migrations/20261023012422_remove_reader_role.sql`.
 - Edge Function: `supabase/functions/wash-accounts/index.ts` y `handler.mjs`.
 - Publicar como `wash-accounts`, con `verify_jwt=false`: el ingreso y recuperación son públicos; todas las operaciones administrativas verifican el JWT con Auth y el estado de la sesión en SQL.
 - La función usa las variables internas `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. No copiar la clave administrativa a Vercel ni al navegador.

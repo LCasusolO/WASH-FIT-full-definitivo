@@ -157,7 +157,7 @@ Desde **País y equipos**, el propietario:
 El destinatario crea y verifica su cuenta, abre el enlace y pulsa Aceptar.
 La invitación dura siete días, requiere el mismo correo y solo se utiliza una vez.
 El administrador crea establecimientos y equipos; después invita al coordinador
-con rol Coordinador responsable y a los integrantes como Evaluador o Lector.
+con rol Coordinador responsable y a los integrantes como Evaluador.
 
 Para trabajar tú mismo como coordinador, puedes invitar tu propia cuenta al equipo
 y aceptar la invitación. No necesitas crear otra cuenta ni compartir contraseñas.
@@ -240,8 +240,7 @@ Retirar a alguien del equipo revoca sus accesos de evaluación, conservando nomb
 y autoría histórica. Debe quedar un coordinador en el equipo y en cada evaluación
 activa. Primero asignar al reemplazo y luego retirar al anterior.
 
-Los lectores no pueden editar aunque llamen directamente a la API. Los
-administradores nacionales no editan respuestas si no participan también en el
+El rol Lector se retiró. Los administradores nacionales no editan respuestas si no participan también en el
 equipo evaluador. Toda elevación de permisos vuelve a comprobarse en PostgreSQL.
 
 ## 10. Importar información anterior

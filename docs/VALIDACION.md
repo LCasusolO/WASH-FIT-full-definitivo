@@ -102,3 +102,12 @@ corrección adicional.
 ## Cuentas administradas
 
 121 pruebas aprobadas, build correcto y plantilla Vue compilada. El flujo de alta, confirmación simulada, cambio obligatorio e ingreso por usuario se comprobó en navegador contra el mismo SQL y handler con Auth ficticio. Las pruebas incluyen alta de administrador y evaluador, aislamiento nacional, reintentos, restablecimiento, suspensión, sesiones anteriores y pérdida de permisos de coordinador sin modificar snapshots. El registro público se desactivó en Supabase y su API devolvió 422 para un intento de alta. La infraestructura conserva las dos cuentas existentes. La confirmación SMTP de nuevas personas se completará cuando sus destinatarios utilicen el aplicativo; no se crearon cuentas de prueba en producción.
+
+## Alta por rol — 23 de octubre de 2026
+
+- Suite completa: **126 pruebas aprobadas**, sin omisiones, y build correcto.
+- Formulario: nombre completo, correo, rol, país/equipo y usuario automático al final.
+- Generación en servidor con prefijos por rol, eliminación de tildes, sufijos únicos y reintentos idempotentes.
+- Lector retirado de API y restricciones de asignaciones vigentes. Sin conversión automática a permisos de edición.
+- Confirmación de correo, contraseña obligatoria, recuperación sin registro y eliminación/restauración siguen verificadas.
+- Generación de usuario comprobada en Supabase con transacción revertida y formulario revisado en navegador QA.

@@ -282,10 +282,7 @@
   }
   function hasAssessmentScore(indicator) { return [0, 1, 2].includes(indicator.score); }
   function hasAssessmentExplanation(indicator) {
-    const reason = String(indicator.notes || '').trim()
-      .replace(/^(?:INDICADOR\s+)?NO\s+(?:SE\s+)?APLICA\b[\s:;,.()—-]*/i, '')
-      .replace(/^XQ\b[\s:;,.()—-]*/i, '');
-    return /\p{L}/u.test(reason);
+    return String(indicator.notes || '').replace(/[•\s]/gu, '').length > 0;
   }
   function isNotApplicable(indicator) {
     return !hasAssessmentScore(indicator) && indicator.assessmentStatus === 'not_applicable' && hasAssessmentExplanation(indicator);

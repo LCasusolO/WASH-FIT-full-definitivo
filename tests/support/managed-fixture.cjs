@@ -36,6 +36,7 @@ const {createRuntime}=require('./managed-runtime.cjs');
   await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set username='unconfirmed-qa',status='active',must_change_password=false where user_id=$1",[person.id]);});
  }
  if(process.env.WASH_QA_COMPLETE==='1'&&qaEvaluation)await r.queued(()=>require('./complete-fixture.cjs').fill(r.db,qaEvaluation));
+ if(process.env.WASH_QA_MISSING_POPULATION==='1'&&qaEvaluation)await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_records set data=data-'populationServed' where evaluation_id=$1 and kind='general'",[qaEvaluation]);});
  const accounts=require('../../api/accounts').createHandler({env:{WASH_MULTIUSER:'true',WASH_APP_ORIGIN:origin,SUPABASE_URL:origin,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture'},request:(url,opts)=>r.handler(new Request(url,opts))});
  async function handle(req,res){
   const url=new URL(req.url,origin);res.setHeader('Cache-Control','no-store');res.status=n=>{res.statusCode=n;return res;};res.json=x=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(x));};

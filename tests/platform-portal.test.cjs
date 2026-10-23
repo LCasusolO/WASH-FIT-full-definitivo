@@ -130,8 +130,8 @@ test('confirmación cambia a reenvío tras éxito y vuelve al estado inicial par
 });
 
  test('comprobación de pendientes muestra enlaces y evita completar hasta recibir un resultado completo',async()=>{
- const app=portal();await app.start();const component=app.components.CompletionSummary,{compile}=require('@vue/compiler-dom');new Function('Vue',compile(component.template).code);
+ const app=portal();await app.start();const component=app.components.CompletionSummary,{compile}=require('@vue/compiler-dom');new Function('Vue',compile(component.template).code);assert.equal(component.methods.stepPercent({done:7,total:9,complete:false}),78);assert.equal(component.methods.stepPercent({done:999,total:1000,complete:false}),99);assert.equal(component.methods.stepPercent({done:0,total:0,complete:true}),100);assert.ok(component.template.includes('Ver campos pendientes'));
  const url=component.methods.link.call({evaluation:{id:'ea'}},{view:'step4',module:'water',indicator:'A_1a',field:'cost'});assert.equal(new URL(url,'https://qa.invalid').searchParams.get('field'),'cost');assert.match(component.methods.link.call({evaluation:{id:'ea',facility_id:'fa'}},{field:'team'}),/plataforma.html\?view=organization&facility=fa/);
- app.data.progress={complete:false,issues:[{label:'Ciudad'}]};await app.state.checkAndComplete({id:'ea',version:1});assert.equal(app.commands.length,0);assert.match(app.state.message.value,/Faltan 1/);assert.equal(app.state.completionExpanded.value,'ea');
+ app.data.progress={complete:false,issues:[{label:'Ciudad'}]};await app.state.checkAndComplete({id:'ea',version:1});assert.equal(app.commands.length,0);assert.match(app.state.message.value,/Campos pendientes: 1/);assert.equal(app.state.completionExpanded.value,'ea');
  app.data.progress={complete:true,issues:[]};await app.state.checkAndComplete({id:'ea',version:1});assert.equal(app.commands[0].op,'complete_evaluation');assert.match(app.state.message.value,/histórica/);
  });

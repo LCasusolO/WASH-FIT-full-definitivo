@@ -9,11 +9,12 @@ function load() {
  for(const file of ['js/core.js','js/data/indicators.js','js/app.js']) vm.runInContext(fs.readFileSync(file,'utf8'),context);
  return app;
 }
-test('unanswered indicators accept a free explanation without a required prefix',()=>{
- for(const notes of ['', '   ', 'No aplica', 'INDICADOR NO APLICA', 'INDICADOR NO APLICA ...', 'INDICADOR NO APLICA 123', 'INDICADOR NO APLICA XQ', 'INDICADOR NO APLICA XQ ....', 'INDICADOR NO APLICA XQ 123']) assert.equal(Core.assessmentComplete({score:null,notes}),false,notes);
- for(const notes of ['No aplica porque no existe', 'Sin información disponible', 'No se pudo acceder al área', 'No hay hospitalización', 'no aplica (no hay data)', 'No se aplica: no existe este servicio', 'INDICADOR NO APLICA no se utiliza incinerador.', ' indicador no aplica: no existe este servicio ', 'INDICADOR NO APLICA XQ no se utiliza incinerador.', ' indicador no aplica xq: el servicio no existe ', 'INDICADOR   NO APLICA XQ no hay pacientes hospitalizados']) assert.equal(Core.assessmentComplete({score:null,notes}),true,notes);
+test('unanswered indicators accept any nonempty text using the server rule',()=>{
+ for(const notes of ['', '   ', '\t\n', '•', ' • \n • ']) assert.equal(Core.assessmentComplete({score:null,notes}),false,notes);
+ for(const notes of ['No aplica','INDICADOR NO APLICA','123','...','• No aplica','No hay hospitalización']) assert.equal(Core.assessmentComplete({score:null,notes}),true,notes);
  for(const score of [0,1,2]) assert.equal(Core.assessmentComplete({score,notes:''}),true);
 });
+
 test('domain tabs, next domain and leaving for later steps all reject incomplete current domain',()=>{
  const app=load();app.activeView.value='assessment';
  app.navigateNextModule();assert.equal(app.activeModuleTab.value,'water');assert.ok(app.assessmentPending.value.length>0);
@@ -24,7 +25,7 @@ test('domain tabs, next domain and leaving for later steps all reject incomplete
 test('mixed answers and justified non-applicable indicators allow advancing, without requiring hidden indicators',()=>{
  const app=load();app.activeView.value='assessment';
  const visible=app.getFilteredIndicatorsByModule.value;
- visible.forEach((ind,index)=>{ind.score=index%2?0:null;ind.notes=index%2?'':'INDICADOR NO APLICA XQ no se presta este servicio';});
+ visible.forEach((ind,index)=>{ind.score=index%2?0:null;ind.notes=index%2?'':'No aplica';});
  assert.equal(app.assessmentPending.value.length,0);
  const hidden=app.indicators.value.find(ind=>ind.code==='A_1b');assert.equal(hidden.score,null);
  app.navigateNextModule();assert.equal(app.activeModuleTab.value,'sanitation');assert.equal(app.assessmentAttempted.value,false);
@@ -73,7 +74,7 @@ test('justified exclusions change applicable totals and coverage, not the weight
  assert.equal(Core.assessmentResult(na).label,'No se aplica');
  assert.equal(Core.assessmentResult(missing).label,'Sin información');
  assert.equal(Core.assessmentResult(unclassified).label,'Sin puntaje, con justificación');
- na.notes='...';assert.equal(app.totalVisibleIndicators.value,initial);assert.equal(Core.assessmentComplete(na),false);
+ na.notes='   ';assert.equal(app.totalVisibleIndicators.value,initial);assert.equal(Core.assessmentComplete(na),false);
  na.notes='No hay hospitalización';app.setIndicatorScore(na,0);
  assert.equal(na.assessmentStatus,'');assert.equal(app.totalVisibleIndicators.value,initial);
  assert.equal(app.overallCompliance.value,50);
@@ -117,7 +118,7 @@ test('the assessment form uses only scores or free findings and has no extra cla
  assert.equal(app.assessmentPending.value.length,0);
  app.navigateNextModule();assert.equal(app.activeModuleTab.value,'sanitation');
  app.indicators.value.filter(ind=>ind.moduleId==='sanitation').forEach(ind=>{ind.score=2;});const current=app.getFilteredIndicatorsByModule.value;
- current[0].score=null;current[0].notes='...';app.navigateNextModule();assert.equal(app.activeModuleTab.value,'sanitation');
+ current[0].score=null;current[0].notes='   ';app.navigateNextModule();assert.equal(app.activeModuleTab.value,'sanitation');
  current[0].notes='No se pudo verificar durante la visita';app.navigateNextModule();assert.equal(app.activeModuleTab.value,'waste');
 });
 
@@ -134,6 +135,6 @@ test('Next always validates the current domain even when its destination is alre
  app.getFilteredIndicatorsByModule.value.forEach(ind=>{ind.score=2;});
  const unanswered=app.getFilteredIndicatorsByModule.value[0];unanswered.score=null;unanswered.notes='';
  app.navigateNextModule();assert.equal(app.activeModuleTab.value,'water');
- unanswered.notes='...';app.navigateNextModule();assert.equal(app.activeModuleTab.value,'water');
+ unanswered.notes='   ';app.navigateNextModule();assert.equal(app.activeModuleTab.value,'water');
  unanswered.notes='No se pudo verificar durante la visita';app.navigateNextModule();assert.equal(app.activeModuleTab.value,'sanitation');
 });

@@ -414,10 +414,11 @@
 
                   <div class="population-total space-y-2 lg:col-span-2 pt-4 border-t border-paho-grid">
                     <div class="min-h-[32px] flex items-center justify-center">
-                      <label class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Población Atendida Total</label>
+                      <label for="population-served" class="text-xs font-bold text-paho-gray-dark uppercase tracking-wider leading-tight text-center">Población Atendida Total (obligatoria)</label>
                     </div>
                     <input
                       type="text"
+                      id="population-served" data-completion-field="populationServed" aria-label="Población Atendida Total" aria-required="true" required inputmode="numeric"
                       :value="isPopFocused ? generalInfo.populationServed : formatThousands(generalInfo.populationServed)"
                       @input="e => updatePopulation(e.target.value)"
                       @focus="isPopFocused = true"

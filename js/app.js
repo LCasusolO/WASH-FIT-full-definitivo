@@ -149,7 +149,11 @@ createApp({
     const cloudActiveReadonly = computed(()=>cloudMode.value && (['step4','step5'].includes(activeView.value)?cloudPlanReadonly.value:cloudReadonly.value));
     const cloudStatus = ref('');
     const cloudConflicts = ref([]);
-    const resolveCloudConflict = (key, choice) => window.WashCloud.resolve(key, choice);
+    const cloudConflictReadonly = conflict => ['general','indicator'].includes(conflict.local.kind) ? cloudReadonly.value : cloudPlanReadonly.value;
+    const cloudConflictTitle = conflict => ({'general:location':'Revisar la ubicación del establecimiento','general:identification':'Revisar los datos del establecimiento','general:team':'Revisar el equipo implementador','general:population':'Revisar la población atendida','general:summary':'Revisar el resumen','general:photos':'Revisar las fotografías'})[conflict.key] || 'Revisar cambios de la evaluación';
+    const cloudConflictText = record => record.kind==='general' && record.record_key==='location' ? 'Latitud: '+(record.data.latitude ?? 'Sin registrar')+'\nLongitud: '+(record.data.longitude ?? 'Sin registrar') : JSON.stringify(record.data,null,2);
+    const downloadLocalConflictCopy = () => downloadDataset(snapshot());
+    const resolveCloudConflict = async (key, choice) => { try { await window.WashCloud.resolve(key, choice); } catch(error) { triggerToast(error.message, 'error'); } };
     const consultModule = module => { activeView.value = 'assessment'; activeModuleTab.value = module; };
     const openWorkspace = async (view = 'evaluations') => {
       if (await window.WashCloud.save()) window.WashCloud.workspace(view);
@@ -1139,7 +1143,7 @@ createApp({
     const facilityValuation = computed(() => answeredCount.value ? WashCore.valuation(answeredCount.value, totalVisibleIndicators.value, overallCompliance.value) : {label: 'Sin indicadores evaluados', colorClass: 'text-paho-gray-dark'});
 
     return {
-      cloudPlanReadonly,cloudActiveReadonly,cloudMode, cloudReadonly, cloudStatus, cloudConflicts, resolveCloudConflict, openWorkspace, consultModule,
+      cloudPlanReadonly,cloudActiveReadonly,cloudMode, cloudReadonly, cloudStatus, cloudConflicts, cloudConflictReadonly, cloudConflictTitle, cloudConflictText, downloadLocalConflictCopy, resolveCloudConflict, openWorkspace, consultModule,
       loadingDraft, saveState, savedAt, saveLabel, hasBackup, isOnline, offlineReady, photoBusy, isMobile,
       newEvaluation, restoreBackup, saveDraft, handlePhotoDrop, handlePhotoKeys,
       populationWarning, reportPreview, reportRendering, reportRadarSvg, reportIndicators, reportRisks, reportPlans,

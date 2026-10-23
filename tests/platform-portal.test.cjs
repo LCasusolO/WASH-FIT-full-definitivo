@@ -71,3 +71,8 @@ test('administrador se asigna coordinador solo en equipos del país que administ
  const before=app.commands.length;await app.state.joinAsCoordinator({id:'foreign',country_id:'b'});assert.equal(app.commands.length,before);assert.match(app.state.error.value,/permiso/);
  app.data.country_members=[];await app.state.refresh();await app.state.joinAsCoordinator({id:'ta',country_id:'a'});assert.equal(app.commands.length,before);
 });
+
+test('Mi cuenta reúne solo los países y equipos de la persona conectada, incluidos sus roles simultáneos',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'},{country_id:'b',user_id:'other',role:'admin'}];app.data.team_members=[{team_id:'ta',user_id:'owner',role:'coordinator'},{team_id:'foreign',user_id:'other',role:'evaluator'}];app.data.teams[0].name='Mi equipo';app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.start();
+ const access=app.state.myAccountAccess.value;assert.equal(access.length,2);assert.equal(access[0].role,'Administrador nacional');assert.equal(access[1].name,'Mi equipo');assert.equal(access[1].role,'Coordinador responsable');assert.ok(!access.some(a=>a.key.includes('foreign')||a.key==='country:b'));
+});

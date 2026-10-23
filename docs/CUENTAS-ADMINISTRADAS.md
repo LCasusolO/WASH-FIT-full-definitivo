@@ -104,3 +104,11 @@ El formulario ya no pide nombre ni periodo. La primera medición se crea como **
 El administrador puede mantener su rol nacional y participar como coordinador de un equipo específico de su país. En **País y equipos → Equipos del país**, pulse **Asignarme como coordinador** en la fila correspondiente. La tabla pasa a indicar **Coordinador responsable**. La operación utiliza el servicio administrativo existente, queda auditada y actualiza los participantes de las evaluaciones abiertas del equipo. No reemplaza a los otros coordinadores ni crea una cuenta nueva.
 
 El rol de administrador por sí solo permite consultar el mapa, desplazarse y usar el zoom, pero no modificar la ubicación. Para editar coordenadas, pulsar en el mapa, arrastrar el marcador o usar la geolocalización, la cuenta debe ser participante activo como coordinador o evaluador de esa evaluación y esta debe estar en borrador o edición. Las mediciones en revisión o validadas continúan en solo lectura. La caché offline conserva los permisos previamente comprobados; una caché antigua sin ese dato se abre en solo lectura hasta verificarlos en línea.
+
+### Mi cuenta y cambios locales anteriores
+
+El botón **Mi cuenta**, junto al rol de la barra superior, abre un desplegable con nombre, usuario, correo, estado, rol principal y los países y equipos propios. Puede cerrarse con el mismo botón o con Escape. El título de la plataforma ya no repite el usuario ni el correo.
+
+La evaluación ya no ofrece Nueva evaluación ni Recuperar respaldo anterior. Las nuevas mediciones se gestionan desde la plataforma. Al contraer el menú, se oculta el enlace de privacidad; continúa disponible al expandirlo.
+
+Si el navegador conserva coordenadas u otros datos distintos de la nube, el aviso permite descargar una copia JSON local antes de elegir la versión de la nube. En modo de consulta no se ofrece guardar la versión local. Al aceptar la nube se elimina también cualquier petición pendiente del mismo campo; no se vuelve a intentar enviar el dato descartado.

@@ -192,7 +192,7 @@
           <div class="text-[11px] text-paho-gray-medium text-center font-semibold whitespace-nowrap overflow-hidden transition-all duration-300">
             <span v-if="sidebarCollapsed">v2.0</span>
             <span v-else>WASH FIT v2.0 • OPS 2026</span>
-            <a class="sidebar-privacy" href="privacidad.html" target="_blank" rel="noopener" aria-label="Política de privacidad (se abre en otra pestaña)"><span v-if="sidebarCollapsed">Privacidad</span><span v-else>Política de privacidad</span></a>
+            <a v-if="!sidebarCollapsed" class="sidebar-privacy" href="privacidad.html" target="_blank" rel="noopener" aria-label="Política de privacidad (se abre en otra pestaña)">Política de privacidad</a>
           </div>
         </div>
       </aside>
@@ -201,10 +201,15 @@
       <main class="flex-1 flex flex-col min-h-screen bg-white print-page overflow-auto lg:border-l lg:border-paho-grid">
       <section v-if="cloudMode && cloudConflicts.length" class="cloud-sync-conflicts no-print" aria-label="Resolver conflictos de sincronización">
         <article v-for="conflict in cloudConflicts" :key="conflict.key" class="cloud-conflict">
-          <h2>Conflicto: {{ conflict.key }}</h2>
-          <div class="cloud-versions"><label>Su versión<textarea readonly :value="JSON.stringify(conflict.local.data,null,2)"></textarea></label><label>Versión de la nube<textarea readonly :value="JSON.stringify(conflict.remote.data,null,2)"></textarea></label></div>
-          <button @click="resolveCloudConflict(conflict.key,'remote')">Usar versión de la nube</button>
-          <button :disabled="cloudReadonly" @click="resolveCloudConflict(conflict.key,'local')">Guardar mi versión después de revisar</button>
+          <h2>{{ cloudConflictTitle(conflict) }}</h2>
+          <p>Hay cambios guardados en este navegador distintos de la versión de la nube.</p>
+          <p v-if="cloudConflictReadonly(conflict)">Está en modo de consulta. Use la versión de la nube para continuar; puede descargar primero una copia de los datos locales.</p>
+          <div class="cloud-versions"><label>Cambios de este navegador<textarea readonly :value="cloudConflictText(conflict.local)"></textarea></label><label>Versión de la nube<textarea readonly :value="cloudConflictText(conflict.remote)"></textarea></label></div>
+          <div class="cloud-conflict-actions">
+            <button @click="resolveCloudConflict(conflict.key,'remote')">Usar versión de la nube</button>
+            <button @click="downloadLocalConflictCopy">Descargar copia local</button>
+            <button v-if="!cloudConflictReadonly(conflict)" @click="resolveCloudConflict(conflict.key,'local')">Guardar mis cambios después de revisar</button>
+          </div>
         </article>
       </section>
 
@@ -218,10 +223,6 @@
             <span class="text-xs font-bold text-paho-gray-dark">Cumplimiento Global</span>
             <span class="text-sm font-extrabold text-paho-dark-blue">{{ answeredCount ? overallCompliance + '%' : 'Sin indicadores evaluados' }}</span>
             </div>
-              <div class="evaluation-actions">
-                <button @click="newEvaluation" title="Nueva evaluación" aria-label="Nueva evaluación"><i data-lucide="file-plus" class="w-6 h-6" aria-hidden="true"></i><span>Nueva evaluación</span></button>
-                <button :disabled="!hasBackup" @click="restoreBackup" :title="hasBackup ? 'Recuperar respaldo anterior' : 'No hay un respaldo anterior'" aria-label="Recuperar respaldo anterior"><i data-lucide="history" class="w-6 h-6" aria-hidden="true"></i><span>Recuperar respaldo anterior</span></button>
-              </div>
               <span class="draft-status" role="status" aria-live="polite" :class="saveState === 'error' ? 'text-red-700 font-bold' : ''">{{ saveLabel }}</span>
           </div>
         </div>

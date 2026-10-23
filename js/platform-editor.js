@@ -24,6 +24,13 @@
     return {rows:selected,logical:M.editorRecords(canonical(dataset),selected,context())};
   }
 
+  function protectReadonlyChanges(local,remote){
+    for(const mine of M.changed(remote,local)){
+      if(['general','indicator'].includes(mine.kind)?!readOnly:!planReadOnly)continue;
+      const key=mine.kind+':'+mine.record_key,remoteRecord=remote.find(r=>r.kind+':'+r.record_key===key);
+      if(remoteRecord&&!conflicts.some(c=>c.key===key))conflicts.push({key,local:mine,remote:remoteRecord});
+    }
+  }
   async function persist(){if(store)await store.write('sync',{base,rows,local:hooks.get(),conflicts,pending,currentOperation,editingTeam,readOnly,planReadOnly,evaluation});}
   async function apply(records){if(M.stable(logical(hooks.get()))===M.stable(records))return;await hooks.apply(canonical(M.dataset(records,INDICATORS_DATA,WashCore.defaults(),records.filter(r=>r.kind==='action'))));}
   async function refresh(){
@@ -33,7 +40,7 @@
       const remote=await readRemote();
       const merged=M.merge(base,logical(hooks.get()),remote.logical);
       rows=remote.rows;base=remote.logical;conflicts=M.retainConflicts(conflicts,merged,remote.logical);
-      if(readOnly||planReadOnly){for(const mine of M.changed(remote.logical,merged.records)){if(['general','indicator'].includes(mine.kind)?!readOnly:!planReadOnly)continue;const key=mine.kind+':'+mine.record_key;const remoteRecord=remote.logical.find(r=>r.kind+':'+r.record_key===key);if(remoteRecord&&!conflicts.some(c=>c.key===key))conflicts.push({key,local:mine,remote:remoteRecord});}}
+      protectReadonlyChanges(merged.records,remote.logical);
       hooks.conflicts(conflicts);await apply(merged.records);await persist();
       if(!conflicts.length&&M.changed(base,logical(hooks.get())).length)hooks.status('pending','Cambios locales pendientes de sincronizar.');
     }catch(e){if(e.message==='ACCESS_REVOKED')location.replace('/plataforma.html');else hooks.status('pending','No se pudo actualizar. Se conserva el trabajo local.');}
@@ -47,7 +54,7 @@
     const cached=await store.read('sync');
     try{
       const remote=await readRemote();rows=remote.rows;
-      if(cached){const merged=M.merge(cached.base,logical(cached.local),remote.logical);base=remote.logical;conflicts=M.retainConflicts(cached.conflicts||[],merged,remote.logical);pending=cached.pending;currentOperation=cached.currentOperation;await apply(merged.records);}
+      if(cached){const merged=M.merge(cached.base,logical(cached.local),remote.logical);base=remote.logical;conflicts=M.retainConflicts(cached.conflicts||[],merged,remote.logical);protectReadonlyChanges(merged.records,remote.logical);pending=cached.pending;currentOperation=cached.currentOperation;await apply(merged.records);}
       else {base=remote.logical;await apply(base);}
     }catch(e){
       if(e.message==='ACCESS_REVOKED'||navigator.onLine||!cached)throw e;
@@ -99,6 +106,9 @@
   }
   async function resolve(key,choice){
     const conflict=conflicts.find(c=>c.key===key);if(!conflict)return;
+    if(choice!=='remote'&&choice!=='local')throw Error('INVALID_CONFLICT_CHOICE');
+    if(choice==='local'&&(['general','indicator'].includes(conflict.local.kind)?readOnly:planReadOnly))throw Error('No tiene permiso para guardar estos cambios. Use la versión de la nube.');
+    if(choice==='remote'&&pending&&pending.kind+':'+pending.record_key===key){pending=null;currentOperation=null;}
     const current=logical(hooks.get());const result=current.map(r=>r.kind+':'+r.record_key===key?(choice==='remote'?conflict.remote:r):r);
     conflicts=conflicts.filter(c=>c.key!==key);hooks.conflicts(conflicts);await apply(result);await persist();if(!conflicts.length)await save();
   }

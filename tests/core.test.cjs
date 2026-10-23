@@ -97,13 +97,14 @@ test('assessment results have exactly the requested labels for the shared score'
   assert.equal(Core.assessmentResult(0).label,'No Cumple');
   assert.equal(Core.assessmentResult(null).label,'Sin evaluar');
 });
-test('template compiles, keeps save status without legacy draft actions and separates six report steps',()=>{
+test('template compiles, shows only read-only status beside compliance and separates six report steps',()=>{
   const html=fs.readFileSync('index.html','utf8');
   const app=html.slice(html.indexOf('<div id="app"'),html.indexOf('<!-- Scripts de datos'));
   require('@vue/compiler-dom').compile(app,{onError:error=>{throw error;}});
   const sidebar=html.slice(html.indexOf('<aside'),html.indexOf('</aside>'));
   const header=html.slice(html.indexOf('<header class="evaluation-header'),html.indexOf('</header>',html.indexOf('<header class="evaluation-header')));
-  assert.ok(header.includes('saveLabel'));
+  assert.ok(!header.includes('saveLabel'));
+  assert.match(header, /<span v-if="cloudActiveReadonly"[^>]*>Solo lectura<\/span>/);
   for(const action of ['newEvaluation','restoreBackup']) assert.ok(!html.includes('@click="'+action+'"'));
   assert.ok(!html.includes('Disponible sin conexión'));
   assert.ok(!html.includes('Observaciones para la clasificación JMP'));

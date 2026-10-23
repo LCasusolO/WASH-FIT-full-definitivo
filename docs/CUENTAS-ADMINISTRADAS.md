@@ -94,3 +94,7 @@ Los asesores no indican errores de RLS ni funciones administrativas públicas. S
 En **Evaluaciones**, el administrador ve una fila por establecimiento de los países que administra, aunque todavía no tenga mediciones. El estado distingue falta de evaluación, una medición abierta o un establecimiento evaluado. Desde esa fila puede asignar un equipo, continuar la medición abierta, iniciar la primera o reevaluar tras validar la anterior. Cada evaluación conserva sus opciones de exportación, estados, participantes y transferencia de equipo. El alta identifica el establecimiento como texto fijo; no requiere filtros de país ni establecimiento.
 
 En **Usuarios y permisos**, los formularios y el directorio aparecen antes del **Historial de administración**, que queda al final tanto para el administrador como para la administración global.
+
+### Identificación automática de las evaluaciones
+
+El formulario ya no pide nombre ni periodo. La primera medición se crea como **Evaluación inicial**. Las nuevas reevaluaciones reciben **Reeval-001**, **Reeval-002**, etc., en una secuencia independiente para cada establecimiento. El servidor asigna el código al guardar; el navegador no lo elige. Un reintento conserva el mismo código y no consume otro número. Los nombres y snapshots anteriores se conservan.

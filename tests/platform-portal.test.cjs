@@ -58,3 +58,8 @@ test('administrador ve establecimientos sin evaluar y asigna el equipo a la fila
  app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.state.refresh();app.state.facilityId.value='fa2';await app.tick();await app.state.startEvaluation('fa');assert.equal(app.state.facilityId.value,'fa');assert.equal(app.state.previousId.value,'e');assert.equal(app.state.evaluationTeam.value,'ta');
  app.data.evaluations.push({id:'open',facility_id:'fa',status:'review',created_at:'2026-10-23'});await app.state.refresh();assert.equal(app.state.facilityStatus('fa'),'En revisión');
 });
+
+test('crear evaluación no requiere ni envía un nombre manual',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.start();await app.state.startEvaluation('fa');await app.state.createEvaluation();
+ const command=app.commands.find(c=>c.op==='evaluation');assert.ok(command);assert.equal(command.data.kind,'initial');assert.equal(Object.hasOwn(command.data,'name'),false);assert.equal(app.state.error.value,'');
+});

@@ -128,3 +128,11 @@ corrección adicional.
 - Edición del plan, nueva revisión e historial comprobados tras recargar; la puntuación inicial permanece intacta.
 - Regresión cubierta: una sincronización durante el diálogo no deja la revisión en un objeto obsoleto.
 - Exportación con monitoreo independiente, RLS, snapshots validados intactos y reintento idempotente comprobados en SQL.
+
+## Diseño visual del portal — 23 de octubre de 2026
+
+- **133 pruebas aprobadas**, sin fallos ni omisiones, y build correcto.
+- Revisión en navegador de acceso, mostrar/ocultar contraseña, ayuda, evaluaciones, organización y usuarios con datos ficticios.
+- Revisión móvil a 390 px: selectores apilados y cuatro pestañas en dos columnas.
+- Copia de credenciales comprobada con contraseña temporal y denegación del portapapeles.
+- Se conservan los permisos, el registro cerrado y las tablas originales de los pasos 4 y 5.

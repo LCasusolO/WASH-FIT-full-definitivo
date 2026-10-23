@@ -91,3 +91,7 @@ Los pasos 4 y 5 conservan las tablas originales de `index.html`, sin paneles inc
 Los permisos de respuestas y de plan/monitoreo se verifican por separado. Los controles editables se deshabilitan individualmente: los botones de Instrucciones y navegación siguen disponibles en solo lectura. Los dominios se consultan desde sus pestañas originales.
 
 Las exportaciones nuevas incorporan un corte independiente del monitoreo, sin modificar snapshots de validación ni exportaciones anteriores. Los reintentos conservan el mismo corte. JSON y PDF incluyen las revisiones.
+
+### Identidad visual del portal
+
+El portal utiliza los recursos OPS existentes y estilos propios en `css/platform.css`. Mantiene las cuatro pestañas y los selectores país/establecimiento. El acceso incorpora ayuda y visibilidad de contraseña; las tarjetas muestran estados, roles e iniciales. Los iconos locales se renderizan desde nombres fijos con Vue. La copia de credenciales utiliza `temporary_password` y solo se ejecuta por acción del usuario; si el navegador la bloquea, conserva la tarjeta para copia manual.

@@ -172,3 +172,12 @@ corrección adicional.
 - Reevaluación preselecciona la última medición validada del establecimiento correcto; una medición abierta ofrece continuar en lugar de duplicarla.
 - Navegador QA: creación de establecimiento pendiente, asignación desde su fila e inicio de evaluación con contexto fijo, sin selector de establecimiento.
 - Orden de Usuarios comprobado: formulario, directorio y, al final, Historial de administración. Sin errores de consola.
+
+## Códigos automáticos de reevaluación — 23 de octubre de 2026
+
+- 144 pruebas aprobadas; build correcto.
+- Cliente crea sin campo ni validación de nombre/periodo. La evaluación inicial se identifica automáticamente.
+- SQL genera Reeval-001/002 por establecimiento, ignora nombres manuales enviados por clientes anteriores y conserva el código del mismo identificador de operación.
+- Reintento, creación activa duplicada, referencia modificada, independencia entre establecimientos y Reeval-1000 comprobados.
+- Navegador QA: creación de Reeval-001 sin nombre manual; sin errores de consola.
+- Migración aplicada y comprobada en producción: asignación en servidor, bloqueo transaccional por establecimiento y función anterior sin ejecución directa del cliente.

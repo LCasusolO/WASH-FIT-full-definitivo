@@ -68,8 +68,12 @@ test('usuario generado en servidor según rol, sufijos únicos y lector rechazad
  const reader=await r.call({...req,role:'reader',email:'reader@example.invalid',request_id:crypto.randomUUID()},owner);assert.equal(reader.status,400);
  const id=[...r.people.values()].find(p=>p.email===req.email).id;assert.equal((await r.call({action:'set_role',user_id:id,scope:'country',country_id:r.country.id,role:'reader'},owner)).body.code,'INVALID_ROLE');
  const team=await r.queued(async()=>{await r.db.exec('reset role');return(await r.db.query('insert into wash_teams(country_id,name) values($1,$2) returning id',[r.country.id,'Equipo'])).rows[0].id;});
+ const creator=await r.insert('creator@example.invalid','Fixture-admin-123',undefined,true);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=$1",[creator.id]);});
+ await r.service('set_role',r.owner.id,{user_id:creator.id,scope:'country',country_id:r.country.id,role:'admin'});
+ const creatorToken=(await r.signIn({email:creator.email,password:'Fixture-admin-123'})).data.session.access_token;
  for(const [role,prefix] of [['coordinator','coordinador'],['evaluator','evaluador']]){
-  const c=await r.call({...req,role,scope:'team',team_id:team,name:'María Núñez',email:role+'@example.invalid',request_id:crypto.randomUUID()},owner);assert.equal(c.status,200);assert.equal(c.body.username,prefix+'-maria-nunez');
+  const c=await r.call({...req,role,scope:'team',team_id:team,name:'María Núñez',email:role+'@example.invalid',request_id:crypto.randomUUID()},creatorToken);assert.equal(c.status,200);assert.equal(c.body.username,prefix+'-maria-nunez');
  }
  await r.queued(async()=>{await r.db.exec('reset role');await assert.rejects(r.db.query("insert into wash_team_members(team_id,user_id,name,role) values($1,$2,'No permitido','reader')",[team,id]),/wash_team_members_role_check/);});
 });

@@ -10,9 +10,12 @@ test('campos originales sobreviven guardado y recarga, separados de puntuación 
  const mine=structuredClone(rows),theirs=structuredClone(rows);mine.find(r=>r.kind==='action').data.action='Cambio A';theirs.find(r=>r.kind==='action').data.action='Cambio B';assert.equal(M.merge(rows,mine,theirs).conflicts[0].key,'action:editor:A_1a');
 });
 test('plan y revisión posteriores a validar: datos reales de SQL, snapshot intacto y exportación idempotente con monitoreo',async t=>{
- const r=await createRuntime();t.after(()=>r.close());const session=(await r.signIn({email:'owner@example.invalid',password:'Fixture-password-123'})).data.session.access_token;
+ const r=await createRuntime();t.after(()=>r.close());const admin=await r.insert('admin-original@example.invalid','Fixture-admin-123',undefined,true);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=$1",[admin.id]);});
+ await r.service('set_role',r.owner.id,{user_id:admin.id,scope:'country',country_id:r.country.id,role:'admin'});
+ const session=(await r.signIn({email:admin.email,password:'Fixture-admin-123'})).data.session.access_token;
  async function command(op,data,id=crypto.randomUUID()){return(await r.queryAs(session,'select wash_command($1,$2,$3) as data',[op,JSON.stringify(data),id])).rows[0].data;}
- const f=await command('facility',{country_id:r.country.id,name:'Centro'}),team=await command('team',{country_id:r.country.id,name:'Equipo'});await command('assign',{facility_id:f.id,team_id:team.id});await r.service('set_role',r.owner.id,{user_id:r.owner.id,scope:'team',team_id:team.id,role:'coordinator'});
+ const f=await command('facility',{country_id:r.country.id,name:'Centro'}),team=await command('team',{country_id:r.country.id,name:'Equipo'});await command('assign',{facility_id:f.id,team_id:team.id});await r.service('set_role',r.owner.id,{user_id:admin.id,scope:'team',team_id:team.id,role:'coordinator'});
  const ev=await command('evaluation',{facility_id:f.id,team_id:team.id,name:'Inicial',kind:'initial'});
  await command('save_record',{facility_id:f.id,evaluation_id:ev.id,kind:'general',record_key:'identification',data:{facilityName:'Centro'}});await command('save_record',{facility_id:f.id,evaluation_id:ev.id,kind:'indicator',record_key:'A_1a',data:{score:0}});
  const review=await command('evaluation_status',{evaluation_id:ev.id,status:'review',version:ev.version});await command('evaluation_status',{evaluation_id:ev.id,status:'validated',version:review.version});

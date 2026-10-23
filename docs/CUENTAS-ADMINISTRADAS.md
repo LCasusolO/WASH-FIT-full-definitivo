@@ -57,7 +57,7 @@ La eliminación es recuperable; conserva la identidad referenciada por evaluacio
 
 ## Infraestructura
 
-- Migraciones: `supabase/migrations/20261022235838_managed_accounts.sql` , `supabase/migrations/20261023010837_managed_account_lifecycle.sql` y `supabase/migrations/20261023012422_remove_reader_role.sql`.
+- Migraciones: `supabase/migrations/20261022235838_managed_accounts.sql`, `supabase/migrations/20261023010837_managed_account_lifecycle.sql` y `supabase/migrations/20261023012422_remove_reader_role.sql`.
 - Edge Function: `supabase/functions/wash-accounts/index.ts` y `handler.mjs`.
 - Publicar como `wash-accounts`, con `verify_jwt=false`: el ingreso y recuperación son públicos; todas las operaciones administrativas verifican el JWT con Auth y el estado de la sesión en SQL.
 - La función usa las variables internas `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. No copiar la clave administrativa a Vercel ni al navegador.

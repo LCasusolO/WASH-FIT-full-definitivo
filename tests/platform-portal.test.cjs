@@ -50,3 +50,11 @@ test('permisos de una fila se calculan por su país y no por el país selecciona
  assert.equal(app.state.evaluationFacilities.value.length,1);assert.equal(app.state.evaluationFacilities.value[0].id,'fa');
  app.state.accountForm.value={...app.state.accountForm.value,role:'evaluator',country_id:'a',team_id:'ta'};await app.tick();assert.equal(app.state.accountScopeReady.value,true);
 });
+
+test('administrador ve establecimientos sin evaluar y asigna el equipo a la fila elegida',async()=>{
+ const app=portal();app.data.owners=[];app.data.country_members=[{country_id:'a',user_id:'owner',role:'admin'}];app.data.facilities.push({id:'fa2',country_id:'a',name:'Segundo centro'});app.data.evaluations=[{id:'e',facility_id:'fa',status:'validated',created_at:'2026-10-22'}];await app.start();
+ assert.equal(app.state.adminFacilities.value.length,2);assert.equal(app.state.facilityStatus('fa'),'Evaluada');assert.equal(app.state.facilityStatus('fa2'),'Falta evaluar');
+ app.state.rowTeams.value.fa2='ta';await app.state.assignAt(app.data.facilities.find(f=>f.id==='fa2'));assert.equal(app.commands.at(-1).data.facility_id,'fa2');assert.equal(app.commands.at(-1).data.team_id,'ta');
+ app.data.assignments=[{team_id:'ta',facility_id:'fa'}];await app.state.refresh();app.state.facilityId.value='fa2';await app.tick();await app.state.startEvaluation('fa');assert.equal(app.state.facilityId.value,'fa');assert.equal(app.state.previousId.value,'e');assert.equal(app.state.evaluationTeam.value,'ta');
+ app.data.evaluations.push({id:'open',facility_id:'fa',status:'review',created_at:'2026-10-23'});await app.state.refresh();assert.equal(app.state.facilityStatus('fa'),'En revisión');
+});

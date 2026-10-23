@@ -97,5 +97,5 @@
   function workspace(view='evaluations'){location.href='/plataforma.html?facility='+(evaluation?.facility_id||'')+'&view='+view;}
   async function position(view,module){if(!active||!evaluation)return;const data={view,module};if(JSON.stringify(data)===lastView)return;lastView=JSON.stringify(data);await P.command('state',{evaluation_id:evaluationId,data}).catch(()=>{});}
   async function exportFiles(printing=false){if(!await save())throw Error('Sincronice los cambios y resuelva los conflictos antes de exportar.');return P.exportFiles(evaluationId,evaluation.facility_id,text=>hooks.status('pending',text),printing);}
-  root.WashCloud={ready,active,connect,save,resolve,refresh,workspace,position,exportFiles,get evaluation(){return evaluation;}};
+  root.WashCloud={workspaceUrl:view=>M.evaluationPanelUrl(evaluation,view),ready,active,connect,save,resolve,refresh,workspace,position,exportFiles,get evaluation(){return evaluation;}};
 })(window);

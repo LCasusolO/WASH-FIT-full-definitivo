@@ -1,5 +1,9 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.WashPlatformModel=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
+  function evaluationPanelUrl(evaluation,view){
+    if(!evaluation?.id||!evaluation.facility_id||!['plan','monitoring'].includes(view))return '';
+    return '/plataforma.html?'+new URLSearchParams({embedded:'1',evaluation:evaluation.id,facility:evaluation.facility_id,view}).toString();
+  }
   function accountUsername({role,name,countryName}){
     const label=role==='admin'?countryName:name;
     const slug=String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -45,5 +49,5 @@
     }
     return [...result.values()];
   }
-  return {accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone};
+  return {evaluationPanelUrl,accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone};
 });

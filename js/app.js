@@ -144,6 +144,9 @@ createApp({
     const indicators = ref(WashCore.clone(INDICATORS_DATA).map(ind => ({...ind, assessmentStatus: ''})));
     const loadingDraft = ref(true);
     const cloudMode = ref(false);
+    const cloudPanels = ref({step4:false,step5:false});
+    const cloudPanelUrl = view => window.WashCloud?.workspaceUrl(view)||'';
+    const resizeCloudPanel = event => {const frame=event.target;const resize=()=>{if(frame.contentDocument)frame.style.height=Math.max(650,frame.contentDocument.documentElement.scrollHeight)+'px';};resize();if(window.ResizeObserver&&frame.contentDocument?.body)new window.ResizeObserver(resize).observe(frame.contentDocument.body);};
     const cloudReadonly = ref(false);
     const cloudStatus = ref('');
     const cloudConflicts = ref([]);
@@ -835,9 +838,9 @@ createApp({
     };
 
     const switchView = (viewName) => {
-      if (cloudMode.value && ['step4', 'step5'].includes(viewName)) { void openWorkspace(viewName === 'step4' ? 'plan' : 'monitoring'); return; }
       if (activeView.value === 'assessment' && ['step3', 'step4', 'step5', 'dashboard'].includes(viewName) && !validateAssessmentDomain()) return;
       activeView.value = viewName;
+      if(cloudMode.value&&Object.hasOwn(cloudPanels.value,viewName))cloudPanels.value[viewName]=true;
       if (cloudMode.value) void window.WashCloud.position(viewName, activeModuleTab.value);
       mobileMenuOpen.value = false;
 
@@ -1104,7 +1107,7 @@ createApp({
             readonly: value => { cloudReadonly.value = value; },
             status: (state, text) => { saveState.value = state; cloudStatus.value = text; },
             conflicts: value => { cloudConflicts.value = value; },
-            position: value => { if (['instructions','general','assessment','step3','dashboard'].includes(value.view)) activeView.value = value.view; if (modulesList.some(m => m.id === value.module)) activeModuleTab.value = value.module; },
+            position: value => { if (['instructions','general','assessment','step3','step4','step5','dashboard'].includes(value.view)){activeView.value = value.view;if(Object.hasOwn(cloudPanels.value,value.view))cloudPanels.value[value.view]=true;} if (modulesList.some(m => m.id === value.module)) activeModuleTab.value = value.module; },
             clear: () => { generalInfo.value = WashCore.defaults(); indicators.value = []; }
           });
           if (window.WashCloud.active) { await window.WashCloud.save(); if (cloudReadonly.value) cloudStatus.value = 'Solo lectura: medición validada, en revisión o sin permiso de edición.'; if (activeView.value === 'general') initMap(); }
@@ -1136,7 +1139,7 @@ createApp({
     const facilityValuation = computed(() => answeredCount.value ? WashCore.valuation(answeredCount.value, totalVisibleIndicators.value, overallCompliance.value) : {label: 'Sin indicadores evaluados', colorClass: 'text-paho-gray-dark'});
 
     return {
-      cloudMode, cloudReadonly, cloudStatus, cloudConflicts, resolveCloudConflict, openWorkspace, consultModule,
+      cloudPanels,cloudPanelUrl,resizeCloudPanel,cloudMode, cloudReadonly, cloudStatus, cloudConflicts, resolveCloudConflict, openWorkspace, consultModule,
       loadingDraft, saveState, savedAt, saveLabel, hasBackup, isOnline, offlineReady, photoBusy, isMobile,
       newEvaluation, restoreBackup, saveDraft, handlePhotoDrop, handlePhotoKeys,
       populationWarning, reportPreview, reportRendering, reportRadarSvg, reportIndicators, reportRisks, reportPlans,

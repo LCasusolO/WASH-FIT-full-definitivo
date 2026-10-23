@@ -223,7 +223,7 @@
             <span class="text-xs font-bold text-paho-gray-dark">Cumplimiento Global</span>
             <span class="text-sm font-extrabold text-paho-dark-blue">{{ answeredCount ? overallCompliance + '%' : 'Sin indicadores evaluados' }}</span>
             </div>
-              <span class="draft-status" role="status" aria-live="polite" :class="saveState === 'error' ? 'text-red-700 font-bold' : ''">{{ saveLabel }}</span>
+              <span class="draft-status" :class="{'is-readonly': cloudMode && cloudReadonly && !cloudConflicts.length, 'text-red-700 font-bold': saveState === 'error'}" role="status" aria-live="polite">{{ saveLabel }}</span>
           </div>
         </div>
       </header>

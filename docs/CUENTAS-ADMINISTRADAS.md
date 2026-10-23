@@ -107,8 +107,14 @@ El rol de administrador por sí solo permite consultar el mapa, desplazarse y us
 
 ### Mi cuenta y cambios locales anteriores
 
-El botón **Mi cuenta**, junto al rol de la barra superior, abre un desplegable con nombre, usuario, correo, estado, rol principal y los países y equipos propios. Puede cerrarse con el mismo botón o con Escape. El título de la plataforma ya no repite el usuario ni el correo.
+El botón **Mi cuenta** abre un desplegable con nombre, usuario, correo, estado y rol principal. El rol solo aparece dentro del desplegable; países y equipos permanecen en sus secciones correspondientes. Puede cerrarse con el mismo botón o con Escape. Al final están **Cambiar contraseña** y, separado, **Cerrar sesión**. El encabezado ya no repite datos personales ni tiene otro botón de salida.
 
 La evaluación ya no ofrece Nueva evaluación ni Recuperar respaldo anterior. Las nuevas mediciones se gestionan desde la plataforma. Al contraer el menú, se oculta el enlace de privacidad; continúa disponible al expandirlo.
 
 Si el navegador conserva coordenadas u otros datos distintos de la nube, el aviso permite descargar una copia JSON local antes de elegir la versión de la nube. En modo de consulta no se ofrece guardar la versión local. Al aceptar la nube se elimina también cualquier petición pendiente del mismo campo; no se vuelve a intentar enviar el dato descartado.
+
+### Acceso, cambio de contraseña y estado de consulta
+
+La pantalla de acceso presenta únicamente el formulario de ingreso, recuperación y ayuda, sin el panel descriptivo de pasos. Desde **Mi cuenta → Cambiar contraseña** se abre un formulario con nueva contraseña y confirmación (12 a 128 caracteres). Cancelar limpia ambos campos sin enviar nada. Se reutiliza el servicio de cambio personal existente: conserva identidad y permisos y renueva la sesión. El cambio obligatorio de una contraseña temporal continúa siendo obligatorio y no ofrece cancelación.
+
+En la evaluación, el estado de consulta muestra **Solo lectura**. Los errores y conflictos de sincronización siguen mostrando sus avisos. El cumplimiento y el estado se distribuyen sin comprimir las etiquetas en móvil y escritorio.

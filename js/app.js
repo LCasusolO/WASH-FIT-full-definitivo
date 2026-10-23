@@ -233,7 +233,7 @@ createApp({
       } catch (error) { triggerToast(error.message, 'error'); }
     };
     const saveLabel = computed(() => {
-      if (cloudMode.value) return cloudStatus.value || 'Conectando con la nube…';
+      if (cloudMode.value) return cloudReadonly.value && !cloudConflicts.value.length && saveState.value !== 'error' ? 'Solo lectura' : cloudStatus.value || 'Conectando con la nube…';
       if (saveState.value === 'loading') return 'Recuperando…';
       if (saveState.value === 'error') return 'Error al guardar.';
       if (saveState.value !== 'saved') return 'Guardando…';
@@ -1114,7 +1114,7 @@ createApp({
             position: value => { if (['instructions','general','assessment','step3','step4','step5','dashboard'].includes(value.view)){activeView.value = value.view;} if (modulesList.some(m => m.id === value.module)) activeModuleTab.value = value.module; },
             clear: () => { generalInfo.value = WashCore.defaults(); indicators.value = []; }
           });
-          if (window.WashCloud.active) { await window.WashCloud.save(); if (cloudReadonly.value) cloudStatus.value = 'Solo lectura: medición validada, en revisión o sin permiso de edición.'; if (activeView.value === 'general') initMap(); }
+          if (window.WashCloud.active) { await window.WashCloud.save(); if (cloudReadonly.value) cloudStatus.value = 'Solo lectura'; if (activeView.value === 'general') initMap(); }
           return;
         }
         const draft = await store.read();

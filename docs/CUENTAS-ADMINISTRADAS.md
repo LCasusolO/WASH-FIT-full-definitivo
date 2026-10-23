@@ -97,11 +97,11 @@ En **Usuarios y permisos**, los formularios y el directorio aparecen antes del *
 
 ### Identificación automática de las evaluaciones
 
-El formulario ya no pide nombre ni periodo. La primera medición se crea como **Evaluación inicial**. Las nuevas reevaluaciones reciben **Reeval-001**, **Reeval-002**, etc., en una secuencia independiente para cada establecimiento. El servidor asigna el código al guardar; el navegador no lo elige. Un reintento conserva el mismo código y no consume otro número. Los nombres y snapshots anteriores se conservan.
+El formulario ya no pide nombre ni periodo. La primera medición se crea como **Evaluación inicial**. Las nuevas reevaluaciones reciben **Reevaluación 01**, **Reevaluación 02**, etc., en una secuencia independiente para cada establecimiento. El servidor asigna el código al guardar; el navegador no lo elige. Un reintento conserva el mismo código y no consume otro número. Los nombres y snapshots anteriores se conservan.
 
 ### Administrador y coordinador de un equipo
 
-El administrador puede mantener su rol nacional y participar como coordinador de un equipo específico de su país. En **País y equipos → Equipos del país**, pulse **Asignarme como coordinador** en la fila correspondiente. La tabla pasa a indicar **Coordinador responsable**. La operación utiliza el servicio administrativo existente, queda auditada y actualiza los participantes de las evaluaciones abiertas del equipo. No reemplaza a los otros coordinadores ni crea una cuenta nueva.
+El administrador puede mantener su rol nacional y participar como coordinador de un equipo específico de su país. En **País y equipos → Equipos del país**, elija **Coordinador**, **Evaluador** o **Sin participación** en el selector de la columna Mi participación. Cada equipo conserva una asignación independiente. El servidor impide dejar al equipo sin coordinador. La operación utiliza el servicio administrativo existente, queda auditada y actualiza los participantes de las evaluaciones abiertas del equipo. No reemplaza a los otros coordinadores ni crea una cuenta nueva.
 
 El rol de administrador por sí solo permite consultar el mapa, desplazarse y usar el zoom, pero no modificar la ubicación. Para editar coordenadas, pulsar en el mapa, arrastrar el marcador o usar la geolocalización, la cuenta debe ser participante activo como coordinador o evaluador de esa evaluación y esta debe estar en borrador o edición. Las mediciones en revisión o validadas continúan en solo lectura. La caché offline conserva los permisos previamente comprobados; una caché antigua sin ese dato se abre en solo lectura hasta verificarlos en línea.
 
@@ -115,6 +115,12 @@ Si el navegador conserva coordenadas u otros datos distintos de la nube, el avis
 
 ### Acceso, cambio de contraseña y estado de consulta
 
-La pantalla de acceso presenta únicamente el formulario de ingreso, recuperación y ayuda, sin el panel descriptivo de pasos. Desde **Mi cuenta → Cambiar contraseña** se abre un formulario con nueva contraseña y confirmación (12 a 128 caracteres). Cancelar limpia ambos campos sin enviar nada. Se reutiliza el servicio de cambio personal existente: conserva identidad y permisos y renueva la sesión. El cambio obligatorio de una contraseña temporal continúa siendo obligatorio y no ofrece cancelación.
+La pantalla de acceso presenta únicamente el formulario de ingreso, recuperación y ayuda, sin el panel descriptivo de pasos. Desde **Mi cuenta → Cambiar contraseña** se abre una ventana emergente con nueva contraseña y confirmación (12 a 128 caracteres). La plataforma conserva su posición detrás de la ventana; cancelar o Escape la cierran sin enviar datos. Cancelar limpia ambos campos sin enviar nada. Se reutiliza el servicio de cambio personal existente: conserva identidad y permisos y renueva la sesión. El cambio obligatorio de una contraseña temporal continúa siendo obligatorio y no ofrece cancelación.
 
 En la evaluación, el estado de consulta muestra **Solo lectura**. Los errores y conflictos de sincronización siguen mostrando sus avisos. El cumplimiento y el estado se distribuyen sin comprimir las etiquetas en móvil y escritorio.
+
+### Administración y navegación de integrantes
+
+La sección País y equipos del administrador ya no muestra la tarjeta ni el selector de país administrado; usa automáticamente el país asignado. **Administrar integrantes** abre Usuarios y permisos desde su inicio y deja seleccionado el equipo de la fila para crear o asignar cuentas.
+
+El formato nuevo de reevaluación continúa la numeración de nombres anteriores como Reeval-001. Las mediciones históricas y sus snapshots conservan su nombre; los reintentos de operaciones anteriores siguen devolviendo el resultado original.

@@ -206,3 +206,13 @@ corrección adicional.
 - Pruebas de contraseña: confirmación y longitud antes de enviar, cancelación sin envío, limpieza al terminar, renovación de sesión. Cuenta activa cambia clave mediante handler y SQL reales en QA; se conservan identidad y permisos y la sesión anterior deja de administrar.
 - Navegador QA: ingreso simple, menú en escritorio y móvil, apertura/cancelación del formulario sin introducir contraseñas nuevas en el navegador. No se modificaron credenciales reales.
 - Evaluación a 390 px con porcentaje y sin respuestas; a 320 px no hay desbordamiento de la barra (ancho y contenido 282 px). Estado Solo lectura, con avisos de error/conflicto preservados. Consola sin errores. Tamaño del navegador restaurado al terminar.
+
+## Ventana de contraseña, participación y nombres legibles — 23 de octubre de 2026
+
+- 155 pruebas aprobadas; build correcto.
+- Cambio personal abre un dialog nativo con foco retenido, fondo inactivo, cancelación/Escape y errores dentro de la ventana. El cambio obligatorio de contraseña temporal conserva su pantalla y no permite omitirlo.
+- Tarjeta País administrado retirada de la organización nacional. Administrar integrantes lleva al inicio de Usuarios y permisos y preselecciona su equipo; se limpia el aviso anterior para no cubrir el inicio.
+- Selector por equipo: Sin participación, Coordinador y Evaluador; permiso nacional comprobado de nuevo en servidor, auditoría y protección de último coordinador existentes. El control vuelve al valor guardado si una operación falla.
+- Nueva migración genera Reevaluación 01/02 por establecimiento, continúa numeración Reeval anterior, conserva reintentos y bloqueo transaccional y no trunca 1000/1001. Las mediciones históricas no se renombran.
+- Migración aplicada y comprobada en Supabase: formato legible, mínimo dos dígitos, compatibilidad anterior y bloqueo por establecimiento; ejecución anónima deshabilitada. Asesores sin avisos nuevos.
+- Navegador QA: ventana en escritorio y 390 px, Escape y consola sin errores; selección Coordinador → Evaluador, navegación de integrantes con inicio a 24 px y foco correcto; creación de Reevaluación 01. No se modificaron contraseñas ni asignaciones reales. Vista del navegador restaurada.

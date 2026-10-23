@@ -9,13 +9,14 @@ const labels={facilityName:'Establecimiento',countryCode:'País',district:'Ciuda
 function table(rows,headers){return '<table><thead><tr>'+headers.map(h=>'<th>'+escape(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(c=>'<td>'+escape(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';}
 function valueHtml(value){if(Array.isArray(value))return '<ul>'+value.map(v=>'<li>'+valueHtml(v)+'</li>').join('')+'</ul>';if(value&&typeof value==='object')return detail(value);return escape(value);}
 function detail(data){return Object.entries(data).filter(([k])=>!['photos','url','selectedS9Option','editor_fields','editor_indicator_id'].includes(k)).map(([k,v])=>'<div><strong>'+escape(labels[k]||k)+':</strong> '+valueHtml(v)+'</div>').join('');}
-function reportHtml({payload,dataset,facility,country,job}){
+async function reportHtml({payload,dataset,facility,country,job}){
   const evaluation=payload.evaluation;
-  let body='<h1>WASH FIT · '+escape(evaluation?'Evaluación integral':'Plan de mejora y monitoreo')+'</h1><p>'+escape(country.name)+' · '+escape(facility.name)+'</p><p>Fecha de corte: '+escape(job.created_at)+' · Exportación: '+escape(job.id)+'</p>';
-  if(evaluation){body+='<h2>'+escape(evaluation.name)+'</h2><p>Estado de la medición: '+escape(payload.validated_at?'Validada':evaluation.status)+'</p><h2>Equipo participante</h2>'+table((payload.participants||[]).map(p=>[p.name,p.role]),['Nombre','Función']);body+='<h2>Datos del establecimiento</h2>'+detail(Object.fromEntries(Object.entries(dataset.generalInfo).filter(([k])=>!['team','photos'].includes(k))));
-    const visible=dataset.indicators.filter(i=>Core.visibleIndicator(i,dataset.generalInfo,dataset.indicators));const applicable=visible.filter(i=>!Core.isNotApplicable(i));const answered=visible.filter(Core.hasAssessmentScore);const percent=answered.length?Math.round(answered.reduce((sum,i)=>sum+i.score,0)/(answered.length*2)*100):null;
-    body+='<p>Cobertura: '+answered.length+'/'+applicable.length+' indicadores aplicables. Cumplimiento de los respondidos: '+(percent===null?'Sin evaluar':percent+'%')+'.</p><h2>Medición de indicadores</h2>'+table(visible.map(i=>[i.id,i.title,i.assessmentStatus==='not_applicable'?'No aplicable':i.assessmentStatus==='no_information'?'Sin información':i.score??'Sin evaluar',i.notes,i.problemDesc,i.associatedRisks,i.severity??'',i.likelihood??'']),['ID','Indicador','Puntuación / estado','Observaciones','Problema','Riesgos','Gravedad','Probabilidad']);
+  if(evaluation){
+    const monitors=(payload.monitoring||[]).filter(m=>!m.data.editor_indicator_id);
+    const supplement=monitors.length?'<section class="report-step"><h2>Registros adicionales de monitoreo</h2>'+monitors.map(m=>'<article><h3>'+escape(m.data.title)+'</h3>'+detail(m.data)+(m.data.photos||[]).filter(p=>p.url).map(p=>'<figure><img src="'+escape(p.url)+'"><figcaption>'+escape(p.name)+'</figcaption></figure>').join('')+'</article>').join('')+'</section>':'';
+    return require('../server/original-report.cjs').render(dataset,{title:Core.fileBaseName({facilityName:facility.name,countryCode:country.code}),facility,country,payload,generatedAt:job.created_at,supplement});
   }
+  let body='<h1>WASH FIT · '+escape(evaluation?'Evaluación integral':'Plan de mejora y monitoreo')+'</h1><p>'+escape(country.name)+' · '+escape(facility.name)+'</p><p>Fecha de corte: '+escape(job.created_at)+' · Exportación: '+escape(job.id)+'</p>';
   body+='<h2>Plan de mejora a la fecha de corte</h2>'+(payload.plan||[]).map(a=>'<article><h3>'+escape(a.data.indicator_id)+'</h3>'+detail(a.data)+'</article>').join('');
   if(!evaluation||payload.monitoring?.length)body+='<h2>Paso 5 · Monitoreo, revisión, adaptación y mejora</h2>'+(evaluation?payload.monitoring||[]:payload.records||[]).filter(r=>r.kind==='monitor').map(m=>'<article><h3>'+escape(m.data.title)+'</h3><p>Estado: '+escape(m.status)+'</p>'+detail(m.data)+(m.data.editor_fields?.history?.length?'<h4>Historial de revisiones</h4>'+table(m.data.editor_fields.history.map(h=>[h.recordedAt,h.indicatorChange,h.responsible,h.correctiveMeasures,h.monitoringComments,h.nextReviewDate]),['Fecha','Cambio observado','Responsable','Medidas correctivas','Comentarios','Próxima revisión']):'')+(m.data.photos||[]).filter(p=>p.url).map(p=>'<figure><img src="'+escape(p.url)+'"><figcaption>'+escape(p.name)+'</figcaption></figure>').join('')+'</article>').join('');
   body+=(dataset?.generalInfo.photos||[]).filter(p=>p.url).map(p=>'<figure><img src="'+escape(p.url)+'"><figcaption>'+escape(p.name)+'</figcaption></figure>').join('');
@@ -47,9 +48,9 @@ function createHandler({env=process.env,request=fetch}={}){return async(req,res)
     let dataset=null;
     if(payload.evaluation){dataset=Core.normalizeDataset(Model.dataset([...payload.records,...payload.monitoring],catalog,Core.defaults(),payload.plan||[]),catalog);}
     const backup={format:'wash-fit-platform',schemaVersion:1,exportId:job.id,exportedAt:snapshot.created_at,facility,country,dataset,payload};
-    const html=reportHtml({payload,dataset,facility,country,job:{...job,created_at:snapshot.created_at}});
+    const html=await reportHtml({payload,dataset,facility,country,job:{...job,created_at:snapshot.created_at}});
     if(Buffer.byteLength(JSON.stringify(backup))+Buffer.byteLength(html)>3500000)return res.status(413).json({error:'El reporte supera el tamaño permitido. Reduzca las fotografías.'});
-    return res.status(200).json({dataset:backup,html});
+    return res.status(200).json({dataset:backup,html,fileBaseName:Core.fileBaseName({facilityName:facility.name,countryCode:country.code})});
   }catch(e){return res.status(e.status||502).json({error:e.status?e.message:'No se pudo preparar el reporte. Revise las evidencias y reintente.'});}
 };}
 module.exports=createHandler();module.exports.createHandler=createHandler;module.exports.reportHtml=reportHtml;

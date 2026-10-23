@@ -6,7 +6,7 @@
   "functions": {
     "api/platform-report.js": {
       "maxDuration": 60,
-      "includeFiles": "js/data/indicators.js"
+      "includeFiles": "{js/data/indicators.js,index.html,css/styles.css}"
     },
     "api/drive-archive.js": {
       "maxDuration": 60

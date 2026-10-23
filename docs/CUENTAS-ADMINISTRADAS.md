@@ -134,3 +134,11 @@ Para la administración global, la sección se llama **País y establecimientos*
 En Establecimientos y equipos, Transferir equipo responsable ofrece los otros equipos activos del mismo país que tienen coordinador, aunque todavía no estén asignados al establecimiento. La confirmación asigna el nuevo equipo al establecimiento y transfiere el acceso a la medición en una sola transacción. Si hay conflicto de versión o falta permiso, no queda una asignación parcial. El equipo actual se excluye de las opciones. Los participantes anteriores quedan retirados de esa evaluación; se conserva la autoría y las versiones históricas. Las asignaciones anteriores al establecimiento se mantienen, porque pueden seguir interviniendo en su plan y monitoreo.
 
 Al final de la organización, Integrantes de los equipos muestra equipo, integrante, rol, establecimientos y país. Incluye equipos sin integrantes. El propietario consulta todos; el administrador, los de su país; coordinadores y evaluadores, sus propios equipos. Los encabezados desplegables de cada medición ya no muestran una línea superior.
+
+### Vista del evaluador y reporte original
+
+Para una cuenta que solo participa como evaluador, Establecimientos y equipos muestra únicamente el directorio de sus equipos, integrantes, roles y establecimientos. La gestión de evaluaciones y participantes queda disponible en esta sección para los roles que la necesitan. En el ingreso, Enviar confirmación de correo queda centrado.
+
+La exportación multiusuario reutiliza la plantilla del reporte consolidado de index.html y sus estilos de impresión: datos generales, situación, riesgo, plan, monitoreo, resumen y radar. El HTML se construye con el snapshot autorizado y se convierte a PDF mediante Chromium; no usa el generador de PDF antiguo. Las coordenadas se conservan sin solicitar mapas externos al generar el archivo en servidor.
+
+PDF y JSON usan el nombre original, por ejemplo PER-Hospital_dos_mayo.pdf y PER-Hospital_dos_mayo.json, también al imprimir. Drive usa esos nombres visibles; distingue las exportaciones por su identificador interno, de modo que conservar el nombre no sobrescribe mediciones o exportaciones anteriores. Un reintento del mismo trabajo conserva su correspondencia.

@@ -71,7 +71,7 @@
       const job=await command('export',{facility_id:facilityId,...(evaluationId?{evaluation_id:evaluationId}:{}),...(snapshotId?{snapshot_id:snapshotId}:{})});
       const response=await request('/api/platform-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exportId:job.id})});
       const result=await response.json();if(!response.ok)throw Error(result.error||'No se pudo preparar el reporte.');
-      const base='WASH-FIT-'+(evaluationId?'evaluacion':'plan-monitoreo')+'-'+job.id;
+      const base=root.WashCore.fileBaseName({facilityName:result.dataset.facility.name,countryCode:result.dataset.country.code});
       const json=new Blob([JSON.stringify(result.dataset,null,2)],{type:'application/json'});
       function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
       if(printing)await root.WashChrome.print(result.html,base,popup);else download(json,base+'.json');

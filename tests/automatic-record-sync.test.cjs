@@ -71,4 +71,8 @@ test('guardado por campo con dos identidades: reconexión, carreras, vacíos, an
  const a=await command({...source,data:{...source.data,city:'Cusco'},field_changes:[{path:['city'],value:'Cusco'}]});
  const b=await command({...source,data:{...source.data,populationServed:200},field_changes:[{path:['populationServed'],value:200}]},evaluator);
  assert.equal(a.id,b.id);assert.deepEqual(b.data,{city:'Cusco',populationServed:200},'primera creación simultánea combina ambos campos');
+ const oldOp=crypto.randomUUID(),oldRequest={id:b.id,version:b.version,data:{city:'Arequipa',populationServed:200}};const oldSaved=await command(oldRequest,coordinator,oldOp);
+ const later=await command({id:b.id,version:1,data:{...oldSaved.data,populationServed:900},field_changes:[{path:['populationServed'],value:900}]},evaluator);
+ assert.equal((await command({...oldRequest,field_changes:[{path:['city'],value:'Arequipa'}]},coordinator,oldOp)).version,oldSaved.version);
+ assert.deepEqual((await r.queryAs(coordinator,'select data from wash_records where id=$1',[b.id])).rows[0].data,later.data,'actualizar un reintento legado no repite el guardado ni borra campos posteriores');
 });

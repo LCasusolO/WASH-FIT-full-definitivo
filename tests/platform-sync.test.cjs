@@ -155,3 +155,9 @@ test('primer plan y monitoreo simultáneos no publican valores vacíos como camb
   assert.match(app.current.indicators[0].action,/Mi acción/);assert.match(app.current.indicators[0].resources,/Recursos del otro usuario/);assert.equal(app.current.indicators[0].cost,80);assert.match(app.current.indicators[0].correctiveMeasures,/Mi medida/);assert.match(app.current.indicators[0].monitoringComments,/Comentario del otro usuario/);assert.equal(app.current.indicators[0].nextReviewDate,'2027-01-01');assert.equal(app.database.filter(r=>r.kind==='monitor').length,1);
  }
 });
+
+test('un envío pendiente legado se convierte a campos y no borra el costo remoto al reabrir',async()=>{
+ const app=setup();addPlan(app);await app.cloud.connect(app.hooks);const cached=await app.store.read('sync'),record=cached.base.find(r=>r.kind==='action'&&r.record_key==='editor:A_1a'),stored=app.database.find(r=>r.kind==='action');
+ cached.local.indicators[0].action='Acción pendiente de la versión anterior';cached.pendingLocal={...record,data:{...record.data,action:'Acción pendiente de la versión anterior'}};cached.pending={id:stored.id,version:stored.version,facility_id:stored.facility_id,evaluation_id:stored.evaluation_id,kind:record.kind,record_key:record.record_key,data:cached.pendingLocal.data};cached.currentOperation=crypto.randomUUID();await app.store.write('sync',cached);
+ stored.data.cost=1200;stored.version++;await app.cloud.connect(app.hooks);assert.match(app.current.indicators[0].action,/Acción pendiente de la versión anterior/);assert.equal(app.current.indicators[0].cost,1200);assert.equal(app.database.find(r=>r.kind==='action').data.cost,1200);assert.equal((await app.store.read('sync')).pending,null);
+});

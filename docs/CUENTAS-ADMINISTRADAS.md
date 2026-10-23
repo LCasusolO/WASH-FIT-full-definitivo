@@ -178,3 +178,5 @@ Coordinadores y evaluadores no resuelven avisos de versiones locales frente a la
 Los reintentos conservan su identificador de operación: si un guardado ya fue aceptado, confirmarlo otra vez no sobrescribe un guardado posterior ni descarta una edición nueva pendiente del usuario. Los permisos de edición y los registros de monitoreo en revisión o validados conservan sus bloqueos; la sincronización no modifica copias históricas.
 
 Al reconectar una evaluación abierta, primero se confirma cualquier envío pendiente usando su identificador original y después se incorporan los campos remotos. Así, los datos recibidos nunca se vuelven a enviar como una edición propia. Vaciar texto, asignar cero o null y eliminar un campo son modificaciones explícitas; no se ignoran. Los formularios de acción y monitoreo de la plataforma guardan también únicamente sus campos modificados.
+
+Los envíos pendientes de versiones anteriores se convierten a cambios por campo usando su base local. Si el servidor ya había aceptado la operación antigua, devuelve su confirmación original y conserva los guardados posteriores.

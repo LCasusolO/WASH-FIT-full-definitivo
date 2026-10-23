@@ -47,6 +47,7 @@
   async function persist(){if(store)await store.write('sync',{base,rows,local:hooks.get(),conflicts,pending,pendingLocal,currentOperation,editingTeam,readOnly,planReadOnly,evaluation});}
   async function sendPending(){
     if(!pending)return;
+    if(!pending.field_changes){const before=base.find(r=>recordKey(r)===recordKey(pending));pending={...pending,field_changes:M.fieldChanges(before?.data||{},pending.data)};await persist();}
     const request=pending,record=pendingLocal||{kind:request.kind,record_key:request.record_key,data:request.data};
     const saved=await P.command('save_record',request,currentOperation);
     rows=rows.filter(r=>r.id!==saved.id);rows.push(saved);

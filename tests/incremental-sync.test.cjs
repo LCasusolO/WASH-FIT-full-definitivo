@@ -1,0 +1,25 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const {createRuntime}=require('./support/managed-runtime.cjs');
+test('delta autorizado conserva filas, versiones, eliminación, contexto y progreso por establecimiento',async t=>{
+ const r=await createRuntime();t.after(()=>r.close());const token=(await r.signIn({email:r.owner.email,password:'Fixture-password-123'})).data.session.access_token;
+ let f,team,e,other,first,action;
+ await r.queued(async()=>{await r.db.exec('reset role');f=(await r.db.query("insert into wash_facilities(country_id,name) values($1,'Delta QA') returning id",[r.country.id])).rows[0].id;team=(await r.db.query("insert into wash_teams(country_id,name) values($1,'Delta QA') returning id",[r.country.id])).rows[0].id;
+ e=(await r.db.query("insert into wash_evaluations(facility_id,team_id,name,kind,created_by) values($1,$2,'Inicial','initial',$3) returning id",[f,team,r.owner.id])).rows[0].id;
+ other=(await r.db.query("insert into wash_evaluations(facility_id,team_id,name,kind,created_by,status) values($1,$2,'Histórica','reassessment',$3,'validated') returning id",[f,team,r.owner.id])).rows[0].id;
+ first=(await r.db.query("insert into wash_records(facility_id,evaluation_id,kind,record_key,data,updated_by) values($1,$2,'indicator','A_1a','{\"notes\":\"Original\"}',$3) returning id",[f,e,r.owner.id])).rows[0].id;
+ await r.db.query("insert into wash_records(facility_id,evaluation_id,kind,record_key,data,updated_by) values($1,$2,'indicator','A_1a','{\"notes\":\"Histórico\"}',$3)",[f,other,r.owner.id]);
+ action=(await r.db.query("insert into wash_records(facility_id,kind,record_key,data,updated_by) values($1,'action','editor:A_1a','{\"indicator_id\":\"A_1a\",\"action\":\"Plan compartido\"}',$2) returning id",[f,r.owner.id])).rows[0].id;
+ });
+ const sync=async(known={})=>(await r.queryAs(token,'select wash_editor_sync($1,$2::jsonb) as data',[e,JSON.stringify(known)])).rows[0].data;
+ let data=await sync();assert.equal(data.rows.length,2);assert.equal(data.evaluation.id,e);assert.equal(data.facility.id,f);assert.equal(data.country.id,r.country.id);assert.ok(!data.rows.some(x=>x.data.notes==='Histórico'));
+ const known=Object.fromEntries(data.rows.map(x=>[x.id,x.version]));assert.deepEqual((await sync(known)).rows,[]);
+ const dashboard=async(known={},ids=null)=>(await r.queryAs(token,'select wash_progress_sync($1::jsonb,$2::uuid[]) as data',[JSON.stringify(known),ids])).rows[0].data;
+ const initialDashboard=await dashboard();assert.deepEqual(initialDashboard.changed,[f]);assert.deepEqual(Object.keys(initialDashboard.progress),[e]);assert.deepEqual((await dashboard(initialDashboard.revisions)).progress,{});
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_records set data=data||'{\"notes\":\"Último\"}',version=version+1 where id=$1",[first]);await r.db.query('delete from wash_records where id=$1',[action]);});
+ data=await sync(known);assert.equal(data.rows.length,1);assert.equal(data.rows[0].data.notes,'Último');assert.deepEqual(data.removed,[action]);
+ const changedDashboard=await dashboard(initialDashboard.revisions,[f]);assert.deepEqual(changedDashboard.changed,[f]);assert.deepEqual(Object.keys(changedDashboard.progress),[e]);assert.deepEqual((await dashboard(changedDashboard.revisions)).changed,[]);
+ const progress=(await r.queryAs(token,'select wash_facility_progress(array[$1]::uuid[]) as data',[f])).rows[0].data;assert.deepEqual(Object.keys(progress),[e]);assert.deepEqual((await r.queryAs(token,'select wash_facility_progress(array[]::uuid[]) as data')).rows[0].data,{});
+ const stranger=await r.insert('delta-stranger@example.invalid','Delta-password-123',undefined,true),s=(await r.signIn({email:stranger.email,password:'Delta-password-123'})).data.session.access_token;
+ await assert.rejects(r.queryAs(s,'select wash_editor_sync($1,$2::jsonb)',[e,'{}']),/FORBIDDEN/);assert.deepEqual((await r.queryAs(s,'select wash_facility_progress(array[$1]::uuid[]) as data',[f])).rows[0].data,{});
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.exec('set role anon');await assert.rejects(r.db.query('select wash_editor_sync($1,$2::jsonb)',[e,'{}']),/permission denied/);});
+});

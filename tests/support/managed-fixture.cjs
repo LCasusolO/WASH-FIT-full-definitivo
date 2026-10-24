@@ -56,6 +56,9 @@ const {createRuntime}=require('./managed-runtime.cjs');
   if(url.pathname==='/__qa/confirm'){let id=url.searchParams.get('user');if(!id)id=await r.queued(async()=>{await r.db.exec('reset role');return(await r.db.query('select user_id from wash_accounts where username=$1',[url.searchParams.get('username')])).rows[0]?.user_id;});await r.confirm(id);return res.json({confirmed:true});}
   if(url.pathname==='/rest/v1/rpc/wash_account_status')return res.json((await r.queryAs(token,'select wash_account_status() as data')).rows[0].data);
   if(url.pathname==='/rest/v1/rpc/wash_evaluation_checks')return res.json((await r.queryAs(token,'select wash_evaluation_checks($1) as data',[req.body.p_evaluation||null])).rows[0].data);
+  if(url.pathname==='/rest/v1/rpc/wash_progress_sync')return res.json((await r.queryAs(token,'select wash_progress_sync($1::jsonb,$2::uuid[]) as data',[JSON.stringify(req.body.p_known||{}),req.body.p_facilities||null])).rows[0].data);
+  if(url.pathname==='/rest/v1/rpc/wash_editor_sync'){const body=req.body;return res.json((await r.queryAs(token,'select wash_editor_sync($1,$2::jsonb) as data',[body.p_evaluation,JSON.stringify(body.p_known||{})])).rows[0].data);}
+  if(url.pathname==='/rest/v1/rpc/wash_facility_progress')return res.json((await r.queryAs(token,'select wash_facility_progress($1::uuid[]) as data',[req.body.p_facilities])).rows[0].data);
   if(url.pathname==='/rest/v1/rpc/wash_evaluation_progress')return res.json((await r.queryAs(token,'select wash_evaluation_progress() as data')).rows[0].data);
   if(url.pathname==='/rest/v1/rpc/wash_command')return res.json((await r.queryAs(token,'select wash_command($1,$2,$3) as data',[req.body.p_command,JSON.stringify(req.body.p_data),req.body.p_operation])).rows[0].data);
   if(url.pathname.startsWith('/rest/v1/')){

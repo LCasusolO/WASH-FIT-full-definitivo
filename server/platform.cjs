@@ -24,4 +24,8 @@ async function exportAccess(access,id) {
   if (rows.length!==1 || rows[0].created_by!==access.user.id) throw Object.assign(Error('No tiene acceso a esta exportación.'),{status:403});
   return rows[0];
 }
-module.exports={authorize,exportAccess,UUID};
+async function exportIdentity(access,job,env,request=fetch){
+  const response=await request(env.SUPABASE_URL+'/rest/v1/rpc/wash_command',{method:'POST',headers:{...access.headers,'Content-Type':'application/json'},body:JSON.stringify({p_command:'export_identity',p_data:{export_id:job.id},p_operation:require('node:crypto').randomUUID()}),signal:AbortSignal.timeout(15000)});
+  const data=await response.json();if(!response.ok||data.facility_id!==job.facility_id||!data.facilityName||!data.countryCode)throw Object.assign(Error('No se pudo verificar la identificación del reporte.'),{status:response.status===403?403:503});return data;
+}
+module.exports={authorize,exportAccess,exportIdentity,UUID};

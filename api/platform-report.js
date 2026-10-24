@@ -1,4 +1,4 @@
-const {authorize,exportAccess}=require('../server/platform.cjs');
+const {authorize,exportAccess,exportIdentity}=require('../server/platform.cjs');
 const Model=require('../js/platform-model');
 const Core=require('../js/core');
 const fs=require('node:fs');
@@ -15,7 +15,7 @@ async function reportHtml({payload,dataset,facility,country,job,mapRequest=fetch
     const monitors=(payload.monitoring||[]).filter(m=>!m.data.editor_indicator_id);
     const supplement=monitors.length?'<section class="report-step"><h2>Registros adicionales de monitoreo</h2>'+monitors.map(m=>'<article><h3>'+escape(m.data.title)+'</h3>'+detail(m.data)+(m.data.photos||[]).filter(p=>p.url).map(p=>'<figure><img src="'+escape(p.url)+'"><figcaption>'+escape(p.name)+'</figcaption></figure>').join('')+'</article>').join('')+'</section>':'';
     const mapHtml=await require('../server/report-map.cjs').render(dataset.generalInfo.latitude,dataset.generalInfo.longitude,{request:mapRequest});
-    return require('../server/original-report.cjs').render(dataset,{title:Core.fileBaseName({facilityName:facility.name,countryCode:country.code}),facility,country,payload,generatedAt:job.created_at,supplement,mapHtml});
+    return require('../server/original-report.cjs').render(dataset,{title:Core.evaluationFileBase({facilityName:facility.name,countryCode:country.code},job.identity?.evaluation||evaluation),facility,country,payload,generatedAt:job.created_at,supplement,mapHtml});
   }
   let body='<h1>WASH FIT · '+escape(evaluation?'Evaluación integral':'Plan de mejora y monitoreo')+'</h1><p>'+escape(country.name)+' · '+escape(facility.name)+'</p><p>Fecha de corte: '+escape(job.created_at)+' · Exportación: '+escape(job.id)+'</p>';
   body+='<h2>Plan de mejora a la fecha de corte</h2>'+(payload.plan||[]).map(a=>'<article><h3>'+escape(a.data.indicator_id)+'</h3>'+detail(a.data)+'</article>').join('');
@@ -45,13 +45,14 @@ function createHandler({env=process.env,request=fetch}={}){return async(req,res)
     const body=typeof req.body==='string'?JSON.parse(req.body):req.body;const job=await exportAccess(access,body?.exportId);
     const [snapshot]=await access.read('wash_snapshots?id=eq.'+job.snapshot_id+'&select=*');if(!snapshot)throw Object.assign(Error('No tiene acceso a la versión.'),{status:403});
     const [facility]=await access.read('wash_facilities?id=eq.'+job.facility_id+'&select=*');const [country]=await access.read('wash_countries?id=eq.'+facility.country_id+'&select=*');
+    const identity=await exportIdentity(access,job,env,request);
     const payload={...snapshot.data,records:await hydrate(snapshot.data.records||[],access,env,request),monitoring:await hydrate(snapshot.data.monitoring||[],access,env,request)};
     let dataset=null;
     if(payload.evaluation){dataset=Core.normalizeDataset(Model.dataset([...payload.records,...payload.monitoring],catalog,Core.defaults(),payload.plan||[]),catalog);}
     const backup={format:'wash-fit-platform',schemaVersion:1,exportId:job.id,exportedAt:snapshot.created_at,facility,country,dataset,payload};
-    const html=await reportHtml({payload,dataset,facility,country,job:{...job,created_at:snapshot.created_at}});
+    const html=await reportHtml({payload,dataset,facility,country,job:{...job,identity,created_at:snapshot.created_at}});
     if(Buffer.byteLength(JSON.stringify(backup))+Buffer.byteLength(html)>3500000)return res.status(413).json({error:'El reporte supera el tamaño permitido. Reduzca las fotografías.'});
-    return res.status(200).json({dataset:backup,html,fileBaseName:Core.fileBaseName({facilityName:facility.name,countryCode:country.code})});
+    return res.status(200).json({dataset:backup,html,fileBaseName:Core.evaluationFileBase(identity,identity.evaluation)});
   }catch(e){return res.status(e.status||502).json({error:e.status?e.message:'No se pudo preparar el reporte. Revise las evidencias y reintente.'});}
 };}
 module.exports=createHandler();module.exports.createHandler=createHandler;module.exports.reportHtml=reportHtml;

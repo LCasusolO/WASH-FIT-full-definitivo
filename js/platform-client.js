@@ -29,7 +29,7 @@
   }
   async function offlineEvaluations(){const s=await session();if(!s)return [];const list=await root.WashStorage.createStore(indexedDB,'user:'+s.user.id).read('offlineEvaluations');return Object.values(list||{}).sort((a,b)=>String(b.savedAt).localeCompare(String(a.savedAt)));}
   async function rememberOfflineEvaluation(userId,item){await root.WashStorage.createStore(indexedDB,'user:'+userId).update('offlineEvaluations',list=>({...list,[item.id]:item}));}
-  async function requireSession(){const s=await session();if(s?.offline)throw Error('Sin conexión: se conserva el borrador en este dispositivo.');if(!s)throw Error('Inicie sesión en el espacio de trabajo.');return s;}
+  async function requireSession(){const s=await session();if(s?.offline)throw Error('Sin conexión: se conserva el borrador en este dispositivo.');if(!s)throw Error('Inicie sesión en la plataforma.');return s;}
   async function command(command,data,operation=crypto.randomUUID()){
     await requireSession();const {data:result,error}=await client.rpc('wash_command',{p_command:command,p_data:data,p_operation:operation});
     if(error){const err=Error(error.message==='VERSION_CONFLICT'?'Otra persona modificó este registro. Revise ambas versiones.':error.message);err.code=error.code;err.details=error.details;throw err;}return result;
@@ -85,7 +85,7 @@
       const job=await command('export',{facility_id:facilityId,...(evaluationId?{evaluation_id:evaluationId}:{}),...(snapshotId?{snapshot_id:snapshotId}:{})});
       const response=await request('/api/platform-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exportId:job.id})});
       const result=await response.json();if(!response.ok)throw Error(result.error||'No se pudo preparar el reporte.');
-      const base=root.WashCore.fileBaseName({facilityName:result.dataset.facility.name,countryCode:result.dataset.country.code});
+      const base=result.fileBaseName||root.WashCore.evaluationFileBase({facilityName:result.dataset.facility.name,countryCode:result.dataset.country.code},result.dataset.payload?.evaluation);
       const json=new Blob([JSON.stringify(result.dataset,null,2)],{type:'application/json'});
       function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
       if(printing)await root.WashChrome.print(result.html,base,popup);else download(json,base+'.json');

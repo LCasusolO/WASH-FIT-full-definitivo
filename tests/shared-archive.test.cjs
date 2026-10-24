@@ -15,7 +15,7 @@ test('dos cuentas, cierre, reintentos y subidas simultáneas comparten una parej
  await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=$1",[second.id]);});
  await r.service('set_role',r.owner.id,{user_id:second.id,scope:'team',team_id:team.id,role:'evaluator'});
  const token2=(await r.signIn({email:second.email,password:'Fixture-second-123'})).data.session.access_token;
- const makeJob=who=>cmd(who,'export',{facility_id:f.id,evaluation_id:e.id});
+ const makeJob=(who,evaluation=e)=>cmd(who,'export',{facility_id:f.id,evaluation_id:evaluation.id});
  const job1=await makeJob(token),job2=await makeJob(token2);
  const env={WASH_MULTIUSER:'true',WASH_APP_ORIGIN:'https://fixture.invalid',SUPABASE_URL:'https://supabase.invalid',SUPABASE_PUBLISHABLE_KEY:'public',GOOGLE_CLIENT_ID:'fixture',GOOGLE_CLIENT_SECRET:'fixture',GOOGLE_REFRESH_TOKEN:'fixture',GOOGLE_DRIVE_FOLDER_ID:'fixture-folder'};
  const stored=new Map(),sessions=new Map();let creates=0,patches=0;
@@ -28,7 +28,8 @@ test('dos cuentas, cierre, reintentos y subidas simultáneas comparten una parej
   if(url.includes('oauth2'))return Response.json({access_token:'google',expires_in:3600});
   if(url.startsWith('https://www.googleapis.com/drive/v3/files?')){
    const q=new URL(url).searchParams.get('q');assert.ok(q.includes('washFitFacility'));assert.ok(!q.includes('washFitExport'));
-   return Response.json({files:[...stored.values()].filter(x=>!x.trashed&&q.includes("value='"+x.appProperties.washFitFacility+"'")&&q.includes("mimeType = '"+x.mimeType+"'")).map(x=>({id:x.id}))});
+   const name=q.match(/name = '([^']+)'/)?.[1],evaluation=q.match(/key='washFitEvaluation' and value='([^']+)'/)?.[1];
+   return Response.json({files:[...stored.values()].filter(x=>!x.trashed&&q.includes("value='"+x.appProperties.washFitFacility+"'")&&q.includes("mimeType = '"+x.mimeType+"'")&&(x.name===name||(evaluation&&x.appProperties.washFitEvaluation===evaluation))).map(x=>({id:x.id}))});
   }
   if(url.includes('/upload/drive/')){
    const data=JSON.parse(opts.body);let id;
@@ -55,7 +56,11 @@ test('dos cuentas, cierre, reintentos y subidas simultáneas comparten una parej
  await r.queued(()=>fill(r.db,e.id));await cmd(token,'complete_evaluation',{evaluation_id:e.id,version:e.version});
  const finalJob=await makeJob(token);assert.deepEqual(await finish(token,await start(token,finalJob)),ids);
  assert.equal([...stored.values()].filter(x=>!x.trashed&&x.appProperties.washFitFacility===f.id).length,2);assert.equal(stored.get('foreign-file').trashed,undefined);assert.equal(creates,2);
+ const reeval=await cmd(token,'evaluation',{facility_id:f.id,team_id:team.id,kind:'reassessment',previous_id:e.id});
+ const reevalIds=await finish(token,await start(token,await makeJob(token,reeval)));assert.notDeepEqual(reevalIds,ids);assert.equal(creates,4);assert.ok(reevalIds.every(id=>stored.get(id).name.includes('_Reevaluación001.')));
+ assert.deepEqual(await finish(token2,await start(token2,await makeJob(token2,reeval))),reevalIds);assert.equal(creates,4);assert.ok(ids.every(id=>!stored.get(id).name.includes('Reevaluación')));
+ const legacy=await start(token,finalJob);const body=JSON.parse(Buffer.from(legacy.data.receipt.split('.')[0],'base64url').toString());delete body.archiveVersion;const payload=Buffer.from(JSON.stringify(body)).toString('base64url'),signature=crypto.createHmac('sha256',env.GOOGLE_CLIENT_SECRET).update(payload).digest('base64url');assert.equal((await call(token,{action:'status',receipt:payload+'.'+signature,kind:'json'})).data.code,'ARCHIVE_SESSION_EXPIRED');
  const expired=await start(token,finalJob);await r.queued(async()=>{await r.db.exec('reset role');await r.db.exec("update wash_private.archive_leases set expires_at=now()-interval '1 second'");});
  const stale=await call(token,{action:'status',receipt:expired.data.receipt,kind:'json'});assert.equal(stale.data.code,'ARCHIVE_SESSION_EXPIRED');
- assert.deepEqual(await finish(token2,await start(token2,await makeJob(token2))),ids);assert.equal(creates,2);
+ assert.deepEqual(await finish(token2,await start(token2,await makeJob(token2))),ids);assert.equal(creates,4);
 });

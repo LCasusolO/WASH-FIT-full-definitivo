@@ -157,7 +157,7 @@ En Participantes y acceso, cada persona activa muestra Retirar de esta evaluaci�
 
 ### Comprobación de los cinco pasos y colaboración
 
-En Evaluaciones se ve el avance por establecimiento, los cinco pasos y los pendientes con enlaces Corregir al campo correspondiente. Comprobar y completar evaluación vuelve a consultar el servidor: si faltan datos, los muestra; si está completa, conserva la versión histórica y cierra la medición. Pueden hacerlo el administrador autorizado o el coordinador participante. No exige una revisión técnica individual del administrador.
+En Evaluaciones se ve el avance por establecimiento, los cinco pasos y los pendientes con enlaces Corregir al campo correspondiente. Finalizar evaluación vuelve a consultar el servidor: si faltan datos, los muestra; si está completa, conserva la versión histórica y cierra la medición. Pueden hacerlo el administrador autorizado o el coordinador participante. No exige una revisión técnica individual del administrador.
 
 La comprobación incluye identificación, ubicación y población atendida total (un entero no negativo obligatorio), respuestas o justificaciones de los indicadores aplicables, problema/riesgos/gravedad/probabilidad de las brechas, acciones/recursos/responsable/plazo/presupuesto (0 si no requiere gasto), y fecha prevista de monitoreo. Los resultados futuros del monitoreo no bloquean el cierre. El plan y el monitoreo continúan en el establecimiento.
 
@@ -184,7 +184,7 @@ Los envíos pendientes de versiones anteriores se convierten a cambios por campo
 
 ## Cerrar y volver a abrir sin internet
 
-Abra primero la evaluación con conexión en el dispositivo y navegador que utilizará. La aplicación prepara sus archivos para uso sin conexión y conserva el borrador de esa cuenta y evaluación en IndexedDB. Cada edición se guarda localmente de inmediato; el mensaje **Guardado en este dispositivo; pendiente de sincronizar** aparece al terminar el guardado local.
+Abra primero la evaluación con conexión en el dispositivo y navegador que utilizará. La aplicación prepara sus archivos para uso sin conexión y conserva el borrador de esa cuenta y evaluación en IndexedDB. Cada edición se guarda localmente de inmediato; la franja superior informa **Sin conexión** y mantiene la fecha de la última sincronización confirmada.
 
 Puede cerrar la aplicación y volver a abrirla sin internet. La plataforma muestra **Evaluaciones sin conexión** con las evaluaciones preparadas para esa cuenta; **Continuar sin conexión** recupera los datos y la sección utilizada, y permite seguir editando. No se consultan el establecimiento, el país ni la posición del servidor para recuperar el borrador. Los permisos locales desconocidos se consideran de solo lectura. La identidad local no incluye un token nuevo ni autoriza peticiones al servidor; tampoco exige renovar un token mientras no hay red.
 
@@ -206,10 +206,21 @@ La franja no se imprime en los informes PDF y no sustituye la indicación **Solo
 
 **Finalizar evaluación** comprueba los cinco pasos en el servidor. Si falta información, muestra los campos pendientes con enlaces para corregirlos. Si están completos, cierra la medición, conserva su versión histórica y permite continuar el monitoreo. El cierre no genera por sí mismo una descarga ni un archivo de Drive.
 
-Las exportaciones e impresiones actualizan una misma pareja JSON/PDF por establecimiento en el repositorio central, independientemente de la cuenta que exporte o de la exportación que se haya generado. Se conserva el nombre acordado y se reutilizan los identificadores de Drive; al cambiar el nombre del establecimiento se actualizan también esos mismos archivos. Las versiones históricas se conservan en la plataforma y pueden exportarse de nuevo.
+Las exportaciones e impresiones actualizan una misma pareja JSON/PDF por medición del establecimiento en el repositorio central, independientemente de la cuenta que exporte. La evaluación inicial conserva su nombre habitual; la reevaluación añade `_Reevaluación001`, `_Reevaluación002`, etc., sin sustituir la pareja de la evaluación inicial. Se conserva el nombre acordado y se reutilizan los identificadores de Drive; al cambiar el nombre del establecimiento se actualizan también esos mismos archivos. Las versiones históricas se conservan en la plataforma y pueden exportarse de nuevo.
 
 Una reserva temporal compartida impide dos subidas simultáneas al mismo establecimiento. Se renueva mientras se transfieren los fragmentos; si se pierde la conexión, el reintento puede recuperar la sesión o reiniciarla usando los archivos existentes. Si hay otra exportación activa, se informa para reintentar. No se crean archivos si no puede comprobarse la copia anterior.
 
 Después de verificar ambos archivos, se envían a la papelera las copias duplicadas anteriores identificadas por la app para ese mismo establecimiento. No se retiran archivos de otros establecimientos ni archivos sin esa identificación. La limpieza ocurre en la siguiente exportación correcta de cada establecimiento.
 
 En la plataforma el estado confirmado dice **En línea · Información actualizada**: su hora corresponde a la última consulta completa de las listas. En la evaluación permanece **En línea · Sincronizado**, referido a los cambios de esa evaluación.
+
+
+## Tabla unificada de evaluaciones
+
+Todos los roles consultan **Establecimientos y evaluaciones**, con los establecimientos autorizados, incluidos los que faltan evaluar. El país, establecimiento y equipo acompañan siempre al inicio de una evaluación. En PC se muestran columnas; en móvil todos los campos de cada fila se presentan verticalmente.
+
+Los estados visibles son **En curso** y **Validada**. En curso agrupa los estados internos antiguos de borrador, elaboración y revisión, sin alterar las versiones históricas. Un establecimiento sin medición muestra **Falta evaluar**. Las acciones se llaman **Continuar evaluación**, **Ver evaluación validada** y, para propietario/administrador, **Corregir versión anterior**. Coordinadores y evaluadores no pueden reabrir una versión validada. Los estados de registros independientes de monitoreo conservan su flujo específico.
+
+Un error de red muestra un aviso legible, conserva la hora de la última consulta correcta y deja de mostrar información actualizada. La siguiente consulta automática que se completa correctamente elimina el aviso de red, sin borrar errores de validación de formularios. No se repiten operaciones de escritura automáticamente como parte de esa actualización de listas.
+
+La revisión de esta lógica y el alcance de las comprobaciones se documentan en [AUDITORIA-APP.md](AUDITORIA-APP.md).

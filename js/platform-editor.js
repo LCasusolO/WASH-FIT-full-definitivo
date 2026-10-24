@@ -20,11 +20,11 @@
     const session=await P.requireSession();
     const canEdit=['draft','editing','review'].includes(evaluation.status)&&participants.some(p=>p.user_id===session.user.id&&p.active&&['coordinator','evaluator'].includes(p.role));
     readOnly=!canEdit;hooks?.readonly(readOnly);
-    const [facilityRows,assignments,members,facilityRowsInfo]=await Promise.all([P.rows('records',{facility_id:evaluation.facility_id}),P.rows('assignments',{facility_id:evaluation.facility_id}),P.rows('team_members'),P.rows('facilities',{id:evaluation.facility_id})]);
+    const [actions,monitors,assignments,members,facilityRowsInfo]=await Promise.all([P.rows('records',{facility_id:evaluation.facility_id,kind:'action'}),P.rows('records',{facility_id:evaluation.facility_id,kind:'monitor'}),P.rows('assignments',{facility_id:evaluation.facility_id}),P.rows('team_members',{user_id:session.user.id}),P.rows('facilities',{id:evaluation.facility_id})]);
     facility=facilityRowsInfo[0];
     editingTeam=[evaluation.team_id,...assignments.map(a=>a.team_id)].find(id=>assignments.some(a=>a.team_id===id)&&members.some(m=>m.team_id===id&&m.user_id===session.user.id&&['coordinator','evaluator'].includes(m.role)))||'';
     planReadOnly=!editingTeam;hooks?.planReadonly?.(planReadOnly);
-    const selected=facilityRows.filter(r=>['action','monitor'].includes(r.kind)||r.evaluation_id===evaluationId);
+    const selected=[...recordRows.filter(r=>['general','indicator'].includes(r.kind)),...actions.filter(r=>r.kind==='action'),...monitors.filter(r=>r.kind==='monitor')];
     const hydrated=await P.hydratePhotos(selected.filter(r=>['general','indicator'].includes(r.kind)));
     const dataset=M.dataset([...hydrated,...selected.filter(r=>r.kind==='monitor')],INDICATORS_DATA,WashCore.defaults(),selected.filter(r=>r.kind==='action'));
     if(!selected.some(r=>r.kind==='general')&&facility){const [country]=await P.rows('countries',{id:facility.country_id});dataset.generalInfo.facilityName=facility.name;dataset.generalInfo.countryCode=country?.code||'';}

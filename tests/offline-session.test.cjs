@@ -1,5 +1,11 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const Storage=require('../js/storage'),{indexedDB}=require('fake-indexeddb');
+
+test('lecturas limitadas respetan el máximo y el orden al paginar historiales',async()=>{
+ const ranges=[],orders=[],all=Array.from({length:900},(_,id)=>({id}));const query={select(){return this;},eq(){return this;},order(key,options){orders.push({key,...options});return this;},async range(start,end){ranges.push([start,end]);return{data:all.slice(start,end+1),error:null};}};
+ const root={WashSupabase:{createClient:()=>({from:()=>query,auth:{getSession:async()=>({data:{session:{user:{id:'qa'},access_token:'fixture'}}}),onAuthStateChange(){}}})}};
+ const context=vm.createContext({window:root,navigator:{},localStorage:{setItem(){}},crypto:{randomUUID:()=>''},addEventListener(){},fetch:async()=>Response.json({enabled:true,url:'fixture',key:'public'})});vm.runInContext(fs.readFileSync('js/platform-client.js','utf8'),context);await root.WashPlatform.ready;const rows=await root.WashPlatform.rows('events',{},'*',{limit:750,ascending:false});assert.equal(rows.length,750);assert.deepEqual(ranges,[[0,499],[500,749]]);assert.equal(orders[0].ascending,false);
+});
 function environment(){
  const values=new Map(),navigator={onLine:true},authEvents=[],events={};let calls=0,user={id:'offline-user-'+Math.random()},options;
  const storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};

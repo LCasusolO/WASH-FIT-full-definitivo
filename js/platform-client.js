@@ -35,12 +35,14 @@
     if(error){const err=Error(error.message==='VERSION_CONFLICT'?'Otra persona modificó este registro. Revise ambas versiones.':error.message);err.code=error.code;err.details=error.details;throw err;}return result;
   }
   async function checks(evaluationId=null){await requireSession();const {data,error}=await client.rpc('wash_evaluation_checks',{p_evaluation:evaluationId});if(error)throw Error(error.message);return data;}
-  async function rows(table,filters={},columns="*"){
+  async function progress(){await requireSession();const {data,error}=await client.rpc('wash_evaluation_progress');if(error)throw Error(error.message);return data;}
+  async function rows(table,filters={},columns="*",options={}){
     await requireSession();let query=client.from('wash_'+table).select(columns);for(const [key,value]of Object.entries(filters))query=query.eq(key,value);
     // Paginación explícita para que un país con >1000 registros no pierda resultados.
     const keys={team_members:['team_id','user_id'],participants:['evaluation_id','user_id'],country_members:['country_id','user_id'],assignments:['team_id','facility_id'],owners:['user_id'],user_state:['user_id','evaluation_id']};
-    for(const key of keys[table]||['id'])query=query.order(key);
-    const result=[];for(let offset=0;;offset+=500){const {data,error}=await query.range(offset,offset+499);if(error)throw error;result.push(...data);if(data.length<500)break;}return result;
+    for(const key of keys[table]||['id'])query=query.order(key,{ascending:options.ascending!==false});
+    const limit=Number.isSafeInteger(options.limit)&&options.limit>0?options.limit:Infinity;
+    const result=[];for(let offset=0;offset<limit;offset+=500){const end=Math.min(offset+499,limit-1),{data,error}=await query.range(offset,end);if(error)throw error;result.push(...data);if(data.length<end-offset+1)break;}return result;
   }
   async function request(url,options={}){
     const s=await session();return fetch(url,{...options,headers:{...options.headers,...(s?{Authorization:'Bearer '+s.access_token}:{})}});
@@ -107,5 +109,5 @@
     try{const result=await root.WashArchive.save(pending.job,progress,request);await command('export_complete',{id:pending.job.exportId,files:result.files});await store.write('pendingExport',null);return result;}
     catch(error){await store.write('pendingExport',pending);throw error;}
   }
-  root.WashPlatform={offlineEvaluations,rememberOfflineEvaluation,checks,accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
+  root.WashPlatform={progress,offlineEvaluations,rememberOfflineEvaluation,checks,accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
 })(window);

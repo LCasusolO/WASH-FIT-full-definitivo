@@ -224,3 +224,8 @@ Los estados visibles son **En curso** y **Validada**. En curso agrupa los estado
 Un error de red muestra un aviso legible, conserva la hora de la última consulta correcta y deja de mostrar información actualizada. La siguiente consulta automática que se completa correctamente elimina el aviso de red, sin borrar errores de validación de formularios. No se repiten operaciones de escritura automáticamente como parte de esa actualización de listas.
 
 La revisión de esta lógica y el alcance de las comprobaciones se documentan en [AUDITORIA-APP.md](AUDITORIA-APP.md).
+
+
+## Consultas optimizadas bajo carga
+
+La lista de evaluaciones consulta porcentajes y cantidades de pendientes. Al desplegar **Ver campos pendientes** recupera los enlaces completos de esa evaluación. El historial consulta solo el establecimiento seleccionado y sus últimos 200 eventos; la lista no descarga todos los indicadores ni los historiales de cambios del país. Estas optimizaciones conservan la comprobación completa del servidor al finalizar. Las mediciones y los límites de la prueba se documentan en [PRUEBAS-DE-CARGA.md](PRUEBAS-DE-CARGA.md).

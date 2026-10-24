@@ -28,7 +28,7 @@ test('plan y revisión posteriores a validar: datos reales de SQL, snapshot inta
  const stored=(await r.queryAs(session,'select * from wash_records where facility_id=$1',[f.id])).rows,loaded=M.dataset(stored,[{id:'A_1a'}],{},stored.filter(x=>x.kind==='action'));
  assert.equal(loaded.indicators[0].score,0);assert.equal(loaded.indicators[0].action,'Reparar suministro');assert.equal(loaded.indicators[0].history.length,1);
  const after=(await r.queryAs(session,"select data from wash_snapshots where evaluation_id=$1 and purpose='validation'",[ev.id])).rows[0].data;assert.deepEqual(after,before);
- const op=crypto.randomUUID(),job=await command('export',{facility_id:f.id,evaluation_id:ev.id},op);const cut=(await r.queryAs(session,'select data from wash_snapshots where id=$1',[job.snapshot_id])).rows[0].data;assert.equal(cut.monitoring.length,1);assert.equal(cut.records.find(x=>x.kind==='indicator').data.score,0);
+ const op=crypto.randomUUID(),job=await command('export',{facility_id:f.id,evaluation_id:ev.id},op);const cut=(await r.queryAs(session,'select data from wash_snapshots where id=$1',[job.snapshot_id])).rows[0].data;assert.equal(cut.monitoring.length,1);assert.equal(cut.records.find(x=>x.kind==='indicator'&&x.record_key==='A_1a').data.score,0);
  const monitor=stored.find(x=>x.kind==='monitor');await command('save_record',{...monitor,data:{...monitor.data,findings:'Cambio posterior'}});await command('export',{facility_id:f.id,evaluation_id:ev.id},op);assert.deepEqual((await r.queryAs(session,'select data from wash_snapshots where id=$1',[job.snapshot_id])).rows[0].data,cut);
 });
 

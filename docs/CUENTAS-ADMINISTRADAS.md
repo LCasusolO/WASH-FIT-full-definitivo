@@ -229,3 +229,5 @@ La revisión de esta lógica y el alcance de las comprobaciones se documentan en
 ## Consultas optimizadas bajo carga
 
 La lista de evaluaciones consulta porcentajes y cantidades de pendientes. Al desplegar **Ver campos pendientes** recupera los enlaces completos de esa evaluación. El historial consulta solo el establecimiento seleccionado y sus últimos 200 eventos; la lista no descarga todos los indicadores ni los historiales de cambios del país. Estas optimizaciones conservan la comprobación completa del servidor al finalizar. Las mediciones y los límites de la prueba se documentan en [PRUEBAS-DE-CARGA.md](PRUEBAS-DE-CARGA.md).
+
+La medición posterior con usuarios ficticios sobre la infraestructura real verificó 20 evaluadores simultáneos y un administrador durante cinco minutos, con 100 establecimientos registrados. Como margen inicial se recomienda planificar 15 evaluadores activos. Las condiciones, los tiempos de espera observados con 25 y los límites se detallan en [CAPACIDAD-PRODUCCION.md](CAPACIDAD-PRODUCCION.md). El resumen se calcula por lotes sin construir enlaces que la lista no utiliza; la comprobación completa al finalizar se conserva.

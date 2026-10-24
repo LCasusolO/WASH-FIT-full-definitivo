@@ -78,3 +78,7 @@ El resultado se guarda en `work/load-results.json`. `LOAD_REPORT` permite elegir
 ## Límites
 
 No se hizo una prueba de carga contra GoTrue, la red móvil física, el CDN, el almacenamiento de fotos, el repositorio real de Drive o la cuota del proyecto Supabase de producción. La carga cubre lecturas de avance y guardados de evaluadores. La suite aparte verifica tres renderizados Chrome simultáneos y la coordinación de exportaciones entre cuentas; no se afirma haber probado 50 generaciones de PDF simultáneas. No se garantiza capacidad para volúmenes superiores a los ejecutados aquí.
+
+## Medición posterior en la plataforma publicada
+
+Después de esta comparación local, se ejecutó una prueba controlada en la infraestructura real, con cuentas y establecimientos ficticios y autorización explícita del propietario. Los niveles verificados, los tiempos de espera observados con 25 evaluadores y la limpieza comprobada se documentan en [CAPACIDAD-PRODUCCION.md](CAPACIDAD-PRODUCCION.md). Esta nueva prueba no convierte los tiempos locales anteriores en una garantía de producción.

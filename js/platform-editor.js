@@ -4,6 +4,9 @@
   let evaluation,facility,store,hooks,base=[],rows=[],conflicts=[],inFlight=false,pending=null,lastView='',channel,timer,active=false;
   let lastSyncedAt='',syncState='connecting',syncRows=[],syncContext=null,cachedDirty=false,remoteEpoch=0,checkedEpoch=0,lastCheck=0,lastActivity=Date.now(),realtimeReady=false,cacheEpoch=0,lastEvent=0;
   const photoCache=new Map();
+  let retryAt=0,retryFailures=0;
+  function retryLater(){retryFailures=Math.min(retryFailures+1,6);retryAt=Date.now()+Math.min(30000,1000*2**(retryFailures-1))*(0.75+Math.random()*0.5);}
+  function retrySucceeded(){retryFailures=0;retryAt=0;}
   const sync=state=>{syncState=state;hooks?.sync?.({state,lastSyncedAt});};
   function synced(){lastSyncedAt=new Date().toISOString();sync('synced');}
   let userId='',lastPosition=null,lastLocal='',persistQueue=Promise.resolve(),needsRefresh=false;
@@ -14,7 +17,7 @@
   function cachedBase(cached){return M.editorRecords(canonical(M.dataset(cached.base,INDICATORS_DATA,WashCore.defaults(),cached.base.filter(r=>r.kind==='action'))),cached.rows||[],{teamId:cached.editingTeam||'',includeEmpty:true});}
   const evaluationId=new URLSearchParams(location.search).get('evaluation');
   const ready=P.ready;
-  function scheduleSync(hint=true){if(hint)remoteEpoch++;clearTimeout(timer);timer=setTimeout(()=>{if(!inFlight)return synchronize(!hint);},300);}
+  function scheduleSync(hint=true){if(hint){remoteEpoch++;retryAt=0;}clearTimeout(timer);timer=setTimeout(()=>{if(!inFlight)return synchronize(!hint);},300);}
   function changed(payload){
     lastActivity=Date.now();lastEvent=Date.now();const r=payload?.new;
     if(r?.facility_id===evaluation?.facility_id&&['general','indicator'].includes(r.kind)&&r.evaluation_id!==evaluationId)return;
@@ -106,12 +109,12 @@
       const merged=await mergeRemote(base,local,remote.logical,conflicts);
       rows=remote.rows;base=remote.logical;
       hooks.conflicts(conflicts);await apply(merged);await persist();
-      needsRefresh=false;
+      needsRefresh=false;retrySucceeded();
       if(!conflicts.length&&M.changed(base,logical(hooks.get())).length){sync('pending');hooks.status('pending','Cambios locales pendientes de sincronizar.');}else{synced();hooks.status('saved','Guardado en la nube.');}await persist();return true;
-    }catch(e){if(e.message==='ACCESS_REVOKED')location.replace('/plataforma.html');else hooks.status('pending','No se pudo actualizar. Se conserva el trabajo local.');needsRefresh=true;sync(navigator.onLine?'error':'offline');return false;}
+    }catch(e){if(e.message==='ACCESS_REVOKED')location.replace('/plataforma.html');else hooks.status('pending','No se pudo actualizar. Se conserva el trabajo local.');needsRefresh=true;retryLater();sync(navigator.onLine?'error':'offline');return false;}
     finally{inFlight=false;if(!needsRefresh&&(cachedDirty||remoteEpoch>checkedEpoch))scheduleSync(false);}
   }
-  async function synchronize(cacheOnly=false){if(await refresh(cacheOnly)&&!conflicts.length&&M.changed(base,logical(hooks.get())).length)await save();}
+  async function synchronize(cacheOnly=false){if(Date.now()<retryAt)return false;if(await refresh(cacheOnly)&&!conflicts.length&&M.changed(base,logical(hooks.get())).length)await save();}
   async function connect(callbacks){
     await ready;if(!P.enabled)return false;
     if(!evaluationId){location.replace('/plataforma.html');return true;}
@@ -145,9 +148,9 @@
     channel=P.client.channel('wash-evaluation-'+evaluationId).on('postgres_changes',{event:'*',schema:'public',table:'wash_records',filter:'facility_id=eq.'+evaluation.facility_id},changed).on('postgres_changes',{event:'UPDATE',schema:'public',table:'wash_evaluations',filter:'id=eq.'+evaluationId},()=>scheduleSync()).on('postgres_changes',{event:'*',schema:'public',table:'wash_participants',filter:'evaluation_id=eq.'+evaluationId},()=>scheduleSync()).on('postgres_changes',{event:'*',schema:'public',table:'wash_team_members',filter:'user_id=eq.'+userId},()=>scheduleSync()).subscribe(status=>{realtimeReady=status==='SUBSCRIBED';if(realtimeReady){lastEvent=Date.now();scheduleSync();}});
     const {data:{subscription}}=P.client.auth.onAuthStateChange((event,s)=>{if(event==='SIGNED_OUT'||(!s&&navigator.onLine)){hooks.readonly(true);hooks.clear();location.replace('/plataforma.html');}});
     setInterval(()=>{if(!navigator.onLine)return;const now=Date.now(),idle=(typeof document!=='undefined'&&document.hidden)||now-lastActivity>60000,interval=realtimeReady?(idle?120000:30000):15000;if(pending||needsRefresh||['pending','error'].includes(syncState)||(now-lastCheck>=interval&&(!realtimeReady||now-lastEvent>=15000||now-lastCheck>=120000)))return synchronize();},5000);
-    addEventListener('focus',()=>{lastActivity=Date.now();return synchronize();});
+    addEventListener('focus',()=>{lastActivity=Date.now();retryAt=0;return synchronize();});
     addEventListener('offline',()=>{sync('offline');needsRefresh=true;persistLocal().catch(()=>hooks.status('error','No se pudo guardar en este dispositivo.'));});
-    addEventListener('online',()=>{sync('syncing');return synchronize();});
+    addEventListener('online',()=>{retryAt=0;sync('syncing');return synchronize();});
     addEventListener('pagehide',()=>persistLocal().catch(()=>{}));
     addEventListener('beforeunload',e=>{if(localIdentity(hooks.get())!==lastLocal){persistLocal().catch(()=>{});e.preventDefault();e.returnValue='';}});
     if(navigator.onLine){if(M.changed(base,logical(hooks.get())).length)sync('pending');else synced();}else sync('offline');
@@ -157,6 +160,7 @@
     lastActivity=Date.now();
     if(!active)return false;
     await persist();
+    if(Date.now()<retryAt)return false;
     if(inFlight)return false;
     if(conflicts.length){hooks.status('error','Conflicto pendiente: revise las dos versiones.');return false;}
     if(!navigator.onLine){sync('offline');needsRefresh=true;hooks.status('pending','Guardado en este dispositivo; pendiente de sincronizar.');return false;}
@@ -177,10 +181,10 @@
         await persist();
         await sendPending();
       }
-      const remaining=M.changed(base,logical(hooks.get())).length;if(remaining)sync('pending');else if(hadPending||candidates.length)synced();else sync('synced');await persist();hooks.status(remaining?'pending':'saved',remaining?'Hay cambios nuevos pendientes de sincronizar.':'Guardado en la nube.');return !remaining;
+      retrySucceeded();const remaining=M.changed(base,logical(hooks.get())).length;if(remaining)sync('pending');else if(hadPending||candidates.length)synced();else sync('synced');await persist();hooks.status(remaining?'pending':'saved',remaining?'Hay cambios nuevos pendientes de sincronizar.':'Guardado en la nube.');return !remaining;
     }catch(e){
       if(e.code==='40001'||e.code==='23505'){hooks.status('error','Actualizando y sincronizando cambios…');inFlight=false;await refresh();return false;}
-      needsRefresh=true;sync(navigator.onLine?'error':'offline');hooks.status('pending','Guardado local; sincronización pendiente: '+e.message);return false;
+      needsRefresh=true;retryLater();sync(navigator.onLine?'error':'offline');hooks.status('pending','Guardado local; sincronización pendiente: '+e.message);return false;
     }finally{inFlight=false;if(!needsRefresh&&(cachedDirty||remoteEpoch>checkedEpoch))scheduleSync(false);}
   }
   async function resolve(key,choice){

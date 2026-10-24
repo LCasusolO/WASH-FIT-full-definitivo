@@ -61,6 +61,7 @@ const {createRuntime}=require('./managed-runtime.cjs');
   if(url.pathname==='/rest/v1/rpc/wash_facility_progress')return res.json((await r.queryAs(token,'select wash_facility_progress($1::uuid[]) as data',[req.body.p_facilities])).rows[0].data);
   if(url.pathname==='/rest/v1/rpc/wash_evaluation_progress')return res.json((await r.queryAs(token,'select wash_evaluation_progress() as data')).rows[0].data);
   if(url.pathname==='/rest/v1/rpc/wash_command')return res.json((await r.queryAs(token,'select wash_command($1,$2,$3) as data',[req.body.p_command,JSON.stringify(req.body.p_data),req.body.p_operation])).rows[0].data);
+  if(url.pathname==='/rest/v1/rpc/wash_command_fields')return res.json((await r.queryAs(token,'select wash_command_fields($1,$2,$3) as data',[req.body.p_command,JSON.stringify(req.body.p_data),req.body.p_operation])).rows[0].data);
   if(url.pathname.startsWith('/rest/v1/')){
    const table=url.pathname.split('/').at(-1);if(!/^wash_[a-z_]+$/.test(table))return res.status(400).json({});
    const params=[],where=[];for(const [k,v]of url.searchParams){if(['select','order','offset','limit'].includes(k))continue;if(!/^[a-z_]+$/.test(k)||!v.startsWith('eq.'))return res.status(400).json({});params.push(v.slice(3));where.push('"'+k+'"=$'+params.length);}

@@ -189,9 +189,13 @@ test('un cambio de establecimiento consulta solo sus evaluaciones y progreso, co
  const calls=app.data.statusCalls;await app.pulse();assert.equal(app.data.statusCalls,calls,'sin intervalo cumplido no descarga nuevamente los listados');
 });
 
+test('la actualización de varios establecimientos hace una sola consulta de evaluaciones',async()=>{
+ const app=portal();await app.start();let batches=0;app.platform.evaluationsFor=async ids=>{batches++;assert.equal(ids.length,2);return[{id:'ea',facility_id:'fa'},{id:'eb',facility_id:'fb'}];};const start=app.requests.length;await app.state.refreshFacilities(['fa','fb']);assert.equal(batches,1);assert.equal(app.requests.slice(start).filter(r=>r.table==='evaluations').length,0);assert.equal(app.state.evaluations.value.length,2);
+});
+
 test('el respaldo de progreso conserva porcentajes y solo recalcula las huellas cambiadas',async()=>{
  const app=portal();app.data.evaluations=[{id:'ea',facility_id:'fa',status:'editing',created_at:'2026-10-23'},{id:'eb',facility_id:'fb',status:'editing',created_at:'2026-10-23'}];let round=0;
- app.platform.progressSync=async(known,ids)=>{if(!round++){assert.equal(Object.keys(known).length,0);return{revisions:{fa:'v1',fb:'v1'},changed:['fa','fb'],progress:{ea:{percent:10},eb:{percent:73}}};}if(ids){assert.equal(ids[0],'fa');return{revisions:{fa:'v2'},changed:['fa'],progress:{ea:{percent:25}}};}assert.equal(known.fa,'v2');return{revisions:{fa:'v2',fb:'v1'},changed:[],progress:{}};};
+ app.platform.progressSync=async(known,ids)=>{if(!round++){assert.equal(Object.keys(known).length,0);return{revisions:{fa:'v1',fb:'v1'},changed:['fa','fb'],progress:{ea:{percent:10},eb:{percent:73}}};}if(ids?.length===1){assert.equal(ids[0],'fa');return{revisions:{fa:'v2'},changed:['fa'],progress:{ea:{percent:25}}};}assert.equal(known.fa,'v2');assert.deepEqual(Array.from(ids),['fa','fb']);return{revisions:{fa:'v2',fb:'v1'},changed:[],progress:{}};};
  await app.start();await app.state.refreshFacilities(['fa']);await app.background();assert.equal(app.state.completion.value.ea.percent,25);assert.equal(app.state.completion.value.eb.percent,73);assert.equal(app.requests.filter(r=>r.rpc==='progress').length,0);
 });
 

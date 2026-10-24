@@ -40,8 +40,12 @@ test('revisión antigua continúa editable online y offline; una validada perman
 test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar el cambio',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();
   assert.equal(await app.cloud.save(),false);assert.equal(app.writes,1);
-  assert.equal(await app.cloud.save(),true);assert.equal(app.writes,1);
+  assert.equal(await app.cloud.save(),false);app.advance();assert.equal(await app.cloud.save(),true);assert.equal(app.writes,1);
   assert.equal(app.database.filter(r=>r.kind==='indicator').length,1);
+});
+
+test('la espera de reintento conserva ediciones nuevas y evita repetir peticiones por cada cambio',async()=>{
+ const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();await app.cloud.save();const reads=app.reads;app.current.indicators[0].notes='Edición mientras espera';assert.equal(await app.cloud.save(),false);assert.equal(app.reads,reads);assert.equal((await app.store.read('sync')).local.indicators[0].notes,'Edición mientras espera');app.advance();assert.equal(await app.cloud.save(),true);const row=app.database.find(r=>r.kind==='indicator');assert.equal(row.data.score,1);assert.equal(row.data.notes,'Edición mientras espera');
 });
 test('indicador concurrente se sincroniza automáticamente sin conflicto y converge al último guardado',async()=>{
  const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;await app.cloud.save();

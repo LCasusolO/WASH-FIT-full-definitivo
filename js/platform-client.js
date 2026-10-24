@@ -35,7 +35,9 @@
     if(error){const err=Error(error.message==='VERSION_CONFLICT'?'Otra persona modificó este registro. Revise ambas versiones.':error.message);err.code=error.code;err.details=error.details;throw err;}return result;
   }
   async function checks(evaluationId=null){await requireSession();const {data,error}=await client.rpc('wash_evaluation_checks',{p_evaluation:evaluationId});if(error)throw Error(error.message);return data;}
-  async function progress(){await requireSession();const {data,error}=await client.rpc('wash_evaluation_progress');if(error)throw Error(error.message);return data;}
+  async function progress(facilityIds=null){await requireSession();if(facilityIds&& !facilityIds.length)return {};const {data,error}=await client.rpc(facilityIds?'wash_facility_progress':'wash_evaluation_progress',facilityIds?{p_facilities:facilityIds}:undefined);if(error)throw Error(error.message);return data;}
+  async function progressSync(known={},facilityIds=null){await requireSession();const {data,error}=await client.rpc('wash_progress_sync',{p_known:known,p_facilities:facilityIds});if(error)throw Error(error.message);return data;}
+  async function editorSync(evaluationId,known={}){await requireSession();const {data,error}=await client.rpc('wash_editor_sync',{p_evaluation:evaluationId,p_known:known});if(error){const e=Error(error.code==='42501'?'ACCESS_REVOKED':error.message);e.code=error.code;throw e;}return data;}
   async function rows(table,filters={},columns="*",options={}){
     await requireSession();let query=client.from('wash_'+table).select(columns);for(const [key,value]of Object.entries(filters))query=query.eq(key,value);
     // Paginación explícita para que un país con >1000 registros no pierda resultados.
@@ -109,5 +111,5 @@
     try{const result=await root.WashArchive.save(pending.job,progress,request);await command('export_complete',{id:pending.job.exportId,files:result.files});await store.write('pendingExport',null);return result;}
     catch(error){await store.write('pendingExport',pending);throw error;}
   }
-  root.WashPlatform={progress,offlineEvaluations,rememberOfflineEvaluation,checks,accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
+  root.WashPlatform={progressSync,editorSync,progress,offlineEvaluations,rememberOfflineEvaluation,checks,accountAction,accountStatus,ready,get client(){return client;},get enabled(){return config?.enabled===true;},session,requireSession,command,rows,request,hydratePhotos,uploadPhotos,resizePhoto,exportFiles,pendingExport,retryExport};
 })(window);

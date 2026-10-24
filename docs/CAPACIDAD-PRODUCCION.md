@@ -1,5 +1,7 @@
 # Capacidad observada en producción
 
+**Registro histórico anterior a la sincronización incremental.** La medición posterior de 25, 35 y 50 evaluadores y los cambios publicados se documentan en [SINCRONIZACION-INCREMENTAL.md](SINCRONIZACION-INCREMENTAL.md). Los límites de este documento corresponden a la versión anterior.
+
 Fecha: 23 de octubre de 2026, Lima. Prueba autorizada expresamente por el propietario sobre la plataforma actual, todavía sin uso operativo.
 
 ## Resultado operativo

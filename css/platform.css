@@ -54,3 +54,17 @@ label{display:block;font-size:.8rem;font-weight:650;margin:16px 0;color:#33485f}
 .sync-banner{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 24px;padding:14px 24px;border-bottom:1px solid #d4e0ec;background:#f1f6fc;color:#23496f;box-sizing:border-box;flex-shrink:0;max-width:100%}.sync-main{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1 1 260px}.sync-main strong{display:block;font-size:14px;line-height:1.4;font-weight:700}.sync-main p{margin:3px 0 0;font-size:12px;line-height:1.5}.sync-dot{width:10px;height:10px;border-radius:50%;background:currentColor;flex:0 0 10px;margin-top:5px}.sync-time{font-size:12px;line-height:1.5;flex:0 1 auto;overflow-wrap:anywhere}.sync-time time{font-weight:600}.sync-offline,.sync-pending{background:#fff5df;color:#78500b;border-color:#e8cc8c}.sync-offline{border-left:4px solid #c48816}.sync-synced{background:#eef8f2;color:#21613f;border-color:#c6e2d0}.sync-syncing{background:#edf4ff;color:#2d568e}.sync-syncing .sync-dot{animation:sync-pulse 1.2s ease-in-out infinite}@keyframes sync-pulse{50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.sync-syncing .sync-dot{animation:none}}@media(max-width:767px){.sync-banner{padding:12px 16px;gap:7px}.sync-main{flex-basis:100%}.sync-time{padding-left:20px;flex-basis:100%;font-size:11px}.sync-main strong{font-size:14px}.sync-main p{font-size:12px}}@media print{.sync-banner{display:none!important}}
 
 .sync-banner{margin-bottom:16px;border:1px solid #d4e0ec;border-radius:8px}
+
+/* La misma tabla conserva el contexto del establecimiento en pantallas pequeñas. */
+.evaluations-table h3{font-size:.85rem;margin:9px 0}
+@media(max-width:767px){
+ .evaluations-directory .table-scroll{border:0;overflow:visible}
+ .evaluations-table,.evaluations-table tbody{display:block;min-width:0;width:100%}
+ .evaluations-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .evaluations-table tbody tr{display:grid;gap:13px;border:1px solid var(--line);border-radius:8px;padding:15px;margin-bottom:15px;background:white}
+ .evaluations-table td,.evaluations-table tbody th,.evaluations-table td:last-child{display:block;min-width:0;width:auto;padding:0;border:0}
+ .evaluations-table [data-label]::before{content:attr(data-label);display:block;font-size:.66rem;font-weight:750;letter-spacing:.03em;color:var(--muted);margin-bottom:5px}
+ .evaluations-table button,.evaluations-table .button{min-height:44px;max-width:100%;white-space:normal}
+ .evaluations-table .completion-summary{min-width:0}
+ .evaluations-table label{min-width:0}
+}

@@ -116,3 +116,9 @@ test('template compiles, shows only read-only status beside compliance and separ
   assert.equal((riskBlock.match(/<span/g)||[]).length,1);
   assert.ok(riskBlock.includes('getAssessmentResult(ind).label'));
 });
+
+test('nombres de reevaluación añaden un código de tres dígitos sin cambiar el nombre inicial',()=>{
+ const info={facilityName:'Hospital dos de mayo',countryCode:'PER'};assert.equal(Core.evaluationFileBase(info,{kind:'initial'}),'PER-Hospital_dos_mayo');
+ for(const name of ['Reevaluación 01','Reeval-001'])assert.equal(Core.evaluationFileBase(info,{kind:'reassessment',name}),'PER-Hospital_dos_mayo_Reevaluación001');
+ assert.equal(Core.evaluationFileBase(info,{kind:'reassessment',name:'Seguimiento antiguo',sequence:12}),'PER-Hospital_dos_mayo_Reevaluación012');assert.equal(Core.evaluationFileBase(info,{kind:'reassessment',sequence:1001}),'PER-Hospital_dos_mayo_Reevaluación1001');assert.throws(()=>Core.evaluationFileBase(info,{kind:'reassessment',name:'Sin código'}),/código/);
+});

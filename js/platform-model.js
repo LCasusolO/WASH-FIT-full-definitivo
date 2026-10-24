@@ -97,5 +97,6 @@
     const labels={connecting:'Conectando…',syncing:'En línea · Sincronizando…',synced:'En línea · Sincronizado',pending:'En línea · Cambios pendientes',error:'En línea · Sin sincronizar'};
     return {label:online?labels[state]||labels.connecting:'Sin conexión',tone:!online?'offline':state==='synced'?'synced':state==='error'||state==='pending'?'pending':'syncing',detail:!online?'Los cambios se guardan en este dispositivo.':state==='synced'?'Todos los cambios están guardados en la nube.':state==='error'?'Se conserva el trabajo local. Se volverá a intentar automáticamente.':'La sincronización se realiza automáticamente.',time:valid?new Intl.DateTimeFormat('es-PE',{dateStyle:'medium',timeStyle:'medium'}).format(new Date(lastSyncedAt)):'Aún no realizada',timestamp:valid?lastSyncedAt:''};
   }
-  return {syncDisplay,editorRecords,accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone,fieldChanges,applyFields};
+  function isNetworkError(error){return /failed to fetch|fetch failed|networkerror|network request failed|load failed|timed? ?out|aborterror|connection.*(?:lost|closed)/i.test(String(error?.message||error||''));}
+  return {isNetworkError,syncDisplay,editorRecords,accountUsername,planFields,monitoringFields,split,dataset,changed,merge,retainConflicts,stable,clone,fieldChanges,applyFields};
 });

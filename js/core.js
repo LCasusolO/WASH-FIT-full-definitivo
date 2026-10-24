@@ -57,6 +57,13 @@
     name = name[0].toUpperCase()+name.slice(1);
     return (countryCode(info) || 'SIN')+'-'+name;
   }
+  function evaluationFileBase(info,evaluation) {
+    const base=fileBaseName(info);if(evaluation?.kind!=='reassessment')return base;
+    const match=plain(evaluation.name).match(/^(?:reeval-|reevaluacion )([0-9]+)$/);
+    const number=Number(evaluation.sequence||match?.[1]);
+    if(!Number.isSafeInteger(number)||number<1)throw Error('La reevaluación no tiene un código válido.');
+    return base+'_Reevaluación'+String(number).padStart(3,'0');
+  }
   function filterRisks(list, domain, priority, order) {
     const risk = ind => ind.severity == null || ind.severity === '' || ind.likelihood == null || ind.likelihood === '' ? null : Number(ind.severity)+Number(ind.likelihood);
     const level = n => n === null ? 'pending' : n >= 15 ? 'high' : n >= 8 ? 'medium' : 'low';
@@ -344,5 +351,5 @@
     const added = field === 'correctiveMeasures' ? changes.newCorrectiveMeasures : changes.newMonitoringComments;
     return (added ? 'Nuevo en esta revisión:\n' + reviewBullets(added) : 'Sin información nueva en esta revisión.') + '\n\nAcumulado:\n' + full;
   }
-  return { visibleIndicator, hasAssessmentScore, hasAssessmentExplanation, isNotApplicable, assessmentComplete, bulletBackspace, reviewHistoryText, createReviewDraft, saveReviewDraft, reviewBullets, changeLabel, bulletEdit, bulletHasContent, countries, countryCode, fileBaseName, filterRisks, SCHEMA_VERSION, MAX_PHOTOS, MAX_PHOTO_BYTES, MAX_IMPORT_BYTES, clone, newId, localDate, validDate, defaults, normalizeDataset, calculateJmp, valuation, assessmentResult, populationWarning, parseNonNegative, responsibleName, trackingStatus, recordReview };
+  return { visibleIndicator, hasAssessmentScore, hasAssessmentExplanation, isNotApplicable, assessmentComplete, bulletBackspace, reviewHistoryText, createReviewDraft, saveReviewDraft, reviewBullets, changeLabel, bulletEdit, bulletHasContent, countries, countryCode, fileBaseName, evaluationFileBase, filterRisks, SCHEMA_VERSION, MAX_PHOTOS, MAX_PHOTO_BYTES, MAX_IMPORT_BYTES, clone, newId, localDate, validDate, defaults, normalizeDataset, calculateJmp, valuation, assessmentResult, populationWarning, parseNonNegative, responsibleName, trackingStatus, recordReview };
 });

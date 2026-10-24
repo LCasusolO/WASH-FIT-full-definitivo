@@ -18,7 +18,7 @@
     if(!evaluations[0]){hooks?.readonly(true);throw Error('ACCESS_REVOKED');}
     evaluation=evaluations[0];
     const session=await P.requireSession();
-    const canEdit=['draft','editing'].includes(evaluation.status)&&participants.some(p=>p.user_id===session.user.id&&p.active&&['coordinator','evaluator'].includes(p.role));
+    const canEdit=['draft','editing','review'].includes(evaluation.status)&&participants.some(p=>p.user_id===session.user.id&&p.active&&['coordinator','evaluator'].includes(p.role));
     readOnly=!canEdit;hooks?.readonly(readOnly);
     const [facilityRows,assignments,members,facilityRowsInfo]=await Promise.all([P.rows('records',{facility_id:evaluation.facility_id}),P.rows('assignments',{facility_id:evaluation.facility_id}),P.rows('team_members'),P.rows('facilities',{id:evaluation.facility_id})]);
     facility=facilityRowsInfo[0];
@@ -110,7 +110,7 @@
     }catch(e){
       if(e.message==='ACCESS_REVOKED'||navigator.onLine||!cached?.evaluation||cached.evaluation.id!==evaluationId)throw e;
       needsRefresh=true;facility=cached.facility;lastPosition=cached.lastPosition||null;
-      evaluation=cached.evaluation;editingTeam=cached.editingTeam||'';planReadOnly=cached.planReadOnly??true;hooks.planReadonly?.(planReadOnly);base=cachedBase(cached);rows=cached.rows;conflicts=[];pending=cached.pending;pendingLocal=cached.pendingLocal;currentOperation=cached.currentOperation;readOnly=cached.readOnly!==false || !['draft','editing'].includes(evaluation?.status);hooks.readonly(readOnly);await hooks.apply(cached.local);hooks.status('pending','Sin conexión: cambios guardados solo en este dispositivo.');
+      evaluation=cached.evaluation;editingTeam=cached.editingTeam||'';planReadOnly=cached.planReadOnly??true;hooks.planReadonly?.(planReadOnly);base=cachedBase(cached);rows=cached.rows;conflicts=[];pending=cached.pending;pendingLocal=cached.pendingLocal;currentOperation=cached.currentOperation;readOnly=cached.readOnly!==false || !['draft','editing','review'].includes(evaluation?.status);hooks.readonly(readOnly);await hooks.apply(cached.local);hooks.status('pending','Sin conexión: cambios guardados solo en este dispositivo.');
     }
     active=true;root.WashCloud.active=true;hooks.conflicts(conflicts);
     if(navigator.onLine){const [position]=await P.rows('user_state',{evaluation_id:evaluationId}).catch(()=>[]);lastPosition=position?.data||cached?.lastPosition||null;}

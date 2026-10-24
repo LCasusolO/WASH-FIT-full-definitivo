@@ -42,4 +42,14 @@ test('comprobación real de cinco pasos, cierre autorizado e indicadores concurr
  const operation=crypto.randomUUID(),payload={evaluation_id:ev.id,version:1};const completed=await command('complete_evaluation',payload,operation);assert.equal(completed.status,'validated');assert.deepEqual(await command('complete_evaluation',payload,operation),completed);
  assert.equal((await r.queryAs(token,"select count(*)::int as n from wash_snapshots where evaluation_id=$1 and purpose='validation'",[ev.id])).rows[0].n,1);
  await assert.rejects(command('save_record',{id:first.id,version:1,data:{score:0}},crypto.randomUUID(),second),/FORBIDDEN/);
+ await r.service('set_role',r.owner.id,{user_id:other.id,scope:'team',team_id:team.id,role:'coordinator'});
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_participants set role='coordinator' where evaluation_id=$1 and user_id=$2",[ev.id,other.id]);});
+ const correction={evaluation_id:ev.id,version:completed.version,status:'editing',reason:'Corregir información registrada'};
+ await assert.rejects(command('evaluation_status',correction,crypto.randomUUID(),second),/FORBIDDEN/);
+ const reopened=await command('evaluation_status',correction);assert.equal(reopened.status,'editing');
+ assert.equal((await r.queryAs(token,"select count(*)::int as n from wash_snapshots where evaluation_id=$1 and purpose='validation'",[ev.id])).rows[0].n,1);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_evaluations set status='review' where id=$1",[ev.id]);});
+ const reviewSave=await command('save_record',{id:first.id,version:1,data:{score:1},field_changes:[{path:['score'],value:1}]},crypto.randomUUID(),second);assert.equal(reviewSave.data.score,1);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_evaluations set status='validated' where id=$1",[ev.id]);});
+ await assert.rejects(command('save_record',{id:first.id,version:1,data:{score:0},field_changes:[{path:['score'],value:0}]},crypto.randomUUID(),second),/FORBIDDEN/);
 });

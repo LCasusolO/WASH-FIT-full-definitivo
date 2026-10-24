@@ -1,6 +1,6 @@
 const Core = require('../js/core.js');
 const crypto = require('node:crypto');
-const {authorize, exportAccess} = require('../server/platform.cjs');
+const {authorize, exportAccess, exportIdentity} = require('../server/platform.cjs');
 const FOLDER = '1SjIXFiCnnQwTZTTvCqLY6xJYb9sGxb6z';
 const MAX_BYTES = 40 * 1024 * 1024;
 function createHandler({env = process.env, request = fetch, now = Date.now} = {}) {
@@ -46,17 +46,19 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
       }
       if (body.action === 'start') {
         const exportJob = access ? await exportAccess(access, body.exportId) : null;
+        const identity = access ? await exportIdentity(access,exportJob,env,request) : null;
         if (![body.jsonBytes, body.pdfBytes].every(x => Number.isSafeInteger(x) && x > 0 && x <= MAX_BYTES) || typeof body.facility !== 'string' || body.facility.length > 500) return res.status(400).json({error: 'Nombre o tamaño de archivos inválido (máximo 40 MB por archivo).'});
         const authorization = 'Bearer ' + await token();
         const batch = crypto.randomUUID();
         await lease(access,exportJob?.id,batch,'acquire');
         if(access)acquired={access,exportId:exportJob.id,batch};
-        const name = Core.fileBaseName({facilityName: body.facility, countryCode: body.countryCode, district: body.location});
+        const name = identity ? Core.evaluationFileBase(identity,identity.evaluation) : Core.fileBaseName({facilityName: body.facility, countryCode: body.countryCode, district: body.location});
         const files = [{kind: 'json', name: name + '.json', mime: 'application/json', bytes: body.jsonBytes}, {kind: 'pdf', name: name + '.pdf', mime: 'application/pdf', bytes: body.pdfBytes}];
         for (const file of files) {
           // Reuse an existing file ID for the same country/facility name.
           const quote = value => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-          const scope = exportJob ? "appProperties has { key='washFitFacility' and value='" + quote(exportJob.facility_id) + "' }" : "name = '" + quote(file.name) + "'";
+          const evaluationScope=identity?.evaluation?.id ? "(appProperties has { key='washFitEvaluation' and value='"+quote(identity.evaluation.id)+"' } or name = '"+quote(file.name)+"')" : "name = '"+quote(file.name)+"'";
+          const scope = exportJob ? "appProperties has { key='washFitFacility' and value='" + quote(exportJob.facility_id) + "' } and "+evaluationScope : evaluationScope;
           const query = new URLSearchParams({q: "'" + quote(folder) + "' in parents and trashed = false and mimeType = '" + file.mime + "' and " + scope, fields: 'files(id),incompleteSearch,nextPageToken', pageSize: '100', orderBy: 'createdTime', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true'});
           const ids=[];let next;
           do {
@@ -69,7 +71,7 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
           }while(next);
           file.targetId = ids[0];
           file.duplicates=exportJob?ids.slice(1):[];
-          const metadata = {name: file.name, mimeType: file.mime, appProperties: {washFitBatch: batch, ...(exportJob ? {washFitExport: exportJob.id, washFitFacility: exportJob.facility_id} : {})}};
+          const metadata = {name: file.name, mimeType: file.mime, appProperties: {washFitBatch: batch, ...(exportJob ? {washFitExport: exportJob.id, washFitFacility: exportJob.facility_id,...(identity.evaluation?.id?{washFitEvaluation:identity.evaluation.id}:{})} : {})}};
           if (!file.targetId) metadata.parents = [folder];
           const endpoint = 'https://www.googleapis.com/upload/drive/v3/files' + (file.targetId ? '/' + encodeURIComponent(file.targetId) : '') + '?uploadType=resumable&supportsAllDrives=true&fields=id';
           await lease(access,exportJob?.id,batch,'renew');
@@ -78,7 +80,7 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
           if (!response.ok || !session || new URL(session).origin !== 'https://www.googleapis.com') throw new Error('No se pudo iniciar la subida. Revise el acceso del propietario a la carpeta.');
           file.session = session;
         }
-        const receiptBody = Buffer.from(JSON.stringify({batch, expires: now() + 3600000, files, ...(access ? {userId: access.user.id, exportId: exportJob.id} : {})})).toString('base64url');
+        const receiptBody = Buffer.from(JSON.stringify({archiveVersion:2,batch, expires: now() + 3600000, files, ...(access ? {userId: access.user.id, exportId: exportJob.id} : {})})).toString('base64url');
         return res.status(200).json({receipt: receiptBody + '.' + sign(receiptBody)});
       }
       if (['verify', 'status', 'upload'].includes(body.action)) {
@@ -90,6 +92,10 @@ function createHandler({env = process.env, request = fetch, now = Date.now} = {}
         if (access) {
           if (receipt.userId !== access.user.id) return res.status(403).json({error: 'El comprobante pertenece a otra cuenta.'});
           await exportAccess(access, receipt.exportId);
+          if(receipt.archiveVersion!==2){
+            try{await lease(access,receipt.exportId,receipt.batch,'release');}catch{}
+            throw Object.assign(Error('El reporte debe actualizar su identificación. Se reiniciará el archivado.'),{status:409,code:'ARCHIVE_SESSION_EXPIRED'});
+          }
           await lease(access,receipt.exportId,receipt.batch,'renew');
         }
         if (receipt.expires < now()) return res.status(400).json({error: 'Comprobante vencido. Vuelva a Exportar.'});

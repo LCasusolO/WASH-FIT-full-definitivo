@@ -25,7 +25,7 @@ test('Drive conserva el nombre y comparte archivos por establecimiento entre exp
  const request=async(url,opts)=>{
   if(url.includes('/auth/'))return Response.json({id:'owner',email_confirmed_at:'2026-10-23'});
   if(url.includes('wash_account_status'))return Response.json({ready:true});
-  if(url.includes('/rpc/wash_command'))return Response.json({ok:true});
+  if(url.includes('/rpc/wash_command'))return Response.json(JSON.parse(opts.body).p_command==='export_identity'?{facility_id:'f',facilityName:'Hospital dos de mayo',countryCode:'PER',evaluation:{id:'e',kind:'initial'}}:{ok:true});
   if(url.includes('wash_exports'))return Response.json([{id,created_by:'owner',facility_id:'f'}]);
   if(url.includes('oauth2'))return Response.json({access_token:'fixture',expires_in:3600});
   if(url.startsWith('https://www.googleapis.com/drive/v3/files?')){queries.push(new URL(url).searchParams.get('q'));return Response.json({files:[]});}
@@ -35,4 +35,14 @@ test('Drive conserva el nombre y comparte archivos por establecimiento entre exp
  const res={setHeader(){},status(code){this.code=code;return this},json(data){this.data=data}};
  await createHandler({env,request})({method:'POST',headers:{origin:env.WASH_APP_ORIGIN,authorization:'Bearer fixture'},body:{action:'start',exportId:id,facility:'Hospital dos de mayo',countryCode:'PER',jsonBytes:10,pdfBytes:20}},res);
  assert.equal(res.code,200,JSON.stringify(res.data));assert.deepEqual(metadata.map(x=>x.name),['PER-Hospital_dos_mayo.json','PER-Hospital_dos_mayo.pdf']);assert.ok(queries.every(q=>q.includes('washFitFacility')&&q.includes("value='f'")&&!q.includes('washFitExport')));assert.ok(metadata.every(m=>m.appProperties.washFitExport===id));
+});
+
+test('reevaluación descarga e imprime con el mismo sufijo que el reporte del servidor',async()=>{
+ const base='PER-Hospital_dos_mayo_Reevaluación001',downloads=[],titles=[],archive=[];
+ const session={access_token:'fixture',user:{id:'evaluator'}},client={auth:{getSession:async()=>({data:{session}}),onAuthStateChange(){}},rpc:async()=>({data:{id:'job-uuid'}})};
+ const root={WashCore:Core,WashSupabase:{createClient:()=>client},WashStorage:{createStore:()=>({write:async()=>{}})},WashChrome:{preparePrint:()=>({close(){}}),print:async(html,title)=>titles.push(title),generate:async(html,title)=>{titles.push(title);return new Blob(['%PDF-fixture']);}},WashArchive:{save:async job=>{archive.push(job);return{files:[]};}}};
+ const context=vm.createContext({window:root,fetch:async url=>url==='/api/platform-config'?Response.json({enabled:true,url:'fixture',key:'public'}):Response.json({html:'<!doctype html><div class="report-content">Reevaluación</div>',fileBaseName:base,dataset:{facility:{name:'Hospital dos de mayo'},country:{code:'PER'},payload:{evaluation:{kind:'reassessment',name:'Reevaluación 01'}}}}),localStorage:{setItem(){}},navigator:{},crypto:require('node:crypto'),Blob,URL:{createObjectURL:()=>'',revokeObjectURL(){}},indexedDB:{},addEventListener(){},setTimeout(){},document:{body:{appendChild(){}},createElement:()=>({click(){downloads.push(this.download)},remove(){}})}});
+ vm.runInContext(fs.readFileSync('js/platform-client.js','utf8'),context);await root.WashPlatform.ready;await root.WashPlatform.exportFiles('e','f');await root.WashPlatform.exportFiles('e','f',()=>{},true);
+ assert.deepEqual(downloads,[base+'.json',base+'.pdf']);assert.deepEqual(titles,[base,base,base]);assert.equal(archive.length,2);
+ const html=await reportHtml({payload:{evaluation:{kind:'reassessment',name:'Reevaluación 01'},participants:[]},dataset:{generalInfo:Core.defaults(),indicators:[]},facility:{name:'Hospital dos de mayo'},country:{code:'PER'},job:{created_at:'2026-10-23'}});assert.ok(html.includes('<title>'+base+'</title>'));
 });

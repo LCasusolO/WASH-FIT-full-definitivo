@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 const Core=require('../js/core'),Model=require('../js/platform-model'),Storage=require('../js/storage');
 const {indexedDB}=require('fake-indexeddb');
 const catalog=vm.runInNewContext(fs.readFileSync('js/data/indicators.js','utf8')+';INDICATORS_DATA');
-function setup(){
+function setup(evaluationStatus='editing'){
   const evaluationId=crypto.randomUUID(),facilityId=crypto.randomUUID(),userId=crypto.randomUUID(),teamId=crypto.randomUUID();
   const database=[{id:crypto.randomUUID(),facility_id:facilityId,evaluation_id:evaluationId,kind:'general',record_key:'general',version:1,data:{...Core.defaults(),facilityName:'Ficticio',countryCode:'PER'}}];
   let editable=true,planEditable=true;
@@ -11,7 +11,7 @@ function setup(){
   class ClockDate extends Date{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}}
   const platform={ready:Promise.resolve({enabled:true}),enabled:true,requireSession:async()=>({user:{id:userId}}),session:async()=>({user:{id:userId}}),hydratePhotos:async rows=>rows,uploadPhotos:async data=>data,
     client:{channel:()=>({on(){return this;},subscribe(){return this;}}),auth:{onAuthStateChange:()=>({data:{subscription:{}}})}},
-    rows:async table=>{reads++;if(failReads)throw Error('Servidor no disponible');if(!navigator.onLine)throw Error('offline');return table==='evaluations'?[{id:evaluationId,facility_id:facilityId,team_id:teamId,status:'editing'}]:table==='records'?Core.clone(database):table==='participants'?(editable?[{user_id:userId,active:true,role:'evaluator'}]:[]):table==='facilities'?[{id:facilityId,country_id:'country'}]:table==='assignments'?[{facility_id:facilityId,team_id:teamId}]:table==='team_members'?(planEditable?[{team_id:teamId,user_id:userId,role:'coordinator'}]:[]):[];},
+    rows:async table=>{reads++;if(failReads)throw Error('Servidor no disponible');if(!navigator.onLine)throw Error('offline');return table==='evaluations'?[{id:evaluationId,facility_id:facilityId,team_id:teamId,status:evaluationStatus}]:table==='records'?Core.clone(database):table==='participants'?(editable?[{user_id:userId,active:true,role:'evaluator'}]:[]):table==='facilities'?[{id:facilityId,country_id:'country'}]:table==='assignments'?[{facility_id:facilityId,team_id:teamId}]:table==='team_members'?(planEditable?[{team_id:teamId,user_id:userId,role:'coordinator'}]:[]):[];},
     command:async(op,data,operation)=>{
       if(operations.has(operation))return Core.clone(operations.get(operation));
       if(!navigator.onLine)throw Error('offline');if(op!=='save_record')return {};
@@ -31,6 +31,11 @@ function setup(){
   const hooks={sync:value=>{syncInfo=value;},get:()=>Core.clone(current),apply:async data=>{current=Core.clone(data);},readonly(){},status(){},conflicts:data=>{conflicts=data;},position(){}};
   return {teamId,advance(){now+=60000;},failReads(value){failReads=value;},get syncInfo(){return syncInfo;},get reads(){return reads;},async dispatch(name,event){await Promise.all((listeners[name]||[]).map(fn=>fn(event)));},reopen(){current=Core.normalizeDataset(Model.dataset([],catalog,Core.defaults()),catalog);conflicts=[];boot();},setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},get cloud(){return root.WashCloud;},hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
 }
+test('revisión antigua continúa editable online y offline; una validada permanece bloqueada',async()=>{
+ const app=setup('review');await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;assert.equal(await app.cloud.save(),true);app.navigator.onLine=false;app.current.indicators[0].notes='Corregir un pendiente de revisión';await app.cloud.persistLocal();app.reopen();await app.cloud.connect(app.hooks);assert.equal(app.current.indicators[0].notes,'Corregir un pendiente de revisión');app.navigator.onLine=true;await app.dispatch('online');assert.equal(app.database.find(r=>r.kind==='indicator').data.notes,'Corregir un pendiente de revisión');
+ const validated=setup('validated');await validated.cloud.connect(validated.hooks);validated.current.indicators[0].score=1;assert.equal(await validated.cloud.save(),false);assert.equal(validated.writes,0);
+});
+
 test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar el cambio',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();
   assert.equal(await app.cloud.save(),false);assert.equal(app.writes,1);

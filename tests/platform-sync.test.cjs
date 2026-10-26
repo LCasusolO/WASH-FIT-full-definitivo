@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 const Core=require('../js/core'),Model=require('../js/platform-model'),Storage=require('../js/storage');
 const {indexedDB}=require('fake-indexeddb');
 const catalog=vm.runInNewContext(fs.readFileSync('js/data/indicators.js','utf8')+';INDICATORS_DATA');
-function setup(evaluationStatus='editing'){
+function setup(evaluationStatus='editing',random=Math.random){
   const evaluationId=crypto.randomUUID(),facilityId=crypto.randomUUID(),userId=crypto.randomUUID(),teamId=crypto.randomUUID();
   const database=[{id:crypto.randomUUID(),facility_id:facilityId,evaluation_id:evaluationId,kind:'general',record_key:'general',version:1,data:{...Core.defaults(),facilityName:'Ficticio',countryCode:'PER'}}];
   let editable=true,planEditable=true;
@@ -25,13 +25,24 @@ function setup(evaluationStatus='editing'){
   platform.editorSync=async(id,known)=>{reads++;requestedVersions.push(Core.clone(known));if(failReads)throw Error('Servidor no disponible');if(!navigator.onLine)throw Error('offline');return {evaluation:{id:evaluationId,facility_id:facilityId,team_id:teamId,status:evaluationStatus},facility:{id:facilityId,country_id:'country'},country:{code:'PER'},participants:editable?[{user_id:userId,active:true,role:'evaluator'}]:[],members:planEditable?[{team_id:teamId,user_id:userId,role:'coordinator'}]:[],assignments:[{facility_id:facilityId,team_id:teamId}],rows:Core.clone(database.filter(r=>known[r.id]!==r.version)),removed:Object.keys(known).filter(id=>!database.some(r=>r.id===id))};};
   function boot(){
     listeners={};root={WashPlatform:platform,WashPlatformModel:Model,WashCore:Core};
-    const context=vm.createContext({window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,Date:ClockDate,crypto,setInterval(fn){pulse=fn;},setTimeout(fn){queuedSync=fn;return 1;},clearTimeout(){queuedSync=null;},addEventListener(name,fn){(listeners[name]||=[]).push(fn);}});
+    const context=vm.createContext({Math:Object.assign(Object.create(Math),{random}),window:root,location:{search:'?evaluation='+evaluationId,replace(){}},URLSearchParams,WashCore:Core,WashStorage:Storage,INDICATORS_DATA:catalog,indexedDB,navigator,Date:ClockDate,crypto,setInterval(fn){pulse=fn;},setTimeout(fn){queuedSync=fn;return 1;},clearTimeout(){queuedSync=null;},addEventListener(name,fn){(listeners[name]||=[]).push(fn);}});
     vm.runInContext(fs.readFileSync('js/platform-editor.js','utf8'),context);
   }
   boot();
   const hooks={sync:value=>{syncInfo=value;},get:()=>Core.clone(current),apply:async data=>{current=Core.clone(data);},readonly(){},status(){},conflicts:data=>{conflicts=data;},position(){}};
-  return {platform,teamId,requestedVersions,flushSync:()=>queuedSync?.(),pulse:()=>pulse(),ready:()=>subscription?.('SUBSCRIBED'),notify:(table,payload)=>callbacks[table]?.(payload),advance(){now+=60000;},failReads(value){failReads=value;},get syncInfo(){return syncInfo;},get reads(){return reads;},async dispatch(name,event){await Promise.all((listeners[name]||[]).map(fn=>fn(event)));},reopen(){current=Core.normalizeDataset(Model.dataset([],catalog,Core.defaults()),catalog);conflicts=[];boot();},setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},get cloud(){return root.WashCloud;},hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
+  return {platform,teamId,requestedVersions,flushSync:()=>queuedSync?.(),pulse:()=>pulse(),ready:()=>subscription?.('SUBSCRIBED'),notify:(table,payload)=>callbacks[table]?.(payload),advance(ms=60000){now+=ms;},failReads(value){failReads=value;},get syncInfo(){return syncInfo;},get reads(){return reads;},async dispatch(name,event){await Promise.all((listeners[name]||[]).map(fn=>fn(event)));},reopen(){current=Core.normalizeDataset(Model.dataset([],catalog,Core.defaults()),catalog);conflicts=[];boot();},setPlanEditable(value){planEditable=value;},setEditable(value){editable=value;},get cloud(){return root.WashCloud;},hooks,navigator,database,store:Storage.createStore(indexedDB,'user:'+userId+':evaluation:'+evaluationId),get current(){return current;},get conflicts(){return conflicts;},get writes(){return writes;},loseResponse(){lost=true;}};
 }
+test('clientes conectados juntos reparten las comprobaciones sin retrasar una edición local',async()=>{
+ const early=setup('editing',()=>0),late=setup('editing',()=>1);
+ await early.cloud.connect(early.hooks);await late.cloud.connect(late.hooks);early.ready();late.ready();
+ const beforeEarly=early.reads,beforeLate=late.reads;
+ early.advance(31000);late.advance(31000);await early.pulse();await late.pulse();
+ assert.ok(early.reads>beforeEarly);assert.equal(late.reads,beforeLate);
+ late.current.indicators[0].notes='No esperar al sondeo para guardar';assert.equal(await late.cloud.save(),true);
+ assert.equal(late.database.find(r=>r.kind==='indicator').data.notes,'No esperar al sondeo para guardar');
+ const afterWrite=late.reads;late.advance(36000);await late.pulse();assert.ok(late.reads>afterWrite);
+});
+
 test('revisión antigua continúa editable online y offline; una validada permanece bloqueada',async()=>{
  const app=setup('review');await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;assert.equal(await app.cloud.save(),true);app.navigator.onLine=false;app.current.indicators[0].notes='Corregir un pendiente de revisión';await app.cloud.persistLocal();app.reopen();await app.cloud.connect(app.hooks);assert.equal(app.current.indicators[0].notes,'Corregir un pendiente de revisión');app.navigator.onLine=true;await app.dispatch('online');assert.equal(app.database.find(r=>r.kind==='indicator').data.notes,'Corregir un pendiente de revisión');
  const validated=setup('validated');await validated.cloud.connect(validated.hooks);validated.current.indicators[0].score=1;assert.equal(await validated.cloud.save(),false);assert.equal(validated.writes,0);
@@ -40,8 +51,12 @@ test('revisión antigua continúa editable online y offline; una validada perman
 test('sincronización reintenta un commit cuya respuesta se perdió sin duplicar el cambio',async()=>{
   const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();
   assert.equal(await app.cloud.save(),false);assert.equal(app.writes,1);
-  assert.equal(await app.cloud.save(),true);assert.equal(app.writes,1);
+  assert.equal(await app.cloud.save(),false);app.advance();assert.equal(await app.cloud.save(),true);assert.equal(app.writes,1);
   assert.equal(app.database.filter(r=>r.kind==='indicator').length,1);
+});
+
+test('la espera de reintento conserva ediciones nuevas y evita repetir peticiones por cada cambio',async()=>{
+ const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;app.loseResponse();await app.cloud.save();const reads=app.reads;app.current.indicators[0].notes='Edición mientras espera';assert.equal(await app.cloud.save(),false);assert.equal(app.reads,reads);assert.equal((await app.store.read('sync')).local.indicators[0].notes,'Edición mientras espera');app.advance();assert.equal(await app.cloud.save(),true);const row=app.database.find(r=>r.kind==='indicator');assert.equal(row.data.score,1);assert.equal(row.data.notes,'Edición mientras espera');
 });
 test('indicador concurrente se sincroniza automáticamente sin conflicto y converge al último guardado',async()=>{
  const app=setup();await app.cloud.connect(app.hooks);app.current.indicators[0].score=1;await app.cloud.save();

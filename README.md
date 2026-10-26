@@ -60,11 +60,13 @@ El catálogo canónico es `js/data/indicators.js`: 100 filas, 99 evaluables y un
 
 La [política de privacidad](privacidad.html) está disponible sin iniciar sesión y enlazada en el menú lateral, debajo de «WASH FIT v2.0 • OPS 2026». Tras desplegar, use la URL pública terminada en `/privacidad.html` en Google Auth Platform. La página y su hoja de estilos se incluyen en el build y la caché offline.
 
-Los cambios se guardan en IndexedDB tras aproximadamente 800 ms. Existe un borrador y un respaldo por navegador/origen. «Nueva evaluación» y la importación conservan el estado anterior; recuperar respaldo intercambia ambos. El JSON exportado usa `schemaVersion: 2`; la importación valida el archivo completo contra el catálogo canónico.
+En la plataforma, el borrador y las operaciones pendientes se conservan en IndexedDB por usuario y evaluación. Después de la primera apertura con conexión se puede cerrar y reabrir sin internet; al reconectarse se reintenta la sincronización por campo. Se conservan los cambios en campos diferentes y, en el mismo campo, prevalece la última versión guardada en el servidor. El identificador de operación evita duplicar un guardado cuya confirmación se perdió. El JSON exportado usa `schemaVersion: 2`.
 
-Al cambiar de dominio o navegador, exporte primero un JSON e impórtelo en la nueva dirección. El almacenamiento local no se traslada con Git. Las copias pendientes de Drive viven en memoria y se pierden al cerrar la página; los archivos ya confirmados permanecen en Drive.
+El almacenamiento local no se traslada al cambiar de dominio, navegador o dispositivo. Sincronice los pendientes antes de cambiar de entorno. En la plataforma, las exportaciones pendientes de archivar en Drive también se conservan en IndexedDB para reintentarlas; los archivos ya confirmados permanecen en Drive.
 
 La interfaz funciona sin conexión después de su primera carga por HTTPS o localhost y la instalación del service worker. Los mapas requieren internet; las API de PDF y Drive requieren servidor y conexión. Las actualizaciones de recursos se activan en segundo plano y no recargan la evaluación abierta.
+
+El [informe de carga y sincronización](docs/CARGA-COORDINADA.md) documenta las pruebas concurrentes, los fallos encontrados, las correcciones y el alcance de las mediciones. El número de evaluadores no debe interpretarse sin considerar ritmo de edición, establecimientos activos, renovación de sesiones y límites por IP.
 
 ## Licencias
 

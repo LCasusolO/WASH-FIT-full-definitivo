@@ -1,0 +1,26 @@
+const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const {createRuntime}=require('./support/managed-runtime.cjs');
+test('ruta directa conserva validaciones, aislamiento, revocación y restricciones de administración',async t=>{
+ const r=await createRuntime();t.after(()=>r.close());const u=await r.insert('direct@example.invalid','Fixture-password-123',undefined,true);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=$1",[u.id]);});
+ await r.service('set_role',r.owner.id,{user_id:u.id,scope:'country',country_id:r.country.id,role:'admin'});
+ const token=(await r.signIn({email:u.email,password:'Fixture-password-123'})).data.session.access_token;
+ const owner=(await r.signIn({email:r.owner.email,password:'Fixture-password-123'})).data.session.access_token;
+ const call=async(command,data,who=token,id=crypto.randomUUID())=>(await r.queryAs(who,'select wash_command_fields($1,$2,$3) as data',[command,JSON.stringify(data),id])).rows[0].data;
+ const f=await call('facility',{country_id:r.country.id,name:'Direct QA'}),team=await call('team',{country_id:r.country.id,name:'Direct QA'});await call('assign',{facility_id:f.id,team_id:team.id});await r.service('set_role',r.owner.id,{user_id:u.id,scope:'team',team_id:team.id,role:'coordinator'});
+ const e=await call('evaluation',{facility_id:f.id,team_id:team.id,kind:'initial'}),source={facility_id:f.id,evaluation_id:e.id,kind:'indicator',record_key:'A_1a',data:{score:1},field_changes:[{path:['score'],value:1}]};
+ const row=await call('save_record',source);
+ const operation=crypto.randomUUID(),patch={id:row.id,version:1,data:{},field_changes:[{path:['notes'],value:'Guardado directo'}]},saved=await call('save_record',patch,token,operation);
+ const replay=(await r.queryAs(token,'select wash_command($1,$2,$3) as data',['save_record',JSON.stringify(patch),operation])).rows[0].data;assert.equal(replay.version,saved.version,'la ruta antigua reconoce una operación directa sin repetirla');
+ const oldOperation=crypto.randomUUID(),oldPatch={...patch,field_changes:[{path:['notes'],value:'Guardado antiguo'}]},oldSaved=(await r.queryAs(token,'select wash_command($1,$2,$3) as data',['save_record',JSON.stringify(oldPatch),oldOperation])).rows[0].data;assert.equal((await call('save_record',oldPatch,token,oldOperation)).version,oldSaved.version,'la ruta directa reconoce una operación de la ruta antigua');
+ for(const [path,value,error]of [[['score'],7,'INVALID_SCORE'],[['severity'],11,'INVALID_SEVERITY'],[['notes'],'x'.repeat(20001),'TEXT_TOO_LONG'],[['constructor','x'],1,'INVALID_FIELD_PATH']])await assert.rejects(call('save_record',{id:row.id,version:1,data:{},field_changes:[{path,value}]}),new RegExp(error));
+ await assert.rejects(call('save_record',{...source,kind:'general',record_key:'photos',data:{},field_changes:[{path:['photos'],value:[{path:'other/not-a-photo'}]}]}),/INVALID_PHOTO_REFERENCE/);
+ await assert.rejects(call('save_record',{...source,id:row.id},owner),/FORBIDDEN/);
+ await assert.rejects(call('facility',{country_id:r.country.id,name:'Owner forbidden'},owner),/COUNTRY_ADMIN_CREATION_REQUIRED/);
+ await assert.rejects(call('invite',{},owner),/USE_ACCOUNT_MANAGEMENT/);
+ const other=await r.insert('direct-stranger@example.invalid','Fixture-password-123',undefined,true);await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=$1",[other.id]);});const stranger=(await r.signIn({email:other.email,password:'Fixture-password-123'})).data.session.access_token;
+ await assert.rejects(call('save_record',{...source,id:row.id},stranger),/FORBIDDEN/);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_evaluations set status='validated' where id=$1",[e.id]);});await assert.rejects(call('save_record',{...source,id:row.id}),/FORBIDDEN/);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='suspended' where user_id=$1",[u.id]);});await assert.rejects(call('save_record',{...source,id:row.id}),/ACCOUNT_SETUP_REQUIRED/);
+ await r.queued(async()=>{await r.db.exec('reset role');await r.db.exec('set role anon');await assert.rejects(r.db.query("select wash_command_fields('save_record','{}',gen_random_uuid())"),/permission denied/);});
+});

@@ -94,7 +94,11 @@
     const comparison=ref([]),compareBefore=ref(''),compareAfter=ref('');
     const catalog=INDICATORS_DATA.filter(i=>i.id!=='S_8');
     let channel,timer,authSubscription,formQueue=Promise.resolve(),loadPromise,loadUser,networkFeedback=false,realtimeReady=false,lastFullCheck=0,lastActivity=Date.now(),facilityRefresh=null,dirtyActor='';
+    const pollFactor=1+Math.random()*0.2;
     const dirtyFacilities=new Set();let progressRevisions={};
+    let autoRetryAt=0,autoFailures=0;
+    function autoFailed(){autoFailures=Math.min(autoFailures+1,6);autoRetryAt=Date.now()+Math.min(30000,1000*2**(autoFailures-1))*(0.75+Math.random()*0.5);}
+    function autoSucceeded(){autoFailures=0;autoRetryAt=0;}
     const formStore=()=>WashStorage.createStore(indexedDB,'user:'+user.value.id);
     async function clearSavedForms(){await formQueue;await formStore().write('forms:'+facilityId.value,{action:actionDraft.value,monitor:monitorDraft.value});}
     const translations={FORBIDDEN:'No tiene permiso para esta operación.',COUNTRY_ADMIN_CREATION_REQUIRED:'El administrador del país registra establecimientos, equipos y evaluaciones.',OWNER_CREATES_ADMINS_ONLY:'Desde la administración global solo se crean administradores del país.',AUTH_REQUIRED:'Verifique su correo e inicie sesión.',ACTIVE_EVALUATION_EXISTS:'Ya existe una evaluación en elaboración para este establecimiento.',TEAM_ASSIGNMENT_REQUIRED:'Asigne el equipo al establecimiento y designe un coordinador antes de crear la evaluación.',PREVIOUS_VALIDATED_REQUIRED:'Seleccione una evaluación anterior validada.',LAST_COORDINATOR_OR_FORBIDDEN:'Debe quedar un coordinador. Solo el administrador del país puede retirar coordinadores.',INVALID_INVITATION:'La invitación venció, fue utilizada o corresponde a otro correo.',INVITER_REVOKED:'La persona que invitó ya no tiene permiso. Solicite una nueva invitación.',VERSION_CONFLICT:'Otra persona modificó el registro. Su contenido se conserva para que lo revise.',RECORD_LOCKED:'El registro está en revisión o validado.'};
@@ -115,7 +119,8 @@
       syncing.value=true;try{const loadedProfile=await P.accountStatus();if(user.value?.id!==loadingUser)return;profile.value=loadedProfile;if(!profile.value?.ready)return;
       const tables=['countries','country_members','owners','facilities','teams','team_members','assignments','evaluations','participants'];
       const values=await Promise.all(tables.map(t=>P.rows(t)));const refs=[countries,countryMembers,owners,facilities,teams,members,assignments,evaluations,participants];
-      const delta=P.progressSync?await P.progressSync(progressRevisions):null,loadedCompletion=delta?delta.progress:await P.progress();
+      const scope=[...new Set([...values[3].map(f=>f.id),...Object.keys(progressRevisions)])];
+      const delta=P.progressSync?await P.progressSync(progressRevisions,scope):null,loadedCompletion=delta?delta.progress:await P.progress();
       await expandProgress(loadedCompletion);if(user.value?.id!==loadingUser)return;
       const nextCompletion=delta?{...completion.value}:{};if(delta){const changed=new Set(delta.changed);for(const e of evaluations.value)if(changed.has(e.facility_id))delete nextCompletion[e.id];progressRevisions=delta.revisions;}
       values.forEach((v,i)=>refs[i].value=v);completion.value={...nextCompletion,...loadedCompletion};
@@ -127,8 +132,8 @@
       const selected=facilityId.value;if(selected){const loadedSnapshots=await P.rows('snapshots',{facility_id:selected,purpose:'validation'},'id,evaluation_id,created_at');if(user.value?.id!==loadingUser)return;if(facilityId.value===selected)snapshots.value=loadedSnapshots;}
       await loadFacilityContext();
       if(profile.value.can_manage&&view.value==='users')await loadDirectory(true);
-      if(user.value?.id!==loadingUser)return;lastFullCheck=Date.now();syncFailed.value=false;if(networkFeedback){error.value='';networkFeedback=false;}if(!actionDraft.value&&!monitorDraft.value){lastSyncedAt.value=new Date().toISOString();await formStore().write('lastSync',lastSyncedAt.value);}
-      }catch(e){if(user.value?.id!==loadingUser)return;syncFailed.value=true;throw e;}finally{if(user.value?.id===loadingUser)syncing.value=false;}
+      if(user.value?.id!==loadingUser)return;lastFullCheck=Date.now();autoSucceeded();syncFailed.value=false;if(networkFeedback){error.value='';networkFeedback=false;}if(!actionDraft.value&&!monitorDraft.value){lastSyncedAt.value=new Date().toISOString();await formStore().write('lastSync',lastSyncedAt.value);}
+      }catch(e){if(user.value?.id!==loadingUser)return;autoFailed();syncFailed.value=true;throw e;}finally{if(user.value?.id===loadingUser)syncing.value=false;}
     }
     async function loadDirectory(force=false){
       const actor=user.value?.id;if(!actor||!profile.value?.can_manage)return;if(directoryPromise&&directoryUser===actor)return directoryPromise;if(directoryLoaded.value&&!force)return;directoryUser=actor;
@@ -137,19 +142,20 @@
     async function refreshFacilities(ids){
       const actor=user.value?.id;if(!actor||!ids.length||navigator.onLine===false)return;
       if(loadPromise&&loadUser===actor)await loadPromise;
-      const current=await Promise.all(ids.map(id=>P.rows('evaluations',{facility_id:id}))),delta=P.progressSync?await P.progressSync(progressRevisions,ids):null,progress=delta?delta.progress:await P.progress(ids);
+      const current=P.evaluationsFor?await P.evaluationsFor(ids):(await Promise.all(ids.map(id=>P.rows('evaluations',{facility_id:id})))).flat(),delta=P.progressSync?await P.progressSync(progressRevisions,ids):null,progress=delta?delta.progress:await P.progress(ids);
       if(user.value?.id!==actor)return;
       const affected=new Set(ids),changed=new Set(delta?delta.changed:ids);if(delta){for(const id of delta.changed)delete progressRevisions[id];progressRevisions={...progressRevisions,...delta.revisions};}
       await expandProgress(progress);
       if(user.value?.id!==actor)return;
-      const next={...completion.value};for(const e of evaluations.value)if(changed.has(e.facility_id))delete next[e.id];evaluations.value=[...evaluations.value.filter(e=>!affected.has(e.facility_id)),...current.flat()];completion.value={...next,...progress};
+      const next={...completion.value};for(const e of evaluations.value)if(changed.has(e.facility_id))delete next[e.id];evaluations.value=[...evaluations.value.filter(e=>!affected.has(e.facility_id)),...current];completion.value={...next,...progress};
       if(affected.has(facilityId.value))await loadFacilityContext();
-      if(user.value?.id!==actor)return;syncFailed.value=false;if(networkFeedback){error.value='';networkFeedback=false;}
+      if(user.value?.id!==actor)return;autoSucceeded();syncFailed.value=false;if(networkFeedback){error.value='';networkFeedback=false;}
       if(!actionDraft.value&&!monitorDraft.value){lastSyncedAt.value=new Date().toISOString();await formStore().write('lastSync',lastSyncedAt.value);}
     }
     async function drainFacilities(){
+      if(Date.now()<autoRetryAt)return;
       if(facilityRefresh)return facilityRefresh;
-      const actor=user.value?.id;const work=(async()=>{if(dirtyFacilities.size&&user.value?.id===actor&&navigator.onLine!==false){const ids=[...dirtyFacilities];dirtyFacilities.clear();try{await refreshFacilities(ids);}catch(e){if(user.value?.id===actor){ids.forEach(id=>dirtyFacilities.add(id));syncFailed.value=true;setError(e);}}}})();
+      const actor=user.value?.id;const work=(async()=>{if(dirtyFacilities.size&&user.value?.id===actor&&navigator.onLine!==false){const ids=[...dirtyFacilities];dirtyFacilities.clear();try{await refreshFacilities(ids);}catch(e){if(user.value?.id===actor){ids.forEach(id=>dirtyFacilities.add(id));autoFailed();syncFailed.value=true;setError(e);}}}})();
       facilityRefresh=work;try{await work;}finally{if(facilityRefresh===work)facilityRefresh=null;if(dirtyFacilities.size&&!syncFailed.value){clearTimeout(timer);timer=setTimeout(drainFacilities,500);}}
     }
     function changedFacility(payload){const id=payload?.new?.facility_id||payload?.old?.facility_id;if(!id)return;const actor=user.value?.id;if(!actor)return;if(dirtyActor!==actor){dirtyFacilities.clear();dirtyActor=actor;}dirtyFacilities.add(id);lastActivity=Date.now();clearTimeout(timer);timer=setTimeout(drainFacilities,500);}
@@ -298,8 +304,8 @@
       const openOffline=async()=>{connectionOnline.value=false;offlineMode.value=true;user.value=(await P.session())?.user||null;offlineList.value=await P.offlineEvaluations();lastSyncedAt.value=user.value?await formStore().read('lastSync')||'':'';};
       addEventListener('offline',()=>openOffline().catch(e=>setError(e)));
       addEventListener('online',async()=>{connectionOnline.value=true;if(!offlineMode.value)return;busy.value=true;try{user.value=(await P.session())?.user||null;await load();offlineMode.value=false;error.value='';}catch(e){setError(e);}finally{busy.value=false;}});
-      setInterval(()=>{if(!navigator.onLine||!user.value||busy.value||offlineMode.value)return;const now=Date.now(),idle=(typeof document!=='undefined'&&document.hidden)||now-lastActivity>60000,interval=realtimeReady?(idle?120000:60000):15000;if(dirtyFacilities.size)return drainFacilities();if(syncFailed.value||now-lastFullCheck>=interval)return load().catch(e=>setError(e));},5000);
-      addEventListener('focus',()=>{lastActivity=Date.now();if(navigator.onLine&&user.value)return load().catch(setError);});
+      setInterval(()=>{if(!navigator.onLine||!user.value||busy.value||offlineMode.value||Date.now()<autoRetryAt)return;const now=Date.now(),idle=(typeof document!=='undefined'&&document.hidden)||now-lastActivity>60000,interval=(realtimeReady?(idle?120000:60000):15000)*pollFactor;if(dirtyFacilities.size)return drainFacilities();if(syncFailed.value||now-lastFullCheck>=interval)return load().catch(e=>setError(e));},5000);
+      addEventListener('focus',()=>{lastActivity=Date.now();autoRetryAt=0;if(navigator.onLine&&user.value)return load().catch(setError);});
       recovering.value=new URLSearchParams(location.hash.slice(1)).get('type')==='recovery';sessionStorage.removeItem('wash-pending-invite');if(new URLSearchParams(location.hash.slice(1)).has('invite')){message.value='Las invitaciones anteriores ya no están vigentes. Solicite credenciales al administrador.';history.replaceState(null,'',location.pathname+location.search);}
       try{const cfg=await P.ready;configured.value=cfg.enabled;if(!cfg.enabled)return;
         const {data}=P.client.auth.onAuthStateChange((event,session)=>{if(!navigator.onLine&&!session&&event!=='SIGNED_OUT')return;if(event==='PASSWORD_RECOVERY')recovering.value=true;if(!session||user.value?.id!==session.user.id){dirtyFacilities.clear();dirtyActor='';progressRevisions={};completion.value={};completionExpanded.value='';directoryLoaded.value=false;accountUsers.value=[];accountEvents.value=[];profile.value=null;[countries,countryMembers,owners,facilities,teams,members,assignments,evaluations,participants,records,events].forEach(r=>r.value=[]);evidence.value=[];actionDraft.value=null;monitorDraft.value=null;countryId.value='';facilityId.value='';teamId.value='';}if(!session){cancelPasswordChange();user.value=null;profile.value=null;accountUsers.value=[];accountEvents.value=[];credentials.value=null;return;}user.value=session.user;});authSubscription=data.subscription;

@@ -1,13 +1,14 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const {createRuntime}=require('./support/managed-runtime.cjs');
-test('coordinador y evaluador guardan datos generales, plan y monitoreo: último commit, reintentos y permisos',async t=>{
+for(const endpoint of ['wash_command','wash_command_fields']){
+test('coordinador y evaluador guardan datos generales, plan y monitoreo: último commit, reintentos y permisos ['+endpoint+']',async t=>{
  const r=await createRuntime();t.after(()=>r.close());
  const owner=(await r.signIn({email:r.owner.email,password:'Fixture-password-123'})).data.session.access_token;
  const user=await r.insert('sync-coordinator@example.invalid','Fixture-sync-123',undefined,true),other=await r.insert('sync-evaluator@example.invalid','Fixture-sync-123',undefined,true);
  await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=any($1::uuid[])",[[user.id,other.id]]);});
  await r.service('set_role',r.owner.id,{user_id:user.id,scope:'country',country_id:r.country.id,role:'admin'});
  const coordinator=(await r.signIn({email:user.email,password:'Fixture-sync-123'})).data.session.access_token;
- const command=async(op,data,who=coordinator,id=crypto.randomUUID())=>(await r.queryAs(who,'select wash_command($1,$2,$3) as data',[op,JSON.stringify(data),id])).rows[0].data;
+ const command=async(op,data,who=coordinator,id=crypto.randomUUID())=>(await r.queryAs(who,`select ${endpoint}($1,$2,$3) as data`,[op,JSON.stringify(data),id])).rows[0].data;
  const facility=await command('facility',{country_id:r.country.id,name:'Centro sincronización'}),team=await command('team',{country_id:r.country.id,name:'Equipo sincronización'});await command('assign',{facility_id:facility.id,team_id:team.id});
  for(const [person,role]of [[user,'coordinator'],[other,'evaluator']])await r.service('set_role',r.owner.id,{user_id:person.id,scope:'team',team_id:team.id,role});
  const evaluator=(await r.signIn({email:other.email,password:'Fixture-sync-123'})).data.session.access_token,ev=await command('evaluation',{facility_id:facility.id,team_id:team.id,kind:'initial'});
@@ -37,14 +38,14 @@ test('coordinador y evaluador guardan datos generales, plan y monitoreo: último
  assert.equal((await r.queryAs(coordinator,"select count(*)::int as n from wash_snapshots where record_id=$1 and purpose='monitor_validation'",[monitor.id])).rows[0].n,1);
 });
 const Model=require('../js/platform-model');
-test('guardado por campo con dos identidades: reconexión, carreras, vacíos, anidados y reintentos',async t=>{
+test('guardado por campo con dos identidades: reconexión, carreras, vacíos, anidados y reintentos ['+endpoint+']',async t=>{
  const r=await createRuntime();t.after(()=>r.close());
  const user=await r.insert('field-coordinator@example.invalid','Fixture-sync-123',undefined,true),other=await r.insert('field-evaluator@example.invalid','Fixture-sync-123',undefined,true);
  await r.queued(async()=>{await r.db.exec('reset role');await r.db.query("update wash_accounts set status='active',must_change_password=false where user_id=any($1::uuid[])",[[user.id,other.id]]);});
  await r.service('set_role',r.owner.id,{user_id:user.id,scope:'country',country_id:r.country.id,role:'admin'});
  const coordinator=(await r.signIn({email:user.email,password:'Fixture-sync-123'})).data.session.access_token;
- const command=async(data,who=coordinator,id=crypto.randomUUID())=>(await r.queryAs(who,'select wash_command($1,$2,$3) as data',['save_record',JSON.stringify(data),id])).rows[0].data;
- const create=async(op,data)=>(await r.queryAs(coordinator,'select wash_command($1,$2,$3) as data',[op,JSON.stringify(data),crypto.randomUUID()])).rows[0].data;
+ const command=async(data,who=coordinator,id=crypto.randomUUID())=>(await r.queryAs(who,`select ${endpoint}($1,$2,$3) as data`,['save_record',JSON.stringify(data),id])).rows[0].data;
+ const create=async(op,data)=>(await r.queryAs(coordinator,`select ${endpoint}($1,$2,$3) as data`,[op,JSON.stringify(data),crypto.randomUUID()])).rows[0].data;
  const facility=await create('facility',{country_id:r.country.id,name:'Centro campos'}),team=await create('team',{country_id:r.country.id,name:'Equipo campos'});await create('assign',{facility_id:facility.id,team_id:team.id});
  for(const [person,role]of [[user,'coordinator'],[other,'evaluator']])await r.service('set_role',r.owner.id,{user_id:person.id,scope:'team',team_id:team.id,role});
  const evaluator=(await r.signIn({email:other.email,password:'Fixture-sync-123'})).data.session.access_token,ev=await create('evaluation',{facility_id:facility.id,team_id:team.id,kind:'initial'});
@@ -76,3 +77,4 @@ test('guardado por campo con dos identidades: reconexión, carreras, vacíos, an
  assert.equal((await command({...oldRequest,field_changes:[{path:['city'],value:'Arequipa'}]},coordinator,oldOp)).version,oldSaved.version);
  assert.deepEqual((await r.queryAs(coordinator,'select data from wash_records where id=$1',[b.id])).rows[0].data,later.data,'actualizar un reintento legado no repite el guardado ni borra campos posteriores');
 });
+}

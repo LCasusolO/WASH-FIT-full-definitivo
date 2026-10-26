@@ -5,6 +5,9 @@
   let lastSyncedAt='',syncState='connecting',syncRows=[],syncContext=null,cachedDirty=false,remoteEpoch=0,checkedEpoch=0,lastCheck=0,lastActivity=Date.now(),realtimeReady=false,cacheEpoch=0,lastEvent=0;
   const photoCache=new Map();
   let retryAt=0,retryFailures=0;
+  // Desfasar comprobaciones sanas: una cohorte conectada a la vez no debe
+  // consultar toda en el mismo instante. No retrasa el guardado de cambios.
+  const pollFactor=1+Math.random()*0.2;
   function retryLater(){retryFailures=Math.min(retryFailures+1,6);retryAt=Date.now()+Math.min(30000,1000*2**(retryFailures-1))*(0.75+Math.random()*0.5);}
   function retrySucceeded(){retryFailures=0;retryAt=0;}
   const sync=state=>{syncState=state;hooks?.sync?.({state,lastSyncedAt});};
@@ -147,7 +150,7 @@
     if(lastPosition)hooks.position(lastPosition);
     channel=P.client.channel('wash-evaluation-'+evaluationId).on('postgres_changes',{event:'*',schema:'public',table:'wash_records',filter:'facility_id=eq.'+evaluation.facility_id},changed).on('postgres_changes',{event:'UPDATE',schema:'public',table:'wash_evaluations',filter:'id=eq.'+evaluationId},()=>scheduleSync()).on('postgres_changes',{event:'*',schema:'public',table:'wash_participants',filter:'evaluation_id=eq.'+evaluationId},()=>scheduleSync()).on('postgres_changes',{event:'*',schema:'public',table:'wash_team_members',filter:'user_id=eq.'+userId},()=>scheduleSync()).subscribe(status=>{realtimeReady=status==='SUBSCRIBED';if(realtimeReady){lastEvent=Date.now();scheduleSync();}});
     const {data:{subscription}}=P.client.auth.onAuthStateChange((event,s)=>{if(event==='SIGNED_OUT'||(!s&&navigator.onLine)){hooks.readonly(true);hooks.clear();location.replace('/plataforma.html');}});
-    setInterval(()=>{if(!navigator.onLine)return;const now=Date.now(),idle=(typeof document!=='undefined'&&document.hidden)||now-lastActivity>60000,interval=realtimeReady?(idle?120000:30000):15000;if(pending||needsRefresh||['pending','error'].includes(syncState)||(now-lastCheck>=interval&&(!realtimeReady||now-lastEvent>=15000||now-lastCheck>=120000)))return synchronize();},5000);
+    setInterval(()=>{if(!navigator.onLine)return;const now=Date.now(),idle=(typeof document!=='undefined'&&document.hidden)||now-lastActivity>60000,interval=(realtimeReady?(idle?120000:30000):15000)*pollFactor;if(pending||needsRefresh||['pending','error'].includes(syncState)||(now-lastCheck>=interval&&(!realtimeReady||now-lastEvent>=15000||now-lastCheck>=120000)))return synchronize();},5000);
     addEventListener('focus',()=>{lastActivity=Date.now();retryAt=0;return synchronize();});
     addEventListener('offline',()=>{sync('offline');needsRefresh=true;persistLocal().catch(()=>hooks.status('error','No se pudo guardar en este dispositivo.'));});
     addEventListener('online',()=>{retryAt=0;sync('syncing');return synchronize();});

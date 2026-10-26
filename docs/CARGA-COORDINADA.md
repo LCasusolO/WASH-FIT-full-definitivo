@@ -136,3 +136,11 @@ Los 85 borradores se exportaron antes de cerrar los navegadores, incluidos los U
 La interfaz candidata no se publica. La consola ofrece reiniciar el proyecto, con unos minutos de indisponibilidad; se solicitó autorización específica antes de aceptar su aviso de confirmación. No se cambiaron planes, cuotas, credenciales ni los datos reales para intentar aprobar la prueba.
 
 Evidencia: `carga-coordinada-motores-separados-522-attempt.json`, `carga-coordinada-motores-separados-remaining-after-522.json`, `carga-coordinada-diagnostico-522.json` y `carga-control-red.ndjson`, en la carpeta de resultados local. La regresión del código candidato había aprobado 231 pruebas y la compilación; ese resultado no permite ignorar esta interrupción de la prueba integrada.
+
+## Cierre de los fixtures y revisión posterior
+
+El 25 de octubre, una vez restablecido el acceso, se recuperaron los 85 borradores con el RPC de guardado por campo desde contextos SQL autenticados de los actores ficticios. Fueron 87 solicitudes y se conservaron 70 UUID originales. Esta recuperación administrativa no sustituye una prueba de reconexión automática en dispositivos.
+
+La reconciliación de 62 694 parches aceptados y 326 campos finales no encontró diferencias, tampoco al contrastar el resultado original de cada operación. Se retiraron los fixtures y sus credenciales locales. Las huellas y conteos de las 17 tablas reales coinciden con el inventario anterior. Se restauraron los predicados originales de lectura y se eliminó la rama experimental de selección por JWT. No se publicó la interfaz candidata ni se reinició el proyecto.
+
+La revisión de Disk IO encontró 99% de balance medio en la última hora, 97% en las últimas 24 horas y un mínimo muestreado de 80% en Infraestructura. Esas muestras no prueban agotamiento a cero ni permiten atribuirle por sí solo los errores 522. La revisión de memoria, las correcciones candidatas y los límites concretos para 100 establecimientos con cuatro integrantes por equipo están en [Memoria y capacidad](MEMORIA-Y-CAPACIDAD.md).

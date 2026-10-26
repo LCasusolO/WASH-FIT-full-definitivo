@@ -94,6 +94,7 @@
     const comparison=ref([]),compareBefore=ref(''),compareAfter=ref('');
     const catalog=INDICATORS_DATA.filter(i=>i.id!=='S_8');
     let channel,timer,authSubscription,formQueue=Promise.resolve(),loadPromise,loadUser,networkFeedback=false,realtimeReady=false,lastFullCheck=0,lastActivity=Date.now(),facilityRefresh=null,dirtyActor='';
+    const pollFactor=1+Math.random()*0.2;
     const dirtyFacilities=new Set();let progressRevisions={};
     let autoRetryAt=0,autoFailures=0;
     function autoFailed(){autoFailures=Math.min(autoFailures+1,6);autoRetryAt=Date.now()+Math.min(30000,1000*2**(autoFailures-1))*(0.75+Math.random()*0.5);}
@@ -303,7 +304,7 @@
       const openOffline=async()=>{connectionOnline.value=false;offlineMode.value=true;user.value=(await P.session())?.user||null;offlineList.value=await P.offlineEvaluations();lastSyncedAt.value=user.value?await formStore().read('lastSync')||'':'';};
       addEventListener('offline',()=>openOffline().catch(e=>setError(e)));
       addEventListener('online',async()=>{connectionOnline.value=true;if(!offlineMode.value)return;busy.value=true;try{user.value=(await P.session())?.user||null;await load();offlineMode.value=false;error.value='';}catch(e){setError(e);}finally{busy.value=false;}});
-      setInterval(()=>{if(!navigator.onLine||!user.value||busy.value||offlineMode.value||Date.now()<autoRetryAt)return;const now=Date.now(),idle=(typeof document!=='undefined'&&document.hidden)||now-lastActivity>60000,interval=realtimeReady?(idle?120000:60000):15000;if(dirtyFacilities.size)return drainFacilities();if(syncFailed.value||now-lastFullCheck>=interval)return load().catch(e=>setError(e));},5000);
+      setInterval(()=>{if(!navigator.onLine||!user.value||busy.value||offlineMode.value||Date.now()<autoRetryAt)return;const now=Date.now(),idle=(typeof document!=='undefined'&&document.hidden)||now-lastActivity>60000,interval=(realtimeReady?(idle?120000:60000):15000)*pollFactor;if(dirtyFacilities.size)return drainFacilities();if(syncFailed.value||now-lastFullCheck>=interval)return load().catch(e=>setError(e));},5000);
       addEventListener('focus',()=>{lastActivity=Date.now();autoRetryAt=0;if(navigator.onLine&&user.value)return load().catch(setError);});
       recovering.value=new URLSearchParams(location.hash.slice(1)).get('type')==='recovery';sessionStorage.removeItem('wash-pending-invite');if(new URLSearchParams(location.hash.slice(1)).has('invite')){message.value='Las invitaciones anteriores ya no están vigentes. Solicite credenciales al administrador.';history.replaceState(null,'',location.pathname+location.search);}
       try{const cfg=await P.ready;configured.value=cfg.enabled;if(!cfg.enabled)return;
